@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Card } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Icon } from '@/components/common/Icon.jsx';
-import { Spinner, EmptyState } from '@/components/common/States.jsx';
+import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { NudgeReactionButtons } from '@/components/notifications/NudgeReactionButtons.jsx';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
@@ -17,7 +17,7 @@ import { cn } from '@/utils/cn.js';
 // Static tone → class map (Tailwind's JIT only sees literal class strings, so these can't
 // be built by interpolation).
 const TONE_CLASS = {
-  brand: 'bg-brand/15 text-brand',
+  brand: 'bg-brand/15 text-brand-strong',
   success: 'bg-success/15 text-success',
   warning: 'bg-warning/15 text-warning',
   danger: 'bg-danger/15 text-danger',
@@ -27,7 +27,7 @@ const TONE_CLASS = {
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { items, unread, loading, refresh, markRead, markAllRead } = useNotificationStore();
+  const { items, unread, loading, error, refresh, markRead, markAllRead } = useNotificationStore();
   const push = usePushNotifications();
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function NotificationsPage() {
       {/* Push toggle */}
       <Card className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className={cn('grid h-10 w-10 place-items-center rounded-2xl', push.subscribed ? 'bg-brand/15 text-brand' : 'bg-surface-2 text-faint')}>
+          <span className={cn('grid h-10 w-10 place-items-center rounded-2xl', push.subscribed ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-faint')}>
             {push.subscribed ? <BellRing className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
           </span>
           <div>
@@ -88,6 +88,8 @@ export default function NotificationsPage() {
 
       {loading && items.length === 0 ? (
         <Spinner />
+      ) : error && items.length === 0 ? (
+        <ErrorState error={error} onRetry={refresh} />
       ) : items.length === 0 ? (
         <EmptyState icon={Bell} title="No notifications yet" description="Alerts about your sessions, queue, and carpools will show up here." />
       ) : (

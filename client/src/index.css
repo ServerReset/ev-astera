@@ -24,10 +24,15 @@
   --c-brand: 60 121 188;
   --c-brand-strong: 90 150 214;
   --c-brand-content: 255 255 255;
+  --c-tertiary: 205 127 50;
   --c-success: 74 222 128;
   --c-warning: 251 191 36;
   --c-danger: 248 113 113;
   --c-info: 96 165 250;
+
+  /* AsteraMark: dark-bg official variant is solid white; light-bg variant is two-tone. */
+  --c-mark-primary: 255 255 255;
+  --c-mark-secondary: 255 255 255;
 }
 
 [data-theme='dark'] {
@@ -48,10 +53,17 @@
   --c-brand-strong: 90 150 214;/* lighter, for hover/pop on black #5a96d6 */
   --c-brand-content: 255 255 255;
 
+  /* M3 tertiary role: bronze medal accent (Leaderboard rank #3). Unchanged from
+     the value it replaces (#cd7f32) — contrast against black is already ample. */
+  --c-tertiary: 205 127 50;    /* #cd7f32 */
+
   --c-success: 74 222 128;     /* #4ade80 */
   --c-warning: 251 191 36;     /* #fbbf24 */
   --c-danger: 248 113 113;     /* #f87171 */
   --c-info: 96 165 250;        /* #60a5fa */
+
+  --c-mark-primary: 255 255 255;
+  --c-mark-secondary: 255 255 255;
 }
 
 [data-theme='light'] {
@@ -66,16 +78,85 @@
 
   --c-content: 26 27 30;       /* primary text             */
   --c-muted: 84 87 94;         /* secondary text           */
-  --c-faint: 130 133 140;      /* tertiary / placeholder   */
+  /* Darkened from #82858c — the original failed AA (3.7:1) as body text on white; this hits ~5:1+. */
+  --c-faint: 100 103 110;      /* #64676e */
 
   --c-brand: 60 121 188;       /* Astera Labs blue          #3c79bc */
   --c-brand-strong: 42 96 153; /* darker, for hover/active on white #2a6099 */
   --c-brand-content: 255 255 255;
 
-  --c-success: 22 163 74;      /* #16a34a — darker for contrast on light bg */
-  --c-warning: 217 119 6;      /* #d97706 */
-  --c-danger: 220 38 38;       /* #dc2626 */
-  --c-info: 37 99 235;         /* #2563eb */
+  /* Darker bronze for AA-ish contrast on white, same pattern as success/warning/danger/info below. */
+  --c-tertiary: 138 90 46;     /* #8a5a2e */
+
+  /* All four darkened from their dark-theme-matching hues — the originals only hit ~3.1-4.8:1
+     as text on white/surface-2 (fails AA 4.5:1); these clear 4.5:1 against every light surface. */
+  --c-success: 18 120 55;      /* #127837 */
+  --c-warning: 140 95 8;       /* #8c5f08 */
+  --c-danger: 200 30 30;       /* #c81e1e */
+  --c-info: 30 90 215;         /* #1e5ad7 */
+
+  /* Official two-tone symbol: brand gray (#5d6062) + brand blue (#2b74ba), for light bg. */
+  --c-mark-primary: 93 96 98;
+  --c-mark-secondary: 43 116 186;
+}
+
+/*
+ * ── M3 typography scale ───────────────────────────────────────────────────
+ * Full Material 3 type scale as tokens (theme-independent). Wired into Tailwind
+ * as text-display-lg…text-label-sm in tailwind.config.js. The app's existing
+ * Tailwind-default sizes (text-sm, text-2xl, etc.) remain valid for body copy —
+ * these named scale tokens are for headline/title-level elements migrating to
+ * an explicit M3 role.
+ */
+:root {
+  --type-display-lg-size: 3.5625rem; --type-display-lg-line: 4rem;    --type-display-lg-weight: 400;
+  --type-display-md-size: 2.8125rem; --type-display-md-line: 3.25rem; --type-display-md-weight: 400;
+  --type-display-sm-size: 2.25rem;   --type-display-sm-line: 2.75rem; --type-display-sm-weight: 400;
+
+  --type-headline-lg-size: 2rem;     --type-headline-lg-line: 2.5rem; --type-headline-lg-weight: 400;
+  --type-headline-md-size: 1.75rem;  --type-headline-md-line: 2.25rem;--type-headline-md-weight: 400;
+  --type-headline-sm-size: 1.5rem;   --type-headline-sm-line: 2rem;   --type-headline-sm-weight: 400;
+
+  --type-title-lg-size: 1.375rem;    --type-title-lg-line: 1.75rem;   --type-title-lg-weight: 400;
+  --type-title-md-size: 1rem;        --type-title-md-line: 1.5rem;    --type-title-md-weight: 500;
+  --type-title-sm-size: 0.875rem;    --type-title-sm-line: 1.25rem;   --type-title-sm-weight: 500;
+
+  --type-body-lg-size: 1rem;         --type-body-lg-line: 1.5rem;     --type-body-lg-weight: 400;
+  --type-body-md-size: 0.875rem;     --type-body-md-line: 1.25rem;    --type-body-md-weight: 400;
+  --type-body-sm-size: 0.75rem;      --type-body-sm-line: 1rem;       --type-body-sm-weight: 400;
+
+  --type-label-lg-size: 0.875rem;    --type-label-lg-line: 1.25rem;   --type-label-lg-weight: 500;
+  --type-label-md-size: 0.75rem;     --type-label-md-line: 1rem;      --type-label-md-weight: 500;
+  --type-label-sm-size: 0.6875rem;   --type-label-sm-line: 1rem;      --type-label-sm-weight: 500;
+
+  /* ── M3 shape scale ── */
+  --shape-none: 0px;
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-lg-increased: 20px;
+  --shape-xl: 28px;
+  --shape-xl-increased: 32px;
+  --shape-xxl: 48px;
+  --shape-full: 9999px;
+
+  /* ── Elevation (tonal surfaces are primary; these are the supplementary
+     shadows M3 allows for busy-background protection). ── */
+  --shadow-elevation-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.15);
+  --shadow-elevation-2: 0 1px 2px rgb(0 0 0 / 0.40), 0 8px 24px rgb(0 0 0 / 0.25);
+  --shadow-elevation-3: 0 4px 8px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.35);
+
+  /* ── Motion: M3 easing curves + durations ── */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --duration-short: 150ms;
+  --duration-medium: 250ms;
+  --duration-long: 400ms;
 }
 
 * {
@@ -117,7 +198,7 @@ body {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium
            px-4 py-2.5 text-sm transition-colors select-none
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80
            disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
@@ -153,8 +234,31 @@ body {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
+  /* Range input: native thumb/track replaced so it matches the brand palette in both themes. */
+  .slider {
+    @apply w-full appearance-none cursor-pointer bg-transparent;
+    accent-color: rgb(var(--c-brand));
+  }
+  .slider::-webkit-slider-runnable-track {
+    @apply h-2 rounded-full bg-surface-2;
+  }
+  .slider::-webkit-slider-thumb {
+    @apply appearance-none h-5 w-5 rounded-full bg-brand;
+    margin-top: -6px;
+    box-shadow: var(--shadow-elevation-1);
+  }
+  .slider::-moz-range-track {
+    @apply h-2 rounded-full bg-surface-2;
+  }
+  .slider::-moz-range-thumb {
+    @apply h-5 w-5 rounded-full bg-brand border-0;
+    box-shadow: var(--shadow-elevation-1);
+  }
+
+  /* text-brand fails AA (4.5:1) as body text against elevated/surface backgrounds in both
+     themes — brand-strong is the theme-tuned variant that passes everywhere. */
   .link {
-    @apply text-brand hover:text-brand-strong underline-offset-2 hover:underline;
+    @apply text-brand-strong underline-offset-2 hover:underline;
   }
 
   /* Skeleton shimmer for loading states. */
@@ -178,6 +282,34 @@ body {
   100% {
     transform: translateX(100%);
   }
+}
+
+/*
+ * ── Liquid glass material dressing ──────────────────────────────────────────
+ * Optics (refraction/blur) come from useLiquidGlass + utils/liquidGlass.js via
+ * backdrop-filter. This class supplies the surrounding "glass" read: a
+ * translucent tint so the blurred backdrop shows through, inset specular
+ * highlights top/bottom to sell curvature, and a deliberately soft shadow.
+ * Applied only to bounded, clearly-elevated overlay surfaces (dialog, menu,
+ * toast) — never to the base .card primitive used everywhere.
+ */
+.lg-panel {
+  position: relative;
+  background: linear-gradient(
+    165deg,
+    rgb(var(--c-surface) / 0.72),
+    rgb(var(--c-surface) / 0.55)
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.09),
+    inset 0 -1px 0 rgb(0 0 0 / 0.12),
+    var(--shadow-elevation-3);
+}
+/* Browsers without SVG-filter backdrop support (Safari/Firefox) fall back to
+   a plain frosted blur set inline by liquidGlass.js — raise the tint opacity
+   here so the panel still reads as a distinct surface without refraction. */
+.lg-panel.lg-fallback {
+  background: rgb(var(--c-surface) / 0.85);
 }
 
 /* Respect reduced-motion preferences. */

@@ -68,7 +68,7 @@ function OverviewTab() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {tiles.map((t) => (
         <Card key={t.label}>
-          <t.icon className="mb-2 h-5 w-5 text-brand" />
+          <t.icon className="mb-2 h-5 w-5 text-brand-strong" />
           <p className="text-2xl font-bold text-content tabular-nums">{t.value ?? 0}</p>
           <p className="text-sm text-muted">{t.label}</p>
         </Card>
@@ -119,53 +119,59 @@ function ChargersTab() {
   if (chargers.loading && !chargers.data) return <Spinner />;
   if (chargers.error) return <ErrorState error={chargers.error} onRetry={chargers.refetch} />;
 
+  const list = chargers.data || [];
+
   return (
     <>
-      <div className="space-y-3">
-        {(chargers.data || []).map((c) => {
-          const meta = CHARGER_STATUS_META[c.status] || CHARGER_STATUS_META.available;
-          return (
-            <Card key={c.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-semibold text-content">
-                    {c.name}
-                    <Badge tone={meta.tone} dot>{meta.label}</Badge>
-                  </p>
-                  {c.session ? (
-                    <p className="mt-1 text-sm text-muted">
-                      In use by {c.session.userDisplayName || 'a user'} · ETA {c.session.etaAt ? formatDateTime(c.session.etaAt) : '—'}
+      {list.length === 0 ? (
+        <EmptyState icon={Zap} title="No chargers configured" description="Add chargers to this site to start tracking sessions." />
+      ) : (
+        <div className="space-y-2">
+          {list.map((c) => {
+            const meta = CHARGER_STATUS_META[c.status] || CHARGER_STATUS_META.available;
+            return (
+              <Card key={c.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 font-semibold text-content">
+                      {c.name}
+                      <Badge tone={meta.tone} dot>{meta.label}</Badge>
                     </p>
-                  ) : c.offlineReason ? (
-                    <p className="mt-1 text-sm text-warning">Offline: {c.offlineReason}</p>
+                    {c.session ? (
+                      <p className="mt-1 text-sm text-muted">
+                        In use by {c.session.userDisplayName || 'a user'} · ETA {c.session.etaAt ? formatDateTime(c.session.etaAt) : '—'}
+                      </p>
+                    ) : c.offlineReason ? (
+                      <p className="mt-1 text-sm text-warning">Offline: {c.offlineReason}</p>
+                    ) : (
+                      <p className="mt-1 text-sm text-faint">No active session</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {c.session && (
+                    <Button size="sm" variant="danger" onClick={() => forceEnd(c)} loading={busyId === c.id}>
+                      <StopCircle className="h-4 w-4" />
+                      Force end
+                    </Button>
+                  )}
+                  {c.status === 'offline' ? (
+                    <Button size="sm" variant="secondary" onClick={() => online(c)} loading={busyId === c.id}>
+                      <Power className="h-4 w-4" />
+                      Set online
+                    </Button>
                   ) : (
-                    <p className="mt-1 text-sm text-faint">No active session</p>
+                    <Button size="sm" variant="ghost" onClick={() => setOfflineFor(c)}>
+                      <PowerOff className="h-4 w-4" />
+                      Set offline
+                    </Button>
                   )}
                 </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {c.session && (
-                  <Button size="sm" variant="danger" onClick={() => forceEnd(c)} loading={busyId === c.id}>
-                    <StopCircle className="h-4 w-4" />
-                    Force end
-                  </Button>
-                )}
-                {c.status === 'offline' ? (
-                  <Button size="sm" variant="secondary" onClick={() => online(c)} loading={busyId === c.id}>
-                    <Power className="h-4 w-4" />
-                    Set online
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="ghost" onClick={() => setOfflineFor(c)}>
-                    <PowerOff className="h-4 w-4" />
-                    Set offline
-                  </Button>
-                )}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
       <OfflineModal
         charger={offlineFor}
         onClose={() => setOfflineFor(null)}
@@ -359,6 +365,8 @@ function AnnouncementsTab() {
       </div>
       {list.loading && !list.data ? (
         <Spinner />
+      ) : list.error ? (
+        <ErrorState error={list.error} onRetry={list.refetch} />
       ) : (list.data || []).length === 0 ? (
         <EmptyState icon={Megaphone} title="No announcements" description="Post one to notify everyone at the site." />
       ) : (

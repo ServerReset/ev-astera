@@ -6,7 +6,7 @@ import { Tabs } from '@/components/common/Tabs.jsx';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Input } from '@/components/common/Input.jsx';
-import { Spinner } from '@/components/common/States.jsx';
+import { Spinner, ErrorState } from '@/components/common/States.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { useThemeStore } from '@/stores/themeStore.js';
@@ -115,7 +115,7 @@ function AppSettingsTab() {
                 onClick={() => setThemePref(opt.key)}
                 className={cn(
                   'flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors',
-                  active ? 'border-brand bg-brand/10 text-brand' : 'border-border text-muted hover:bg-surface-2 hover:text-content'
+                  active ? 'border-brand bg-brand/10 text-brand-strong' : 'border-border text-muted hover:bg-surface-2 hover:text-content'
                 )}
                 aria-pressed={active}
               >
@@ -154,6 +154,8 @@ function StatsCard({ stats }) {
       <CardHeader title="Your usage" />
       {stats.loading ? (
         <Spinner />
+      ) : stats.error ? (
+        <ErrorState error={stats.error} onRetry={stats.refetch} />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat icon={Zap} label="This week" value={`${s?.weeklySessionsUsed ?? 0}/${s?.weeklySessionsMax ?? 0}`} />
@@ -169,7 +171,7 @@ function StatsCard({ stats }) {
 function Stat({ icon: Icon, label, value }) {
   return (
     <div className="rounded-xl bg-bg-elevated p-3">
-      <Icon className="mb-1 h-4 w-4 text-brand" />
+      <Icon className="mb-1 h-4 w-4 text-brand-strong" />
       <p className="text-lg font-bold text-content tabular-nums">{value}</p>
       <p className="text-xs text-muted">{label}</p>
     </div>
@@ -179,7 +181,6 @@ function Stat({ icon: Icon, label, value }) {
 function ProfileCard({ user, onSaved }) {
   const [displayName, setDisplayName] = useState(user.displayName || '');
   const [vehicleDescription, setVehicleDescription] = useState(user.vehicleDescription || '');
-  const [parkingSpot, setParkingSpot] = useState(user.parkingSpot || '');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -188,7 +189,6 @@ function ProfileCard({ user, onSaved }) {
     const parsed = updateProfileSchema.safeParse({
       displayName: displayName.trim(),
       vehicleDescription: vehicleDescription.trim(),
-      parkingSpot: parkingSpot.trim(),
     });
     if (!parsed.success) {
       const fe = {};
@@ -215,7 +215,6 @@ function ProfileCard({ user, onSaved }) {
         <Input label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} error={errors.displayName} />
         <Input label="Email" value={user.email} disabled hint="Contact an admin to change your email." />
         <Input label="Vehicle" value={vehicleDescription} onChange={(e) => setVehicleDescription(e.target.value)} error={errors.vehicleDescription} placeholder="Blue Tesla Model 3" />
-        <Input label="Usual parking spot" value={parkingSpot} onChange={(e) => setParkingSpot(e.target.value)} error={errors.parkingSpot} placeholder="Level 2, bay 14" />
         <div className="flex justify-end">
           <Button onClick={save} loading={saving}>
             Save changes

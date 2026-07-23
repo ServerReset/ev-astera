@@ -3,7 +3,7 @@ import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { EmptyState } from '@/components/common/States.jsx';
 import { cn } from '@/utils/cn.js';
 
-const RANK_TONE = ['text-warning', 'text-muted', 'text-[#cd7f32]']; // gold, silver, bronze
+const RANK_TONE = ['text-warning', 'text-muted', 'text-tertiary']; // gold, silver, bronze
 
 /**
  * CO₂-savings leaderboard (Feature 4). `rows` from carpoolApi.leaderboard:
@@ -32,7 +32,7 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
       {rows.length === 0 ? (
         <EmptyState icon={Trophy} title="No trips logged yet" description="Complete a carpool to get on the board." />
       ) : (
-        <ol className="space-y-1">
+        <ol className="space-y-1.5">
           {rows.map((r, i) => {
             const mine = r.userId === highlightUserId;
             return (
@@ -48,7 +48,7 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
                 </span>
                 <span className="min-w-0 flex-1 truncate text-content">
                   {r.name}
-                  {mine && <span className="ml-1 text-xs text-brand">(you)</span>}
+                  {mine && <span className="ml-1 text-xs text-brand-strong">(you)</span>}
                 </span>
                 <span className="text-xs text-muted">{r.trips} trips</span>
                 <span className="w-20 text-right font-semibold text-success tabular-nums">{r.co2Kg} kg</span>

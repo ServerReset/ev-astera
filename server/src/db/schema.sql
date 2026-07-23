@@ -26,7 +26,6 @@ create table if not exists users (
   display_name        text not null,
   role                text not null default 'user' check (role in ('user','admin')),
   vehicle_description text,
-  parking_spot        text,
   notification_prefs  jsonb not null default '{}'::jsonb,
   carpool_credits     integer not null default 0,
   active              boolean not null default true,
@@ -74,7 +73,6 @@ create table if not exists sessions (
   status              text not null default 'active'
                         check (status in ('active','overtime','completed','force_ended')),
   vehicle_description text,
-  parking_spot        text,
   started_at          timestamptz not null default now(),
   eta_at              timestamptz not null,
   ended_at            timestamptz,
@@ -401,7 +399,7 @@ create trigger trg_chargers_updated before update on chargers
 --  carpool_bookings) are readable by ANYONE holding the anon key — including logged-out
 --  visitors — not just authenticated employees, since the anon connection has no user
 --  session to gate on. The data in them (charger/session/queue status, ride pickup
---  labels/coordinates, vehicle description, parking spot) is the same workplace-shared data
+--  labels/coordinates, vehicle description) is the same workplace-shared data
 --  any logged-in employee already sees on the dashboard, not secrets like credentials or
 --  tokens, so this is a deliberate, bounded exposure rather than an oversight. If this app
 --  ever serves multiple untrusted tenants on one Supabase project, or the data in these

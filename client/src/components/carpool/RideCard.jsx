@@ -17,7 +17,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
     <div className="card flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand/15 text-brand">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand/15 text-brand-strong">
             <Car className="h-5 w-5" />
           </span>
           <div>

@@ -24,7 +24,7 @@ export function Tabs({ tabs, value, onChange, className }) {
             {Icon && <Icon className="h-4 w-4" />}
             {t.label}
             {typeof t.badge === 'number' && t.badge > 0 && (
-              <span className="ml-0.5 rounded-full bg-brand/20 px-1.5 text-xs text-brand">{t.badge}</span>
+              <span className="ml-0.5 rounded-full bg-brand/20 px-1.5 text-xs text-brand-strong">{t.badge}</span>
             )}
           </button>
         );

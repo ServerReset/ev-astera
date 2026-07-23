@@ -31,7 +31,6 @@ function toPublicUser(row) {
     displayName: row.display_name,
     role: row.role,
     vehicleDescription: row.vehicle_description,
-    parkingSpot: row.parking_spot,
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
     onboardedAt: row.onboarded_at,

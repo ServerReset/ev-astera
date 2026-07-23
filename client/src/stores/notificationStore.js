@@ -5,22 +5,24 @@
  */
 import { create } from 'zustand';
 import { notificationApi } from '@/services/endpoints.js';
+import { normalizeError } from '@/services/api.js';
 
 export const useNotificationStore = create((set, get) => ({
   items: [],
   unread: 0,
   loading: false,
+  error: null,
 
   refresh: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const [list, count] = await Promise.all([
         notificationApi.list(1),
         notificationApi.unreadCount(),
       ]);
       set({ items: list.items || list || [], unread: count?.count ?? count ?? 0, loading: false });
-    } catch {
-      set({ loading: false });
+    } catch (err) {
+      set({ loading: false, error: normalizeError(err) });
     }
   },
 

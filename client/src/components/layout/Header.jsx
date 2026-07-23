@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore.js';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { AsteraMark } from '@/components/common/AsteraMark.jsx';
 import { cn } from '@/utils/cn.js';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 
 /** Top bar: mobile brand, spacer, notification bell w/ unread badge, and user menu. */
 export function Header() {
@@ -14,6 +15,7 @@ export function Header() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const glassRef = useLiquidGlass(menuOpen, { scale: -90, blur: 4 });
 
   useEffect(() => {
     const onClick = (e) => {
@@ -33,7 +35,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-bg-elevated/95 px-4 backdrop-blur md:px-6">
       <Link to="/" className="flex items-center gap-2 md:hidden">
-        <AsteraMark size={32} className="rounded-lg" />
+        <AsteraMark size={32} />
         <span className="font-semibold">EV Hub</span>
       </Link>
 
@@ -46,7 +48,7 @@ export function Header() {
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-danger px-1 text-2xs font-bold text-white">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
@@ -59,7 +61,7 @@ export function Header() {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-surface-2 text-sm font-semibold text-brand">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-surface-2 text-sm font-semibold text-brand-strong">
             {initials}
           </span>
           <span className="hidden sm:block max-w-[120px] truncate text-sm text-content">{user?.displayName}</span>
@@ -67,8 +69,9 @@ export function Header() {
 
         {menuOpen && (
           <div
+            ref={glassRef}
             role="menu"
-            className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface shadow-card animate-fade-in"
+            className="lg-panel absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-border animate-fade-in"
           >
             <div className="border-b border-border px-4 py-3">
               <p className="truncate text-sm font-medium text-content">{user?.displayName}</p>

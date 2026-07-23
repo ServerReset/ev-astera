@@ -154,7 +154,6 @@ export const SETTING_DEFAULTS = Object.freeze({
 export const TIMEZONE = 'America/Los_Angeles';
 export const WORK_HOURS = Object.freeze({ START: 8, END: 18 }); // 8 AM – 6 PM
 export const PAGE_SIZE = 20;
-export const DURATION_PRESETS_HOURS = [1, 2, 3, 4];
 export const NUDGE_PRESETS = Object.freeze([
   'Hey! Are you almost done charging? 🙏',
   "I'm next in queue — just checking in!",

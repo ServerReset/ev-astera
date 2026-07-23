@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
+import { DurationSlider } from '@/components/common/DurationSlider.jsx';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
-import { DURATION_PRESETS_HOURS } from '@/utils/constants.js';
-import { cn } from '@/utils/cn.js';
 
 /**
  * Adjust ETA. Submits a new total duration in minutes measured from the session's start
@@ -49,25 +48,7 @@ export function EtaModal({ open, onClose, session, onUpdated }) {
       }
     >
       <p className="mb-3 text-sm text-muted">Set the total time you need, measured from when you started.</p>
-      <div className="grid grid-cols-4 gap-2">
-        {DURATION_PRESETS_HOURS.map((h) => {
-          const mins = h * 60;
-          const active = minutes === mins;
-          return (
-            <button
-              key={h}
-              type="button"
-              onClick={() => setMinutes(mins)}
-              className={cn(
-                'rounded-xl border py-2.5 text-sm font-medium transition-colors',
-                active ? 'border-brand bg-brand/15 text-brand' : 'border-border bg-bg-elevated text-muted hover:text-content'
-              )}
-            >
-              {h}h
-            </button>
-          );
-        })}
-      </div>
+      <DurationSlider label="Total duration" value={minutes} onChange={setMinutes} />
       {error && <p className="field-error mt-3">{error}</p>}
     </Modal>
   );

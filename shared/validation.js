@@ -3,12 +3,7 @@
  * Import individual schemas; they are grouped by domain.
  */
 import { z } from 'zod';
-import {
-  DURATION_PRESETS_HOURS,
-  CARPOOL_DIRECTION,
-  CARPOOL_ROLE,
-  EMERGENCY_REASONS,
-} from './constants.js';
+import { CARPOOL_DIRECTION, CARPOOL_ROLE, EMERGENCY_REASONS } from './constants.js';
 
 // ── Primitives ─────────────────────────────────────────────────────────────────
 export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email');
@@ -63,7 +58,6 @@ export const changePasswordSchema = z
 export const updateProfileSchema = z.object({
   displayName: z.string().trim().min(2).max(60).optional(),
   vehicleDescription: optionalShortText,
-  parkingSpot: optionalShortText,
   notificationPrefs: z.record(z.string(), z.boolean()).optional(),
 });
 
@@ -78,7 +72,6 @@ export const startSessionSchema = z.object({
   chargerId: uuidSchema,
   durationMinutes: durationMinutesSchema,
   vehicleDescription: optionalShortText,
-  parkingSpot: optionalShortText,
   confirmedConnected: z.literal(true, { errorMap: () => ({ message: 'Please confirm the charger is connected' }) }),
 });
 
@@ -90,8 +83,6 @@ export const endSessionSchema = z.object({
   cablesWrapped: z.literal(true),
   vehicleMoved: z.literal(true),
 });
-
-export const durationPresets = DURATION_PRESETS_HOURS;
 
 // ── Queue ──────────────────────────────────────────────────────────────────────
 export const joinQueueSchema = z.object({

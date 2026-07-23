@@ -29,7 +29,7 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
           <span
             className={cn(
               'grid h-10 w-10 place-items-center rounded-xl',
-              available ? 'bg-brand/15 text-brand' : 'bg-surface-2 text-muted'
+              available ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-muted'
             )}
           >
             <Zap className="h-5 w-5" />
@@ -55,7 +55,6 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
           <div className="flex items-center gap-2 text-content">
             <User className="h-4 w-4 text-muted" />
             <span className="font-medium">{isMine ? 'You' : s.userDisplayName}</span>
-            {s.parkingSpot && <span className="text-faint">· {s.parkingSpot}</span>}
           </div>
           {s.vehicleDescription && <p className="mt-1 text-xs text-muted">{s.vehicleDescription}</p>}
           <div className="mt-2 flex items-center justify-between text-xs">
@@ -65,7 +64,7 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
             </span>
           </div>
           {charger.carpool && (
-            <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-brand/10 px-2 py-1 text-xs text-brand">
+            <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-brand/10 px-2 py-1 text-xs text-brand-strong">
               <Car className="h-3.5 w-3.5" />
               Carpooling {DIRECTION_LABEL[charger.carpool.direction]} · departs {formatTime(charger.carpool.departAt)}
             </div>

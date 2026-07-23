@@ -25,7 +25,6 @@ function sessionDto(s, driver) {
     userId: s.user_id,
     userDisplayName: driver?.display_name || 'Someone',
     vehicleDescription: s.vehicle_description,
-    parkingSpot: s.parking_spot,
     startedAt: s.started_at,
     etaAt: s.eta_at,
     status: s.status,

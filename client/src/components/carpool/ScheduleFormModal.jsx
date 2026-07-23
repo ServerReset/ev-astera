@@ -110,7 +110,7 @@ export function ScheduleFormModal({ open, onClose, onCreated, groups = [] }) {
                   onClick={() => toggleDay(i)}
                   className={cn(
                     'h-9 flex-1 rounded-lg border text-xs font-medium transition-colors',
-                    on ? 'border-brand bg-brand/15 text-brand' : 'border-border bg-bg-elevated text-muted hover:text-content'
+                    on ? 'border-brand bg-brand/15 text-brand-strong' : 'border-border bg-bg-elevated text-muted hover:text-content'
                   )}
                 >
                   {w}

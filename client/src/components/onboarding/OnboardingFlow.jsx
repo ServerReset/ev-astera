@@ -44,7 +44,7 @@ export function OnboardingFlow({ onFinish }) {
   return createPortal(
     <div className="fixed inset-0 z-[70] flex flex-col bg-bg">
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand/15 text-brand animate-slide-up">
+        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand/15 text-brand-strong animate-slide-up">
           <Icon className="h-10 w-10" />
         </div>
         <h1 className="mt-6 text-xl font-semibold text-content animate-slide-up">{title}</h1>

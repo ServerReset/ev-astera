@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn.js';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 
 /**
  * Accessible modal dialog. Closes on Escape and backdrop click. Renders into <body> via a
@@ -9,6 +10,8 @@ import { cn } from '@/utils/cn.js';
  * from the bottom as a sheet on small screens, centers as a dialog on larger ones.
  */
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
+  const glassRef = useLiquidGlass(open);
+
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
@@ -32,17 +35,18 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
         aria-hidden
       />
       <div
+        ref={glassRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative w-full bg-surface border border-border shadow-card',
+          'lg-panel relative w-full border border-border',
           'rounded-t-2xl sm:rounded-2xl animate-slide-up',
           'max-h-[92vh] overflow-y-auto',
           width
         )}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5 sticky top-0 bg-surface z-10">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5 sticky top-0 bg-surface/80 backdrop-blur-sm z-10">
           <h2 className="font-semibold text-content">{title}</h2>
           <button
             onClick={onClose}

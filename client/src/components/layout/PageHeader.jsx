@@ -4,7 +4,7 @@ export function PageHeader({ title, description, action, icon: Icon }) {
     <div className="mb-5 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-brand">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-brand-strong">
             <Icon className="h-6 w-6" />
           </span>
         )}

@@ -92,7 +92,7 @@ export async function transitionOvertimeSessions(sessions) {
 }
 
 export const sessionService = {
-  async start(locationId, userId, { chargerId, durationMinutes, vehicleDescription, parkingSpot }) {
+  async start(locationId, userId, { chargerId, durationMinutes, vehicleDescription }) {
     const maxHours = await configService.getNumber(SETTING_KEYS.MAX_SESSION_HOURS, locationId);
     if (durationMinutes > maxHours * 60) {
       throw new BusinessRuleError(`Maximum session is ${maxHours} hours.`, {
@@ -121,7 +121,6 @@ export const sessionService = {
           user_id: userId,
           status: SESSION_STATUS.ACTIVE,
           vehicle_description: vehicleDescription || null,
-          parking_spot: parkingSpot || null,
           started_at: now(),
           eta_at: etaAt,
         },

@@ -33,7 +33,7 @@ export function NudgeReactionButtons({ messageId, initialReaction }) {
         aria-label="Thumbs up"
         disabled={busy}
         onClick={(e) => react(e, 'up')}
-        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'up' ? 'bg-brand/15 text-brand' : 'text-faint hover:bg-surface-2')}
+        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'up' ? 'bg-brand/15 text-brand-strong' : 'text-faint hover:bg-surface-2')}
       >
         <ThumbsUp className="h-4 w-4" />
       </button>
@@ -42,7 +42,7 @@ export function NudgeReactionButtons({ messageId, initialReaction }) {
         aria-label="Thumbs down"
         disabled={busy}
         onClick={(e) => react(e, 'down')}
-        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'down' ? 'bg-brand/15 text-brand' : 'text-faint hover:bg-surface-2')}
+        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'down' ? 'bg-brand/15 text-brand-strong' : 'text-faint hover:bg-surface-2')}
       >
         <ThumbsDown className="h-4 w-4" />
       </button>

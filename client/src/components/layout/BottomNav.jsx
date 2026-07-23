@@ -22,8 +22,8 @@ export function BottomNav() {
             end={item.end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
-                isActive ? 'text-brand' : 'text-faint hover:text-muted'
+                'flex flex-col items-center gap-1 py-2.5 text-2xs font-medium transition-colors',
+                isActive ? 'text-brand-strong' : 'text-faint hover:text-muted'
               )
             }
           >

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Zap, Siren, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Button } from '@/components/common/Button.jsx';
-import { Spinner, ErrorState } from '@/components/common/States.jsx';
+import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { ChargerCard } from '@/components/session/ChargerCard.jsx';
 import { ActiveSessionCard } from '@/components/session/ActiveSessionCard.jsx';
 import { StartSessionModal } from '@/components/session/StartSessionModal.jsx';
@@ -90,7 +90,7 @@ export default function DashboardPage() {
       <NudgeInboxWidget />
 
       {mySession && (
-        <div className="mb-5">
+        <div className="mb-6">
           <ActiveSessionCard
             session={mySession}
             onExtend={() => setEtaOpen(true)}
@@ -103,6 +103,8 @@ export default function DashboardPage() {
         <Spinner label="Loading chargers…" />
       ) : chargers.error ? (
         <ErrorState error={chargers.error} onRetry={chargers.refetch} />
+      ) : list.length === 0 ? (
+        <EmptyState icon={Zap} title="No chargers here yet" description="Chargers configured for your site will show up here." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((charger) => (

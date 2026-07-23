@@ -25,7 +25,7 @@ export const notificationListeners = [
         priority: NOTIFICATION_PRIORITY.URGENT,
         title: "⚡ It's your turn!",
         body: `${name} is free. Claim your spot before it expires.`,
-        actionUrl: '/queue',
+        actionUrl: '/',
         metadata: { chargerId: p.chargerId, queueEntryId: p.queueEntryId, expiresAt: p.expiresAt },
       });
     },
@@ -39,7 +39,7 @@ export const notificationListeners = [
         priority: NOTIFICATION_PRIORITY.HIGH,
         title: 'You missed your spot',
         body: "You didn't claim in time and were moved to the back of the queue.",
-        actionUrl: '/queue',
+        actionUrl: '/',
       });
     },
   },

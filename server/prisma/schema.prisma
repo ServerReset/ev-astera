@@ -55,7 +55,6 @@ model users {
   display_name        String
   role                String    @default("user")
   vehicle_description String?
-  parking_spot        String?
   notification_prefs  Json      @default("{}")
   carpool_credits     Int       @default(0)
   active              Boolean   @default(true)
@@ -130,7 +129,6 @@ model sessions {
   user_id              String
   status               String    @default("active")
   vehicle_description  String?
-  parking_spot         String?
   started_at           DateTime  @default(now())
   eta_at               DateTime
   ended_at             DateTime?

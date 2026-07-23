@@ -6,7 +6,7 @@ import { Button } from '@/components/common/Button.jsx';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Input, Textarea } from '@/components/common/Input.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
-import { Spinner, EmptyState } from '@/components/common/States.jsx';
+import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { carpoolApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
@@ -52,6 +52,8 @@ export function GroupsPanel({ onGroupsChanged }) {
       />
       {groups.loading ? (
         <Spinner />
+      ) : groups.error ? (
+        <ErrorState error={groups.error} onRetry={groups.refetch} />
       ) : (groups.data || []).length === 0 ? (
         <EmptyState icon={UsersRound} title="No groups yet" description="Create one to carpool within a smaller circle." />
       ) : (

@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "ev-hub-client-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "client"],
+      "port": 5173
+    },
+    {
       "name": "ev-hub-prod",
       "url": "https://ev-asteralabs.vercel.app"
     }

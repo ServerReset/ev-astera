@@ -3,7 +3,7 @@ import { UserCheck, MapPin } from 'lucide-react';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
-import { Spinner, EmptyState } from '@/components/common/States.jsx';
+import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { carpoolApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
@@ -37,6 +37,8 @@ export function RideBookingsModal({ open, onClose, rideId, onChanged }) {
     <Modal open={open} onClose={onClose} title="Seat requests">
       {ride.loading ? (
         <Spinner />
+      ) : ride.error ? (
+        <ErrorState error={ride.error} onRetry={ride.refetch} />
       ) : bookings.length === 0 ? (
         <EmptyState icon={UserCheck} title="No requests yet" description="Riders who request a seat will show up here for you to confirm." />
       ) : (

@@ -15,7 +15,6 @@ function toPublicUser(row) {
     displayName: row.display_name,
     role: row.role,
     vehicleDescription: row.vehicle_description,
-    parkingSpot: row.parking_spot,
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
     createdAt: row.created_at,
@@ -34,7 +33,6 @@ export const userService = {
     const update = {};
     if (patch.displayName !== undefined) update.display_name = patch.displayName;
     if (patch.vehicleDescription !== undefined) update.vehicle_description = patch.vehicleDescription || null;
-    if (patch.parkingSpot !== undefined) update.parking_spot = patch.parkingSpot || null;
     if (patch.notificationPrefs !== undefined) update.notification_prefs = patch.notificationPrefs;
 
     let data;

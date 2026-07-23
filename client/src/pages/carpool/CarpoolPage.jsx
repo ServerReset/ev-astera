@@ -93,7 +93,7 @@ function FindTab({ groups }) {
           description="Offer one yourself, or post a request and we'll match you with a driver."
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rides.data.map((ride) => (
             <RideCard key={ride.id} ride={ride} variant="browse" onBook={setBookRide} />
           ))}
@@ -184,7 +184,7 @@ function MyRidesTab({ groups }) {
         {driving.length === 0 ? (
           <EmptyState icon={Car} title="No rides offered" description="Offer a ride to start sharing your commute." />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {driving.map((ride) => (
               <RideCard
                 key={ride.id}
@@ -205,7 +205,7 @@ function MyRidesTab({ groups }) {
         {riding.length === 0 ? (
           <EmptyState icon={UsersRound} title="No booked rides" description="Request a seat from the Find a ride tab." />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {riding.map((ride) => (
               <RideCard key={ride.id} ride={ride} variant="riding" busy={busyId === ride.id} onCancelSeat={cancelSeat} />
             ))}
@@ -267,7 +267,7 @@ function RequestsTab({ groups }) {
       ) : (requests.data || []).length === 0 ? (
         <EmptyState icon={CalendarRange} title="No open requests" description="Post a request with your time window and we'll surface matching drivers." />
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {requests.data.map((req) => {
             const m = matchesByReq.get(req.id) || [];
             return (

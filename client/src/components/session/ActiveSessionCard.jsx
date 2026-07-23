@@ -31,7 +31,7 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
       <div className={cn('absolute inset-x-0 top-0 h-1', overtime ? 'bg-warning' : 'bg-brand')} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className={cn('grid h-12 w-12 place-items-center rounded-2xl', overtime ? 'bg-warning/15 text-warning' : 'bg-brand/15 text-brand animate-pulse-ring')}>
+          <span className={cn('grid h-12 w-12 place-items-center rounded-2xl', overtime ? 'bg-warning/15 text-warning' : 'bg-brand/15 text-brand-strong animate-pulse-ring')}>
             <Zap className="h-6 w-6" />
           </span>
           <div>

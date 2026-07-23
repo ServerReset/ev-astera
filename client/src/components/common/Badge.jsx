@@ -1,7 +1,7 @@
 import { cn } from '@/utils/cn.js';
 
 const TONES = {
-  brand: 'bg-brand/15 text-brand',
+  brand: 'bg-brand/15 text-brand-strong',
   success: 'bg-success/15 text-success',
   warning: 'bg-warning/15 text-warning',
   danger: 'bg-danger/15 text-danger',

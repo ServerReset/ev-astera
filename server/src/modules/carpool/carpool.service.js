@@ -50,7 +50,7 @@ function rideDto(r, extra = {}) {
   return {
     id: r.id,
     driverId: r.driver_id,
-    driverName: r.users?.display_name,
+    driverName: r.driver?.display_name,
     direction: r.direction,
     origin: { label: r.origin_label, lat: r.origin_lat, lng: r.origin_lng },
     departAt: r.depart_at,
@@ -84,7 +84,7 @@ export const carpoolService = {
         depart_at: { gte: now() },
         ...(direction ? { direction } : {}),
       },
-      include: { users: { select: { display_name: true } } },
+      include: { driver: { select: { display_name: true } } },
       orderBy: { depart_at: 'asc' },
     });
 
@@ -113,18 +113,18 @@ export const carpoolService = {
   async getRide(locationId, rideId) {
     const r = await prisma.carpool_rides.findFirst({
       where: { id: rideId, location_id: locationId },
-      include: { users: { select: { display_name: true } } },
+      include: { driver: { select: { display_name: true } } },
     });
     if (!r) throw new NotFoundError('Ride not found');
     const bookings = await prisma.carpool_bookings.findMany({
       where: { ride_id: rideId, status: { in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED] } },
-      include: { users: { select: { display_name: true } } },
+      include: { rider: { select: { display_name: true } } },
     });
     return rideDto(r, {
       bookings: bookings.map((b) => ({
         id: b.id,
         riderId: b.rider_id,
-        riderName: b.users?.display_name,
+        riderName: b.rider?.display_name,
         status: b.status,
         seats: b.seats,
         pickup: { label: b.pickup_label, lat: b.pickup_lat, lng: b.pickup_lng },
@@ -135,7 +135,7 @@ export const carpoolService = {
   async listMyRides(locationId, userId) {
     const driven = await prisma.carpool_rides.findMany({
       where: { location_id: locationId, driver_id: userId },
-      include: { users: { select: { display_name: true } } },
+      include: { driver: { select: { display_name: true } } },
       orderBy: { depart_at: 'desc' },
     });
 
@@ -147,7 +147,7 @@ export const carpoolService = {
     const ridden = rideIds.length
       ? await prisma.carpool_rides.findMany({
           where: { id: { in: rideIds } },
-          include: { users: { select: { display_name: true } } },
+          include: { driver: { select: { display_name: true } } },
           orderBy: { depart_at: 'desc' },
         })
       : [];
@@ -183,7 +183,7 @@ export const carpoolService = {
           group_id: body.groupId || null,
           status: RIDE_STATUS.OPEN,
         },
-        include: { users: { select: { display_name: true } } },
+        include: { driver: { select: { display_name: true } } },
       });
     } catch {
       throw new ConflictError('Could not post ride.');
@@ -214,7 +214,7 @@ export const carpoolService = {
     const data = await prisma.carpool_rides.update({
       where: { id: rideId },
       data: update,
-      include: { users: { select: { display_name: true } } },
+      include: { driver: { select: { display_name: true } } },
     });
     await emit(EVENTS.CARPOOL_RIDE_UPDATED, { locationId, rideId, driverId });
     return rideDto(data);
@@ -351,13 +351,13 @@ export const carpoolService = {
   async listRequests(locationId) {
     const data = await prisma.carpool_requests.findMany({
       where: { location_id: locationId, status: RIDE_REQUEST_STATUS.OPEN, window_end: { gte: now() } },
-      include: { users: { select: { display_name: true } } },
+      include: { rider: { select: { display_name: true } } },
       orderBy: { window_start: 'asc' },
     });
     return data.map((r) => ({
       id: r.id,
       riderId: r.rider_id,
-      riderName: r.users?.display_name,
+      riderName: r.rider?.display_name,
       direction: r.direction,
       origin: { label: r.origin_label, lat: r.origin_lat, lng: r.origin_lng },
       windowStart: r.window_start,
@@ -550,7 +550,7 @@ export const carpoolService = {
           seats_available: { gt: 0 },
           depart_at: { gte: req.window_start, lte: req.window_end },
         },
-        include: { users: { select: { display_name: true } } },
+        include: { driver: { select: { display_name: true } } },
       });
       const enriched = [];
       for (const r of rides) {

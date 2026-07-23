@@ -78,7 +78,6 @@ export function AuthShell({ title, subtitle, children, footer }) {
           </ul>
         </div>
 
-        <p className="relative text-label-sm text-faint">Charging guidelines by Taylor Frostholm.</p>
       </aside>
 
       {/* Form pane — full width below lg, right half at lg+. */}

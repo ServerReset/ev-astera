@@ -8,6 +8,12 @@ import { CARPOOL_DIRECTION, CARPOOL_ROLE, EMERGENCY_REASONS } from './constants.
 // ── Primitives ─────────────────────────────────────────────────────────────────
 export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email');
 
+// Registration/account creation is restricted to Astera Labs staff. Existing accounts (e.g.
+// legacy/seeded admins) can still log in via loginSchema, which does not carry this restriction.
+const asteraEmailSchema = emailSchema.refine((v) => v.endsWith('@asteralabs.com'), {
+  message: 'Use your @asteralabs.com email address',
+});
+
 export const passwordSchema = z
   .string()
   .min(8, 'At least 8 characters')
@@ -25,7 +31,7 @@ const lngSchema = z.number().min(-180).max(180);
 export const registerSchema = z
   .object({
     displayName: z.string().trim().min(2, 'Name is too short').max(60),
-    email: emailSchema,
+    email: asteraEmailSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
     vehicleDescription: optionalShortText,
@@ -132,7 +138,7 @@ export const adminUpdateUserSchema = z.object({
   resetWeek: z.boolean().optional(),
 });
 export const adminCreateUserSchema = z.object({
-  email: emailSchema,
+  email: asteraEmailSchema,
   password: passwordSchema,
   displayName: z.string().trim().min(1).max(80),
   role: z.enum(['user', 'admin']),

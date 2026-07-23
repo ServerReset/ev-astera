@@ -18,6 +18,7 @@ import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { NOTIFICATION_TYPES } from '@/utils/constants.js';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow.jsx';
+import { Switch } from '@/components/common/Switch.jsx';
 import { cn } from '@/utils/cn.js';
 
 // Settings is a list-detail screen: a segmented tab bar on compact/medium collapses to a
@@ -240,24 +241,7 @@ function NotificationsSection({ user }) {
               <p className="font-medium text-content">{t.label}</p>
               <p className="text-sm text-muted">{t.hint}</p>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isOn(t.key)}
-              aria-label={t.label}
-              onClick={() => toggle(t.key)}
-              className={cn(
-                'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-medium ease-standard',
-                isOn(t.key) ? 'bg-brand' : 'bg-surface-2'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform duration-medium ease-emphasized',
-                  isOn(t.key) ? 'translate-x-5' : 'translate-x-0.5'
-                )}
-              />
-            </button>
+            <Switch checked={isOn(t.key)} onChange={() => toggle(t.key)} label={t.label} />
           </li>
         ))}
       </ul>
@@ -447,10 +431,6 @@ function AboutSection() {
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted">App</dt>
             <dd className="font-medium text-content">EV Hub — Astera Labs</dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted">Charging guidelines</dt>
-            <dd className="font-medium text-content">Taylor Frostholm</dd>
           </div>
         </dl>
       </Card>

@@ -1,43 +1,34 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar.jsx';
-import { NavRail } from './NavRail.jsx';
+import { NavFloating } from './NavFloating.jsx';
 import { BottomNav } from './BottomNav.jsx';
-import { Header } from './Header.jsx';
 import { Spinner } from '@/components/common/States.jsx';
 import { useNotificationSync } from '@/hooks/useNotificationSync.js';
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate.jsx';
 
 /**
- * Authenticated app shell with a Material 3 adaptive nav that changes form factor by window
- * class: bottom navigation bar on compact (<600), navigation rail on medium (600–839), and a
- * permanent navigation drawer on expanded (≥840). Exactly one is visible at any width — each
- * component self-hides via its own breakpoint utilities. Also boots the notification sync and
- * the first-run onboarding gate.
+ * Authenticated app shell. No top bar: on mobile (<sm) a floating bottom nav pill carries
+ * primary destinations + an Account sheet; on sm+ a floating collapsed icon strip + overlay
+ * drawer (NavFloating) carries navigation and the account/settings/notifications/sign-out menu
+ * that used to live in Header's dropdown. Also boots the notification sync and the first-run
+ * onboarding gate.
  */
 export function AppLayout() {
   useNotificationSync();
 
   return (
-    <div className="flex min-h-screen bg-bg">
+    <div className="min-h-screen bg-bg">
       <OnboardingGate />
+      <NavFloating />
 
-      {/* Expanded (≥840): permanent drawer. Medium (600–839): rail. */}
-      <Sidebar />
-      <NavRail />
+      <main className="px-4 py-4 pb-24 sm:pl-28 sm:pr-6 sm:py-6 sm:pb-8">
+        <div className="mx-auto w-full max-w-6xl animate-fade-in">
+          <Suspense fallback={<Spinner label="Loading…" />}>
+            <Outlet />
+          </Suspense>
+        </div>
+      </main>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header />
-        <main className="flex-1 px-4 py-4 pb-24 medium:px-6 medium:py-6 medium:pb-8">
-          <div className="mx-auto w-full max-w-6xl animate-fade-in">
-            <Suspense fallback={<Spinner label="Loading…" />}>
-              <Outlet />
-            </Suspense>
-          </div>
-        </main>
-      </div>
-
-      {/* Compact (<600): bottom bar. */}
       <BottomNav />
     </div>
   );

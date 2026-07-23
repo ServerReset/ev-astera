@@ -11,6 +11,7 @@ import { Button } from '@/components/common/Button.jsx';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Input, Textarea, Select } from '@/components/common/Input.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
+import { Switch } from '@/components/common/Switch.jsx';
 import { EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { useApi } from '@/hooks/useApi.js';
@@ -405,27 +406,10 @@ function SettingsTab() {
           <div className="grid gap-4 sm:grid-cols-2">
             {group.fields.map((f) =>
               f.type === 'bool' ? (
-                <label key={f.key} className="flex items-center justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
+                <div key={f.key} className="flex items-center justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
                   <span className="text-sm text-content">{f.label}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={Boolean(values[f.key])}
-                    aria-label={f.label}
-                    onClick={() => setValue(f.key, !values[f.key])}
-                    className={cn(
-                      'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-medium ease-standard',
-                      values[f.key] ? 'bg-brand' : 'bg-surface-2'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform duration-medium ease-emphasized',
-                        values[f.key] ? 'translate-x-5' : 'translate-x-0.5'
-                      )}
-                    />
-                  </button>
-                </label>
+                  <Switch checked={Boolean(values[f.key])} onChange={(v) => setValue(f.key, v)} label={f.label} />
+                </div>
               ) : (
                 <Input
                   key={f.key}

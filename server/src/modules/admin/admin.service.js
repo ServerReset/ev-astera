@@ -97,7 +97,7 @@ export const adminService = {
         },
       });
     } catch {
-      throw new NotFoundError('Could not create announcement');
+      throw new ConflictError('Could not create announcement');
     }
     if (data.active) {
       await emit(EVENTS.ANNOUNCEMENT_CREATED, { locationId, title: data.title, body: data.body, announcementId: data.id });

@@ -71,7 +71,15 @@ export function usePushNotifications() {
       return true;
     } catch (err) {
       console.error('push enable failed', err);
-      toast.error(`Could not enable push notifications.${err?.message ? ` (${err.message})` : ''}`);
+      if (err?.name === 'AbortError') {
+        toast.error(
+          "Couldn't reach the push service — your network or browser may be blocking it. Try a different network, or check with IT if this is a work computer."
+        );
+      } else if (err?.name === 'NotAllowedError') {
+        toast.error('Notifications are blocked for this site. Allow them in your browser settings and try again.');
+      } else {
+        toast.error(`Could not enable push notifications.${err?.message ? ` (${err.message})` : ''}`);
+      }
       return false;
     } finally {
       setBusy(false);

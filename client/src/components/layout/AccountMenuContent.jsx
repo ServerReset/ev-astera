@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom';
 import { User, Bell, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore.js';
 import { useNotificationStore } from '@/stores/notificationStore.js';
+import { AsteraMark } from '@/components/common/AsteraMark.jsx';
 import { cn } from '@/utils/cn.js';
 
 /**
- * Account block shared by NavFloating's desktop overlay and BottomNav's mobile sheet: identity
+ * Account block opened from NavFloating's toolbar Account button: brand mark, identity
  * header, Settings, Notifications (w/ unread badge), Sign out. `onNavigate` closes whichever
  * container (overlay/sheet) is hosting this before the route change.
  */
@@ -23,6 +24,13 @@ export function AccountMenuContent({ onNavigate }) {
 
   return (
     <div>
+      <div className="flex items-center gap-2.5 px-4 pt-3">
+        <AsteraMark size={20} />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-tight text-content">EV Hub</p>
+          <p className="text-2xs leading-tight text-faint">Astera Labs</p>
+        </div>
+      </div>
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-sm font-semibold text-brand-strong">
           {initials}

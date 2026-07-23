@@ -96,6 +96,16 @@ api.interceptors.response.use(
   }
 );
 
+const HTTP_FALLBACK_MESSAGES = {
+  400: 'That request was not valid. Please check what you entered and try again.',
+  401: 'Your session has expired. Please sign in again.',
+  403: "You don't have permission to do that.",
+  404: "That couldn't be found — it may have been removed.",
+  409: 'That conflicts with something that already happened — refresh and try again.',
+  422: "That couldn't be completed — please review and try again.",
+  429: 'Too many requests. Please slow down and try again shortly.',
+};
+
 /** Shape server/network errors into a consistent object: { code, message, details, status }. */
 export function normalizeError(error) {
   const resp = error?.response;
@@ -104,7 +114,31 @@ export function normalizeError(error) {
     return { code: e.code, message: e.message, details: e.details || null, status: resp.status };
   }
   if (resp) {
-    return { code: 'HTTP_ERROR', message: `Request failed (${resp.status})`, status: resp.status };
+    const fallback =
+      HTTP_FALLBACK_MESSAGES[resp.status] ||
+      (resp.status >= 500
+        ? 'The server ran into a problem on its end. Please try again in a moment.'
+        : `Request failed (${resp.status}).`);
+    return { code: 'HTTP_ERROR', message: fallback, status: resp.status };
   }
-  return { code: 'NETWORK_ERROR', message: 'Network error — check your connection.', status: 0 };
+  if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
+    return {
+      code: 'TIMEOUT',
+      message: 'The server took too long to respond. Check your connection and try again.',
+      status: 0,
+      details: { debug: error?.code || error?.message },
+    };
+  }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { code: 'OFFLINE', message: "You're offline — reconnect and try again.", status: 0 };
+  }
+  return {
+    code: 'NETWORK_ERROR',
+    message: "Couldn't reach the server. Check your connection and try again.",
+    status: 0,
+    // No `response` reached the client at all — genuine network/CORS/DNS failure, not a
+    // server-authored error. Keep the raw axios code/message here so a CORS rejection or
+    // DNS failure is distinguishable from "request never sent" in dev tools.
+    details: { debug: error?.code || error?.message },
+  };
 }

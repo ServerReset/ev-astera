@@ -6,12 +6,17 @@
  * can't be relied on. Instead, this compares Origin against the request's own Host header —
  * always correct for same-origin requests, with no dependence on env vars or hardcoded domains.
  */
+import { logger } from '../utils/logger.js';
+
 const allowedLocal = new Set(['http://localhost:5173', 'http://localhost:4173']);
 
 export const corsOptions = (req, callback) => {
   const origin = req.headers.origin;
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const isAllowed = !origin || allowedLocal.has(origin) || origin === `https://${host}`;
+  if (!isAllowed) {
+    logger.warn(`CORS rejected origin "${origin}" (expected host "${host}")`);
+  }
   callback(null, {
     origin: isAllowed,
     credentials: true,

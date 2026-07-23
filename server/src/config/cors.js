@@ -1,23 +1,21 @@
 /**
  * CORS options. Client and API share one Vercel origin, but browsers still send an Origin
- * header on same-origin POST/PATCH/etc. requests (not just cross-origin ones), so that
- * origin has to be explicitly allowed — not just local dev ports. Vercel injects VERCEL_URL
- * (current deployment) and VERCEL_PROJECT_PRODUCTION_URL (stable production alias) as system
- * env vars at runtime, so both are picked up automatically without hardcoding a domain that
- * changes across deployments/aliases.
+ * header on same-origin POST/PATCH/etc. requests (not just cross-origin ones), so that origin
+ * has to be explicitly allowed. VERCEL_URL/VERCEL_PROJECT_PRODUCTION_URL are only injected when
+ * a project setting ("Automatically expose System Environment Variables") is enabled, so they
+ * can't be relied on. Instead, this compares Origin against the request's own Host header —
+ * always correct for same-origin requests, with no dependence on env vars or hardcoded domains.
  */
-const allowed = new Set(['http://localhost:5173', 'http://localhost:4173']);
-for (const host of [process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]) {
-  if (host) allowed.add(`https://${host}`);
-}
+const allowedLocal = new Set(['http://localhost:5173', 'http://localhost:4173']);
 
-export const corsOptions = {
-  origin(origin, callback) {
-    // Allow same-origin / server-to-server (no Origin header) and whitelisted origins.
-    if (!origin || allowed.has(origin)) return callback(null, true);
-    return callback(new Error(`Origin ${origin} not allowed by CORS`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+export const corsOptions = (req, callback) => {
+  const origin = req.headers.origin;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const isAllowed = !origin || allowedLocal.has(origin) || origin === `https://${host}`;
+  callback(null, {
+    origin: isAllowed,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 };

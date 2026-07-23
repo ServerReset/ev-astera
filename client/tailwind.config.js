@@ -16,6 +16,7 @@ export default {
       screens: {
         medium: '600px',
         expanded: '840px',
+        '3xl': '1920px',
       },
       colors: {
         // Semantic tokens → CSS vars (see index.css). Use e.g. bg-surface, text-muted.

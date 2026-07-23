@@ -105,18 +105,19 @@ export default function DashboardPage() {
       )}
 
       {/*
-        Adaptive layout: single column up through medium/expanded; the list-detail split turns
-        on at `xl` (1280px+). The threshold is deliberately above the `expanded` (840) drawer
-        breakpoint — the 288px permanent drawer eats width, so a side rail only has room once
-        the viewport is genuinely laptop-wide (1280 − drawer − padding ≈ 940px content → ~600px
-        charger pane = two comfortable columns). Below xl, chargers stay full-width and the
-        alerts/queue rail stacks beneath them.
+        Adaptive layout: a narrow fixed-width side rail reads as a cramped list once the main
+        content column is wide (lots of dead space beside 1-2 rows of charger cards, a skinny
+        list of notifications). So instead: the charger grid grows more columns as space allows
+        (up to 3, then 4 on very wide screens) to actually use the width, and the list-detail
+        split only kicks in at `2xl` (1536px+) — genuinely wide monitors where a sticky rail has
+        real room. Below that, Queue + Notifications sit side-by-side in their own row so they
+        fill the width horizontally instead of stacking into one narrow column.
       */}
-      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
+      <div className="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:items-start 2xl:gap-6">
         {/* Primary pane — chargers */}
         <section aria-label="Chargers">
           {chargers.loading && !list.length ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="skeleton h-40 rounded-2xl" />
               ))}
@@ -130,7 +131,7 @@ export default function DashboardPage() {
               description="Chargers configured for your site will show up here."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 3xl:grid-cols-3">
               {list.map((charger, i) => (
                 <div
                   key={charger.id}
@@ -151,8 +152,10 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Secondary rail — alerts + queue (sticky on xl, stacked below on smaller) */}
-        <aside className="mt-6 space-y-6 xl:mt-0 xl:sticky xl:top-20">
+        {/* Secondary rail — alerts + queue. Side-by-side up through 2xl (fills the width
+            instead of reading as a narrow list); becomes a sticky single-column rail once the
+            two-pane split takes over on very wide monitors. */}
+        <aside className="mt-6 grid gap-4 sm:grid-cols-2 2xl:mt-0 2xl:sticky 2xl:top-20 2xl:grid-cols-1 2xl:gap-6">
           <QueuePanel
             entries={sortedQueue}
             mine={mine.data}

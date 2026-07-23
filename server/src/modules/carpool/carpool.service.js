@@ -24,9 +24,30 @@ import {
 import { addMinutes, now, diffMinutes } from '../../utils/timeUtils.js';
 import { rankRides } from './matcher.js';
 import { completeRideImpact } from './impact.js';
+import { carpoolMaterialize } from './jobs.js';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
+// Recurring rides/requests are normally materialized once a day by the Vercel Cron job. If
+// that cron is ever misconfigured or misses a run, schedules would silently stop appearing
+// in "Find a ride" with no way to notice — so the read path opportunistically self-heals by
+// re-running materialization for its own location, throttled so a page of traffic doesn't
+// hammer the DB with the same scan. Per-instance in-memory throttle is fine here: worst case
+// (a cold serverless instance) it just runs once more than strictly necessary.
+const MATERIALIZE_THROTTLE_MS = 5 * 60_000;
+const lastMaterializedAt = new Map();
+async function ensureMaterialized(locationId) {
+  const last = lastMaterializedAt.get(locationId) || 0;
+  if (Date.now() - last < MATERIALIZE_THROTTLE_MS) return;
+  lastMaterializedAt.set(locationId, Date.now());
+  try {
+    await carpoolMaterialize(locationId);
+  } catch {
+    // Best-effort — a failed self-heal must never break the read it's backing.
+  }
+}
+
 async function myGroupIds(userId) {
+  if (!userId) return [];
   const data = await prisma.carpool_group_members.findMany({ where: { user_id: userId }, select: { group_id: true } });
   return data.map((r) => r.group_id);
 }
@@ -77,6 +98,7 @@ export const carpoolService = {
 
   // ── Feature 1: rides & bookings ───────────────────────────────────────────────
   async listRides(locationId, userId, { direction, around } = {}) {
+    await ensureMaterialized(locationId);
     const rides = await prisma.carpool_rides.findMany({
       where: {
         location_id: locationId,
@@ -341,6 +363,7 @@ export const carpoolService = {
 
   // ── Feature 1b: ride requests (rider "I need a ride") ─────────────────────────
   async listRequests(locationId) {
+    await ensureMaterialized(locationId);
     const data = await prisma.carpool_requests.findMany({
       where: { location_id: locationId, status: RIDE_REQUEST_STATUS.OPEN, window_end: { gte: now() } },
       include: { rider: { select: { display_name: true } } },

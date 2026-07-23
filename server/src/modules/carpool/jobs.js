@@ -27,9 +27,14 @@ async function activeLocations() {
 }
 
 // ── carpoolMaterialize ───────────────────────────────────────────────────────
-export async function carpoolMaterialize() {
+/** locationId: scope to one location (cheap, used as an on-demand fallback) instead of the
+ * full daily-cron sweep of every location. Materializing is idempotent (each schedule/day
+ * pair is skipped if a ride/request already exists for it), so calling this opportunistically
+ * from a read path is safe. */
+export async function carpoolMaterialize(locationId) {
   let actions = 0;
-  for (const loc of await activeLocations()) {
+  const locations = locationId ? [{ id: locationId }] : await activeLocations();
+  for (const loc of locations) {
     const days = await configService.getNumber(SETTING_KEYS.CARPOOL_MATERIALIZE_DAYS, loc.id);
     const schedules = await prisma.carpool_schedules.findMany({ where: { location_id: loc.id, active: true } });
 

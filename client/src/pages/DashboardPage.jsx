@@ -153,7 +153,6 @@ export default function DashboardPage() {
 
         {/* Secondary rail — alerts + queue (sticky on xl, stacked below on smaller) */}
         <aside className="mt-6 space-y-6 xl:mt-0 xl:sticky xl:top-20">
-          <NudgeInboxWidget />
           <QueuePanel
             entries={sortedQueue}
             mine={mine.data}
@@ -163,6 +162,7 @@ export default function DashboardPage() {
               mine.refetch();
             }}
           />
+          <NudgeInboxWidget />
         </aside>
       </div>
 

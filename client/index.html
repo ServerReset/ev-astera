@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="Astera Labs workplace EV charging + carpooling hub" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      Known limitation: iOS/iPadOS Safari does not rasterize SVG for apple-touch-icon (unlike
+      the PWA manifest's `icons[]`, where SVG is valid and Chrome/Android use it fine) — it
+      silently falls back to a screenshot thumbnail instead. All icon assets in this repo are
+      hand-authored SVG (see client/public/icons/) because there is no image-rasterization
+      tooling in this build environment to produce a real PNG. Add-to-home-screen still works
+      on iOS, just without the custom icon. To fix for real: rasterize icon-192.svg to a
+      180x180 PNG (e.g. `npx sharp-cli -i icon-192.svg -o apple-touch-icon.png resize 180 180`)
+      and point this tag at it.
+    -->
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <title>Astera EV Charger Hub</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

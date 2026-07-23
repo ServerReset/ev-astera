@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ── Design system: permanent dark mode ──────────────────────────────────────
+ * Colors are declared as space-separated RGB channels so Tailwind's
+ * `rgb(var(--token) / <alpha-value>)` can apply opacity. There is no light theme
+ * and no `dark:` variant — this palette IS the theme, applied globally.
+ */
+:root {
+  color-scheme: dark;
+
+  --c-bg: 8 12 20;            /* app background            #080c14 */
+  --c-bg-elevated: 11 18 32;  /* elevated background       #0b1220 */
+  --c-surface: 17 24 39;      /* cards                     #111827 */
+  --c-surface-2: 25 34 54;    /* nested / hover surfaces   #192236 */
+  --c-border: 38 50 74;       /* hairline borders          #26324a */
+  --c-border-strong: 55 71 102;
+
+  --c-content: 236 240 248;   /* primary text             */
+  --c-muted: 156 170 197;     /* secondary text           */
+  --c-faint: 100 116 145;     /* tertiary / placeholder   */
+
+  --c-brand: 45 212 191;      /* teal — charging/green energy #2dd4bf */
+  --c-brand-strong: 20 184 166;
+  --c-brand-content: 4 20 18; /* text on brand fills      */
+
+  --c-success: 52 211 153;    /* emerald  */
+  --c-warning: 251 191 36;    /* amber    */
+  --c-danger: 248 113 113;    /* red      */
+  --c-info: 96 165 250;       /* blue     */
+}
+
+* {
+  border-color: rgb(var(--c-border));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-content font-sans antialiased;
+  /* Respect device safe areas on installed PWAs (notches, home indicator). */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+/* Thin, dark scrollbars that match the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-border-strong)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-border-strong));
+  border-radius: 9999px;
+}
+
+/* ── Component layer: reusable primitives ──────────────────────────────────── */
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-2xl shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium
+           px-4 py-2.5 text-sm transition-colors select-none
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-brand-content hover:bg-brand-strong;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-2 text-content hover:bg-border;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-muted hover:bg-surface-2 hover:text-content;
+  }
+  .btn-danger {
+    @apply btn bg-danger/15 text-danger hover:bg-danger/25;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-bg-elevated border border-border px-3.5 py-2.5 text-sm
+           text-content placeholder:text-faint
+           focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand
+           disabled:opacity-60;
+  }
+  .label {
+    @apply block text-xs font-medium text-muted mb-1.5;
+  }
+  .field-error {
+    @apply mt-1 text-xs text-danger;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .link {
+    @apply text-brand hover:text-brand-strong underline-offset-2 hover:underline;
+  }
+
+  /* Skeleton shimmer for loading states. */
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-2 rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--c-border) / 0.5),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

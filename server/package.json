@@ -1,0 +1,40 @@
+{
+  "name": "ev-charger-hub-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "EV Charger Hub + Carpool — Express API (feature-module architecture)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "postinstall": "prisma generate --schema=./prisma/schema.prisma",
+    "gen:vapid": "node scripts/genVapid.js",
+    "gen:hash": "node scripts/genHash.js",
+    "seed:admin": "node scripts/seedAdmin.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.0",
+    "web-push": "^3.6.7",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "prisma": "^5.20.0"
+  }
+}

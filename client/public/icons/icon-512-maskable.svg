@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable: background fills the full canvas edge-to-edge; the mark stays inside the
+       ~80% "safe zone" so OS icon masks (circle, squircle, etc.) never clip it. -->
+  <rect width="512" height="512" fill="#080c14"/>
+  <path d="M266 128 L168 292 H236 L212 384 L350 220 H272 Z" fill="#2dd4bf"/>
+</svg>

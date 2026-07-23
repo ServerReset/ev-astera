@@ -1,0 +1,13 @@
+{
+  "name": "ev-charger-hub",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "EV Charger Hub + Carpool — root orchestration for Vercel (client + API in one project)",
+  "scripts": {
+    "postinstall": "cd server && npm install"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

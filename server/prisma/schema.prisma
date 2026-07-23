@@ -1,0 +1,492 @@
+// EV Charger Hub + Carpool — Prisma schema.
+// Model/field names are kept identical (snake_case) to the original schema.sql columns —
+// see docs/ARCHITECTURE.md for why: the entire service layer and client already consume
+// raw snake_case row shapes end-to-end, so this avoids touching that contract.
+//
+// Two things schema.sql had that Prisma's DSL cannot express are NOT here — they're added
+// via a hand-authored raw-SQL migration instead (see prisma/migrations, "partial_indexes"):
+//   - unique partial index on sessions(charger_id) where status in ('active','overtime')
+//   - partial ordering index on queue_entries(charger_id, priority desc, joined_at asc)
+//     where status = 'waiting'
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+model locations {
+  id         String   @id @default(uuid())
+  name       String
+  timezone   String   @default("America/Los_Angeles")
+  address    String?
+  site_lat   Float?
+  site_lng   Float?
+  created_at DateTime @default(now())
+
+  users                  users[]
+  chargers               chargers[]
+  sessions               sessions[]
+  queue_entries          queue_entries[]
+  reservations           reservations[]
+  notifications          notifications[]
+  messages               messages[]
+  emergency_requests     emergency_requests[]
+  announcements          announcements[]
+  settings               settings[]
+  audit_log              audit_log[]
+  carpool_groups         carpool_groups[]
+  carpool_schedules      carpool_schedules[]
+  carpool_rides          carpool_rides[]
+  carpool_bookings       carpool_bookings[]
+  carpool_requests       carpool_requests[]
+  carpool_trip_logs      carpool_trip_logs[]
+  carpool_credits_ledger carpool_credits_ledger[]
+}
+
+model users {
+  id                  String    @id @default(uuid())
+  location_id         String
+  email               String    @unique
+  password_hash       String?
+  display_name        String
+  role                String    @default("user")
+  vehicle_description String?
+  parking_spot        String?
+  notification_prefs  Json      @default("{}")
+  carpool_credits     Int       @default(0)
+  active              Boolean   @default(true)
+  failed_attempts     Int       @default(0)
+  locked_until        DateTime?
+  last_active_at      DateTime?
+  created_at          DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  refresh_tokens             refresh_tokens[]
+  sessions                   sessions[]
+  queue_entries               queue_entries[]
+  reservations                reservations[]
+  notifications                notifications[]
+  push_subscriptions          push_subscriptions[]
+  sent_messages               messages[]              @relation("message_sender")
+  received_messages           messages[]              @relation("message_recipient")
+  emergency_requests           emergency_requests[]
+  created_announcements        announcements[]        @relation("announcement_creator")
+  audit_log                    audit_log[]
+  created_carpool_groups        carpool_groups[]       @relation("carpool_group_creator")
+  carpool_group_members          carpool_group_members[]
+  carpool_schedules               carpool_schedules[]
+  carpool_rides_as_driver          carpool_rides[]       @relation("carpool_ride_driver")
+  carpool_bookings_as_rider         carpool_bookings[]    @relation("carpool_booking_rider")
+  carpool_requests_as_rider          carpool_requests[]   @relation("carpool_request_rider")
+  carpool_trip_logs                   carpool_trip_logs[]
+  carpool_credits_ledger               carpool_credits_ledger[]
+
+  @@index([location_id])
+  @@index([email])
+}
+
+model refresh_tokens {
+  id         String    @id @default(uuid())
+  user_id    String
+  token_hash String
+  expires_at DateTime
+  revoked    Boolean   @default(false)
+  created_at DateTime  @default(now())
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+}
+
+model chargers {
+  id             String   @id @default(uuid())
+  location_id    String
+  name           String
+  position       Int      @default(0)
+  status         String   @default("available")
+  offline_reason String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  sessions      sessions[]
+  queue_entries queue_entries[]
+  reservations  reservations[]
+  messages      messages[]
+
+  @@index([location_id])
+}
+
+model sessions {
+  id                   String    @id @default(uuid())
+  location_id          String
+  charger_id           String
+  user_id              String
+  status               String    @default("active")
+  vehicle_description  String?
+  parking_spot         String?
+  started_at           DateTime  @default(now())
+  eta_at               DateTime
+  ended_at             DateTime?
+  overtime_notified_at DateTime?
+  created_at           DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  chargers  chargers  @relation(fields: [charger_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  messages      messages[]
+  carpool_rides carpool_rides[]
+
+  @@index([charger_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([started_at])
+  // uniq_active_session_per_charger (partial unique index) added via raw-SQL migration.
+}
+
+model queue_entries {
+  id              String    @id @default(uuid())
+  location_id     String
+  charger_id      String?
+  user_id         String
+  status          String    @default("waiting")
+  priority        Int       @default(0)
+  priority_source String?
+  notified_at     DateTime?
+  claimed_at      DateTime?
+  expires_at      DateTime?
+  joined_at       DateTime  @default(now())
+  created_at      DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  chargers  chargers? @relation(fields: [charger_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([charger_id])
+  @@index([user_id])
+  @@index([status])
+  // idx_queue_order (partial ordering index) added via raw-SQL migration.
+}
+
+model reservations {
+  id          String    @id @default(uuid())
+  location_id String
+  charger_id  String
+  user_id     String
+  status      String    @default("upcoming")
+  start_at    DateTime
+  end_at      DateTime
+  warned_at   DateTime?
+  created_at  DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  chargers  chargers  @relation(fields: [charger_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([charger_id])
+  @@index([user_id])
+  @@index([start_at, end_at])
+}
+
+model notifications {
+  id          String    @id @default(uuid())
+  location_id String
+  user_id     String
+  type        String
+  priority    String    @default("normal")
+  title       String
+  body        String
+  action_url  String?
+  metadata    Json      @default("{}")
+  read_at     DateTime?
+  created_at  DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([user_id])
+}
+
+model push_subscriptions {
+  id         String   @id @default(uuid())
+  user_id    String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model messages {
+  id           String   @id @default(uuid())
+  location_id  String
+  kind         String
+  sender_id    String
+  recipient_id String?
+  charger_id   String?
+  session_id   String?
+  body         String?
+  metadata     Json     @default("{}")
+  created_at   DateTime @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  sender    users     @relation("message_sender", fields: [sender_id], references: [id], onDelete: Cascade)
+  recipient users?    @relation("message_recipient", fields: [recipient_id], references: [id], onDelete: Cascade)
+  chargers  chargers? @relation(fields: [charger_id], references: [id], onDelete: SetNull)
+  sessions  sessions? @relation(fields: [session_id], references: [id], onDelete: SetNull)
+
+  @@index([recipient_id, created_at(sort: Desc)])
+  @@index([sender_id, created_at(sort: Desc)])
+}
+
+model emergency_requests {
+  id          String   @id @default(uuid())
+  location_id String
+  user_id     String
+  reason      String
+  explanation String?
+  status      String   @default("open")
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+}
+
+model announcements {
+  id          String    @id @default(uuid())
+  location_id String
+  title       String
+  body        String
+  active      Boolean   @default(true)
+  expires_at  DateTime?
+  created_by  String?
+  created_at  DateTime  @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  creator   users?    @relation("announcement_creator", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([location_id, active])
+}
+
+model settings {
+  location_id String
+  key         String
+  value       Json
+  updated_at  DateTime @updatedAt
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@id([location_id, key])
+}
+
+model audit_log {
+  id          String   @id @default(uuid())
+  location_id String?
+  user_id     String?
+  action      String
+  details     Json     @default("{}")
+  created_at  DateTime @default(now())
+
+  locations locations? @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users     users?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([location_id, created_at(sort: Desc)])
+  @@index([action])
+}
+
+model carpool_groups {
+  id          String   @id @default(uuid())
+  location_id String
+  name        String
+  description String?
+  created_by  String?
+  created_at  DateTime @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  creator   users?    @relation("carpool_group_creator", fields: [created_by], references: [id], onDelete: SetNull)
+
+  members           carpool_group_members[]
+  carpool_schedules carpool_schedules[]
+  carpool_rides     carpool_rides[]
+  carpool_requests  carpool_requests[]
+
+  @@index([location_id])
+}
+
+model carpool_group_members {
+  group_id  String
+  user_id   String
+  joined_at DateTime @default(now())
+
+  carpool_groups carpool_groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  users           users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([group_id, user_id])
+}
+
+model carpool_schedules {
+  id           String   @id @default(uuid())
+  location_id  String
+  user_id      String
+  role         String
+  direction    String
+  days_of_week Int[]
+  depart_time  String
+  origin_label String
+  origin_lat   Float
+  origin_lng   Float
+  seats        Int      @default(1)
+  group_id     String?
+  active       Boolean  @default(true)
+  created_at   DateTime @default(now())
+
+  locations       locations       @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  carpool_groups  carpool_groups? @relation(fields: [group_id], references: [id], onDelete: SetNull)
+
+  carpool_rides    carpool_rides[]
+  carpool_requests carpool_requests[]
+
+  @@index([user_id])
+  @@index([location_id, active])
+}
+
+model carpool_rides {
+  id                String    @id @default(uuid())
+  location_id       String
+  driver_id         String
+  direction         String
+  origin_label      String
+  origin_lat        Float
+  origin_lng        Float
+  depart_at         DateTime
+  seats_total       Int
+  seats_available   Int
+  status            String    @default("open")
+  notes             String?
+  schedule_id       String?
+  linked_session_id String?
+  group_id          String?
+  miles             Float?
+  co2_grams_saved   Float?
+  completed_at      DateTime?
+  created_at        DateTime  @default(now())
+
+  locations         locations          @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  driver            users              @relation("carpool_ride_driver", fields: [driver_id], references: [id], onDelete: Cascade)
+  carpool_schedules carpool_schedules? @relation(fields: [schedule_id], references: [id], onDelete: SetNull)
+  sessions          sessions?          @relation(fields: [linked_session_id], references: [id], onDelete: SetNull)
+  carpool_groups    carpool_groups?    @relation(fields: [group_id], references: [id], onDelete: SetNull)
+
+  carpool_bookings   carpool_bookings[]
+  carpool_requests   carpool_requests[]
+  carpool_trip_logs  carpool_trip_logs[]
+  carpool_credits_ledger carpool_credits_ledger[]
+
+  @@index([location_id])
+  @@index([driver_id])
+  @@index([status])
+  @@index([depart_at])
+}
+
+model carpool_bookings {
+  id           String   @id @default(uuid())
+  location_id  String
+  ride_id      String
+  rider_id     String
+  status       String   @default("requested")
+  seats        Int      @default(1)
+  pickup_label String?
+  pickup_lat   Float?
+  pickup_lng   Float?
+  created_at   DateTime @default(now())
+
+  locations     locations     @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  carpool_rides carpool_rides @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  rider         users         @relation("carpool_booking_rider", fields: [rider_id], references: [id], onDelete: Cascade)
+
+  @@unique([ride_id, rider_id])
+  @@index([ride_id])
+  @@index([rider_id])
+  @@index([status])
+}
+
+model carpool_requests {
+  id              String   @id @default(uuid())
+  location_id     String
+  rider_id        String
+  direction       String
+  origin_label    String
+  origin_lat      Float
+  origin_lng      Float
+  window_start    DateTime
+  window_end      DateTime
+  status          String   @default("open")
+  matched_ride_id String?
+  schedule_id     String?
+  group_id        String?
+  created_at      DateTime @default(now())
+
+  locations         locations          @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  rider             users              @relation("carpool_request_rider", fields: [rider_id], references: [id], onDelete: Cascade)
+  matched_ride      carpool_rides?     @relation(fields: [matched_ride_id], references: [id], onDelete: SetNull)
+  carpool_schedules carpool_schedules? @relation(fields: [schedule_id], references: [id], onDelete: SetNull)
+  carpool_groups    carpool_groups?    @relation(fields: [group_id], references: [id], onDelete: SetNull)
+
+  @@index([rider_id])
+  @@index([location_id, status])
+}
+
+model carpool_trip_logs {
+  id              String   @id @default(uuid())
+  location_id     String
+  ride_id         String
+  user_id         String
+  role            String
+  miles           Float    @default(0)
+  co2_grams_saved Float    @default(0)
+  credits_awarded Int      @default(0)
+  created_at      DateTime @default(now())
+
+  locations     locations     @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  carpool_rides carpool_rides @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([location_id, created_at(sort: Desc)])
+  @@index([ride_id])
+}
+
+model carpool_credits_ledger {
+  id            String   @id @default(uuid())
+  location_id   String
+  user_id       String
+  kind          String
+  amount        Int
+  reason        String
+  balance_after Int
+  ride_id       String?
+  created_at    DateTime @default(now())
+
+  locations     locations      @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users         users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  carpool_rides carpool_rides? @relation(fields: [ride_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, created_at(sort: Desc)])
+}

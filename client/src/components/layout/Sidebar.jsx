@@ -5,20 +5,29 @@ import { Icon } from '@/components/common/Icon.jsx';
 import { AsteraMark } from '@/components/common/AsteraMark.jsx';
 import { cn } from '@/utils/cn.js';
 
-/** Desktop left sidebar. Hidden below `md`; BottomNav takes over on mobile. */
+/**
+ * M3 permanent navigation drawer — the expanded window class (laptop, ≥840px). Full-width
+ * labels beside icons, a pill-shaped active indicator, brand header and a footer note.
+ * Shown only ≥840: the NavRail covers 600–839, BottomNav below 600.
+ * (Filename kept as Sidebar for import stability; this is the drawer.)
+ */
 export function Sidebar() {
   const role = useAuthStore((s) => s.user?.role) || 'user';
   const nav = navForRole(role);
 
   return (
-    <aside className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-bg-elevated">
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
-        <AsteraMark size={36} />
+    <aside
+      aria-label="Primary"
+      className="hidden expanded:flex w-72 shrink-0 flex-col border-r border-border bg-bg-elevated"
+    >
+      <NavLink to="/" className="flex items-center gap-3 px-6 h-16 border-b border-border">
+        <AsteraMark size={34} />
         <div className="leading-tight">
           <p className="font-semibold text-content">EV Hub</p>
-          <p className="text-2xs text-faint">Astera Labs</p>
+          <p className="text-label-sm text-faint">Astera Labs</p>
         </div>
-      </div>
+      </NavLink>
+
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {nav.map((item) => (
           <NavLink
@@ -27,17 +36,21 @@ export function Sidebar() {
             end={item.end}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive ? 'bg-brand/15 text-brand-strong' : 'text-muted hover:bg-surface-2 hover:text-content'
+                'group flex items-center gap-3 rounded-full px-4 py-2.5 text-label-lg font-medium',
+                'transition-[background-color,color] duration-medium ease-emphasized',
+                isActive
+                  ? 'bg-brand/15 text-brand-strong'
+                  : 'text-muted hover:bg-surface-2 hover:text-content'
               )
             }
           >
-            <Icon name={item.icon} className="h-5 w-5" />
-            {item.label}
+            <Icon name={item.icon} className="h-5 w-5 shrink-0 transition-transform duration-short ease-emphasized group-active:scale-90" />
+            <span className="truncate">{item.label}</span>
           </NavLink>
         ))}
       </nav>
-      <div className="p-4 text-2xs text-faint border-t border-border">
+
+      <div className="p-4 text-label-sm text-faint border-t border-border">
         Charging guidelines by Taylor Frostholm.
       </div>
     </aside>

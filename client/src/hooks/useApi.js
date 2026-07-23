@@ -13,6 +13,10 @@ export function useApi(fn, deps = [], { immediate = true } = {}) {
   const fnRef = useRef(fn);
   fnRef.current = fn;
   const mounted = useRef(true);
+  // Monotonic call id: guards against out-of-order resolution. When `deps` change fires
+  // refetch twice, an earlier (slower) request must not overwrite state with stale data
+  // after a later one has already landed. Only the most-recent call's result is applied.
+  const callId = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -22,18 +26,20 @@ export function useApi(fn, deps = [], { immediate = true } = {}) {
   }, []);
 
   const refetch = useCallback(async (...args) => {
+    const id = ++callId.current;
+    const isCurrent = () => mounted.current && id === callId.current;
     setLoading(true);
     setError(null);
     try {
       const result = await fnRef.current(...args);
-      if (mounted.current) setData(result);
+      if (isCurrent()) setData(result);
       return result;
     } catch (err) {
       const e = normalizeError(err);
-      if (mounted.current) setError(e);
+      if (isCurrent()) setError(e);
       throw e;
     } finally {
-      if (mounted.current) setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

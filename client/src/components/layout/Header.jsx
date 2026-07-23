@@ -33,8 +33,8 @@ export function Header() {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-bg-elevated/95 px-4 backdrop-blur md:px-6">
-      <Link to="/" className="flex items-center gap-2 md:hidden">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-bg-elevated/95 px-4 backdrop-blur medium:px-6">
+      <Link to="/" className="flex items-center gap-2 medium:hidden">
         <AsteraMark size={32} />
         <span className="font-semibold">EV Hub</span>
       </Link>

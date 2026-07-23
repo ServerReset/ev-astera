@@ -17,7 +17,7 @@ import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { chargerApi, sessionApi, queueApi } from '@/services/endpoints.js';
-import { ENV } from '@/utils/constants.js';
+import { ENV, CHARGER_STATUS } from '@/utils/constants.js';
 
 /** Normalize the raw active-session row (snake_case + nested chargers) for ActiveSessionCard. */
 function normalizeActive(row) {
@@ -67,11 +67,17 @@ export default function DashboardPage() {
   const list = chargers.data || [];
   const sortedQueue = useMemo(() => queue.data || [], [queue.data]);
 
+  const availableCount = list.filter((c) => c.status === CHARGER_STATUS.AVAILABLE).length;
+
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="Chargers"
-        description="Live status of every charger at your site."
+        description={
+          list.length
+            ? `${availableCount} of ${list.length} available right now.`
+            : 'Live status of every charger at your site.'
+        }
         icon={Zap}
         action={
           <div className="flex gap-2">
@@ -80,17 +86,16 @@ export default function DashboardPage() {
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setEmergencyOpen(true)}>
               <Siren className="h-4 w-4" />
-              Emergency
+              <span className="hidden sm:inline">Emergency</span>
             </Button>
           </div>
         }
       />
 
       <EmergencyBanner />
-      <NudgeInboxWidget />
 
       {mySession && (
-        <div className="mb-6">
+        <div className="mb-6 animate-slide-up">
           <ActiveSessionCard
             session={mySession}
             onExtend={() => setEtaOpen(true)}
@@ -99,38 +104,66 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {chargers.loading && !list.length ? (
-        <Spinner label="Loading chargers…" />
-      ) : chargers.error ? (
-        <ErrorState error={chargers.error} onRetry={chargers.refetch} />
-      ) : list.length === 0 ? (
-        <EmptyState icon={Zap} title="No chargers here yet" description="Chargers configured for your site will show up here." />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((charger) => (
-            <ChargerCard
-              key={charger.id}
-              charger={charger}
-              isMine={mySession?.chargerId === charger.id}
-              canStart={canStart}
-              onStart={(c) => setStartFor(c)}
-              onNudge={(c) => setNudgeFor(c)}
-              onEndMine={() => setEndOpen(true)}
+      {/*
+        Adaptive layout: single column up through medium/expanded; the list-detail split turns
+        on at `xl` (1280px+). The threshold is deliberately above the `expanded` (840) drawer
+        breakpoint — the 288px permanent drawer eats width, so a side rail only has room once
+        the viewport is genuinely laptop-wide (1280 − drawer − padding ≈ 940px content → ~600px
+        charger pane = two comfortable columns). Below xl, chargers stay full-width and the
+        alerts/queue rail stacks beneath them.
+      */}
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
+        {/* Primary pane — chargers */}
+        <section aria-label="Chargers">
+          {chargers.loading && !list.length ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton h-40 rounded-2xl" />
+              ))}
+            </div>
+          ) : chargers.error ? (
+            <ErrorState error={chargers.error} onRetry={chargers.refetch} />
+          ) : list.length === 0 ? (
+            <EmptyState
+              icon={Zap}
+              title="No chargers here yet"
+              description="Chargers configured for your site will show up here."
             />
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {list.map((charger, i) => (
+                <div
+                  key={charger.id}
+                  className="animate-slide-up [animation-fill-mode:backwards]"
+                  style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
+                >
+                  <ChargerCard
+                    charger={charger}
+                    isMine={mySession?.chargerId === charger.id}
+                    canStart={canStart}
+                    onStart={(c) => setStartFor(c)}
+                    onNudge={(c) => setNudgeFor(c)}
+                    onEndMine={() => setEndOpen(true)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-      <div className="mt-6">
-        <QueuePanel
-          entries={sortedQueue}
-          mine={mine.data}
-          canJoin={canJoinQueue}
-          onChanged={() => {
-            queue.refetch();
-            mine.refetch();
-          }}
-        />
+        {/* Secondary rail — alerts + queue (sticky on xl, stacked below on smaller) */}
+        <aside className="mt-6 space-y-6 xl:mt-0 xl:sticky xl:top-20">
+          <NudgeInboxWidget />
+          <QueuePanel
+            entries={sortedQueue}
+            mine={mine.data}
+            canJoin={canJoinQueue}
+            onChanged={() => {
+              queue.refetch();
+              mine.refetch();
+            }}
+          />
+        </aside>
       </div>
 
       {/* Modals */}

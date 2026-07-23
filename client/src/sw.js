@@ -4,7 +4,8 @@
  *  - `push` shows notifications delivered by the server's Web Push (VAPID) payloads.
  *  - `notificationclick` focuses an existing client or opens the actionUrl.
  * The payload shape matches what providers/notifications/push.channel.js sends:
- *   { title, body, type, actionUrl, metadata, tag }
+ *   { title, body, icon, badge, tag, data: { url, ...metadata } }
+ * i.e. the deep-link and any extra metadata are nested under `data`, not top-level.
  */
 import { precacheAndRoute } from 'workbox-precaching';
 
@@ -26,7 +27,10 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192.svg',
     badge: '/icons/badge-72.svg',
     tag: data.tag || data.type || 'ev-hub',
-    data: { actionUrl: data.actionUrl || '/', ...(data.metadata || {}) },
+    // Server nests the deep-link + metadata under `data` (push.channel.js: `data: { url, ...metadata }`).
+    // Read `data.data.url` for the target; keep top-level `actionUrl` as a fallback for any
+    // legacy/hand-crafted payload. notificationclick reads back `event.notification.data.actionUrl`.
+    data: { actionUrl: data.data?.url || data.actionUrl || '/', ...(data.data || data.metadata || {}) },
     vibrate: data.priority === 'urgent' ? [200, 100, 200] : undefined,
     requireInteraction: data.priority === 'urgent',
   };

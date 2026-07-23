@@ -11,6 +11,12 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // M3 window size classes, additive to Tailwind's defaults (sm/md/lg stay valid).
+      // The adaptive nav keys off these: bottom bar <600, nav rail 600–839, drawer ≥840.
+      screens: {
+        medium: '600px',
+        expanded: '840px',
+      },
       colors: {
         // Semantic tokens → CSS vars (see index.css). Use e.g. bg-surface, text-muted.
         bg: 'rgb(var(--c-bg) / <alpha-value>)',
@@ -77,6 +83,12 @@ export default {
         'elevation-1': 'var(--shadow-elevation-1)',
         'elevation-2': 'var(--shadow-elevation-2)',
         'elevation-3': 'var(--shadow-elevation-3)',
+      },
+      // M3 duration tokens as Tailwind `duration-*` utilities (additive to the numeric defaults).
+      transitionDuration: {
+        short: 'var(--duration-short)',
+        medium: 'var(--duration-medium)',
+        long: 'var(--duration-long)',
       },
       transitionTimingFunction: {
         emphasized: 'var(--ease-emphasized)',

@@ -43,12 +43,14 @@ export function OnboardingFlow({ onFinish }) {
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex flex-col bg-bg">
-      <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand/15 text-brand-strong animate-slide-up">
+      {/* Re-keyed per step so the entrance motion replays on every advance, not just first
+          mount. A light stagger (icon → title → body) matches the app's ENTER rhythm. */}
+      <div key={step} className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand/15 text-brand-strong animate-slide-up [animation-fill-mode:backwards]">
           <Icon className="h-10 w-10" />
         </div>
-        <h1 className="mt-6 text-xl font-semibold text-content animate-slide-up">{title}</h1>
-        <p className="mt-2 max-w-sm text-sm text-muted animate-slide-up">{body}</p>
+        <h1 className="mt-6 text-xl font-semibold text-content animate-slide-up [animation-fill-mode:backwards]" style={{ animationDelay: '60ms' }}>{title}</h1>
+        <p className="mt-2 max-w-sm text-sm text-muted animate-slide-up [animation-fill-mode:backwards]" style={{ animationDelay: '120ms' }}>{body}</p>
       </div>
 
       <div className="flex items-center justify-center gap-1.5 pb-6">

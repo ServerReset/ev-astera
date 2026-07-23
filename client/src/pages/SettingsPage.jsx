@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { UserCircle, Car, KeyRound, Zap, Leaf, LogOut, Settings as SettingsIcon, SlidersHorizontal, RotateCcw, Smartphone, Sun, Moon } from 'lucide-react';
+import {
+  UserCircle, Car, KeyRound, Zap, Leaf, LogOut, Settings as SettingsIcon,
+  SlidersHorizontal, RotateCcw, Smartphone, Sun, Moon, Bell, Palette, Check, Info, ShieldCheck,
+} from 'lucide-react';
 import { updateProfileSchema, changePasswordSchema } from '@shared/validation.js';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Tabs } from '@/components/common/Tabs.jsx';
@@ -17,15 +20,30 @@ import { NOTIFICATION_TYPES } from '@/utils/constants.js';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow.jsx';
 import { cn } from '@/utils/cn.js';
 
+// Settings is a list-detail screen: a segmented tab bar on compact/medium collapses to a
+// persistent section rail at xl (matching the app's own nav-changes-by-breakpoint pattern).
+// The rail is gated at xl, not expanded, because the 288px permanent drawer would leave too
+// little width for a two-pane split at 840px.
+const SECTIONS = [
+  { key: 'profile', label: 'Profile', icon: UserCircle },
+  { key: 'notifications', label: 'Notifications', icon: Bell },
+  { key: 'appearance', label: 'Appearance', icon: Palette },
+  { key: 'security', label: 'Security', icon: ShieldCheck },
+  { key: 'about', label: 'About & help', icon: Info },
+];
+
+// Theme preview palettes. These intentionally use FIXED hex values, not the live --c-* tokens:
+// each swatch must depict one specific theme regardless of which theme is currently active, so
+// it can't inherit the runtime variables. Values mirror the light/dark palettes in index.css.
+const PALETTE = {
+  light: { bg: '#fafafc', surface: '#ffffff', brand: '#3c79bc', line: '#dee0e5' },
+  dark: { bg: '#000000', surface: '#121214', brand: '#5a96d6', line: '#2c2d31' },
+};
+
 const THEME_OPTIONS = [
   { key: 'device', label: 'Device', icon: Smartphone },
   { key: 'light', label: 'Light', icon: Sun },
   { key: 'dark', label: 'Dark', icon: Moon },
-];
-
-const TABS = [
-  { key: 'profile', label: 'Profile', icon: UserCircle },
-  { key: 'app', label: 'App settings', icon: SettingsIcon },
 ];
 
 const PREF_TOGGLES = [
@@ -37,123 +55,88 @@ const PREF_TOGGLES = [
 ];
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState('profile');
+  const [section, setSection] = useState('profile');
   const user = useAuthStore((s) => s.user);
-  if (!user) return <Spinner />;
+  if (!user) return <Spinner label="Loading your settings…" />;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-5xl">
       <PageHeader title="Settings" description="Your account, preferences, and how the app works." icon={SettingsIcon} />
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
-      {tab === 'profile' && <ProfileTab user={user} />}
-      {tab === 'app' && <AppSettingsTab />}
+
+      {/* Compact / medium: segmented section switcher. Hidden once the rail takes over at xl. */}
+      <div className="xl:hidden">
+        <Tabs tabs={SECTIONS} value={section} onChange={setSection} />
+      </div>
+
+      <div className="xl:grid xl:grid-cols-[248px_1fr] xl:gap-6">
+        {/* Persistent section rail — MD3 secondary navigation, large windows only. */}
+        <nav aria-label="Settings sections" className="hidden xl:block">
+          <div className="sticky top-6 space-y-1">
+            {SECTIONS.map((s) => {
+              const active = s.key === section;
+              const SectionIcon = s.icon;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setSection(s.key)}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
+                    'transition-[background-color,color] duration-medium ease-emphasized',
+                    active ? 'bg-brand/15 text-brand-strong' : 'text-muted hover:bg-surface-2 hover:text-content'
+                  )}
+                >
+                  <SectionIcon className="h-5 w-5 shrink-0" />
+                  <span className="truncate">{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Detail panel — re-keyed so it animates in on section change. */}
+        <div key={section} className="animate-fade-in">
+          {section === 'profile' && <ProfileSection user={user} />}
+          {section === 'notifications' && <NotificationsSection user={user} />}
+          {section === 'appearance' && <AppearanceSection />}
+          {section === 'security' && <SecuritySection />}
+          {section === 'about' && <AboutSection />}
+        </div>
+      </div>
     </div>
   );
 }
 
-function ProfileTab({ user }) {
+// ── Profile ──────────────────────────────────────────────────────────────────────
+function ProfileSection({ user }) {
   const patchUser = useAuthStore((s) => s.patchUser);
   const logout = useAuthStore((s) => s.logout);
   const stats = useApi(() => userApi.stats(), []);
 
   return (
-    <>
+    <div className="space-y-5">
       <StatsCard stats={stats} />
       <ProfileCard user={user} onSaved={patchUser} />
-      <PrefsCard user={user} onSaved={patchUser} />
-      <PasswordCard />
-
-      <Button variant="ghost" className="mt-6 w-full text-danger" onClick={logout}>
+      <Button variant="ghost" className="w-full text-danger" onClick={logout}>
         <LogOut className="h-4 w-4" />
         Sign out
       </Button>
-    </>
-  );
-}
-
-function AppSettingsTab() {
-  const patchUser = useAuthStore((s) => s.patchUser);
-  const themePref = useThemeStore((s) => s.pref);
-  const setThemePref = useThemeStore((s) => s.setPref);
-  const [replaying, setReplaying] = useState(false);
-  const [resetting, setResetting] = useState(false);
-
-  const replay = async () => {
-    setResetting(true);
-    try {
-      const updated = await userApi.resetOnboarding();
-      patchUser(updated);
-      setReplaying(true);
-    } catch (err) {
-      toast.error(normalizeError(err).message);
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  const finishReplay = async () => {
-    setReplaying(false);
-    try {
-      const updated = await userApi.completeOnboarding();
-      patchUser(updated);
-    } catch (err) {
-      toast.error(normalizeError(err).message);
-    }
-  };
-
-  return (
-    <>
-      <Card className="mb-5">
-        <CardHeader title="Appearance" subtitle="Choose how EV Hub looks" icon={SettingsIcon} />
-        <div className="grid grid-cols-3 gap-2">
-          {THEME_OPTIONS.map((opt) => {
-            const active = themePref === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setThemePref(opt.key)}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors',
-                  active ? 'border-brand bg-brand/10 text-brand-strong' : 'border-border text-muted hover:bg-surface-2 hover:text-content'
-                )}
-                aria-pressed={active}
-              >
-                <opt.icon className="h-5 w-5" />
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-xs text-faint">
-          Dark uses a true black (AMOLED) background. Device follows your system setting automatically.
-        </p>
-      </Card>
-
-      <Card>
-        <CardHeader title="How the app works" subtitle="Replay the welcome walkthrough any time" icon={SlidersHorizontal} />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">
-            A quick tour of chargers, queueing, nudges, carpooling, and notifications.
-          </p>
-          <Button variant="secondary" onClick={replay} loading={resetting} className="shrink-0">
-            <RotateCcw className="h-4 w-4" />
-            Replay
-          </Button>
-        </div>
-      </Card>
-      {replaying && <OnboardingFlow onFinish={finishReplay} />}
-    </>
+    </div>
   );
 }
 
 function StatsCard({ stats }) {
   const s = stats.data;
   return (
-    <Card className="mb-5">
-      <CardHeader title="Your usage" />
-      {stats.loading ? (
-        <Spinner />
+    <Card>
+      <CardHeader title="Your usage" subtitle="Sessions this week and carpool impact" icon={Zap} />
+      {stats.loading && !stats.data ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton h-[78px] rounded-xl" />
+          ))}
+        </div>
       ) : stats.error ? (
         <ErrorState error={stats.error} onRetry={stats.refetch} />
       ) : (
@@ -209,8 +192,8 @@ function ProfileCard({ user, onSaved }) {
   };
 
   return (
-    <Card className="mb-5">
-      <CardHeader title="Account" icon={UserCircle} />
+    <Card>
+      <CardHeader title="Account" subtitle="How you appear to others at the site" icon={UserCircle} />
       <div className="space-y-4">
         <Input label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} error={errors.displayName} />
         <Input label="Email" value={user.email} disabled hint="Contact an admin to change your email." />
@@ -225,7 +208,9 @@ function ProfileCard({ user, onSaved }) {
   );
 }
 
-function PrefsCard({ user, onSaved }) {
+// ── Notifications ──────────────────────────────────────────────────────────────────
+function NotificationsSection({ user }) {
+  const patchUser = useAuthStore((s) => s.patchUser);
   const [prefs, setPrefs] = useState(user.notificationPrefs || {});
   const [saving, setSaving] = useState(false);
 
@@ -236,7 +221,7 @@ function PrefsCard({ user, onSaved }) {
     setSaving(true);
     try {
       const updated = await userApi.updateMe({ notificationPrefs: prefs });
-      onSaved(updated);
+      patchUser(updated);
       toast.success('Preferences saved.');
     } catch (err) {
       toast.error(normalizeError(err).message);
@@ -246,8 +231,8 @@ function PrefsCard({ user, onSaved }) {
   };
 
   return (
-    <Card className="mb-5">
-      <CardHeader title="Notification preferences" subtitle="Choose what you're alerted about" />
+    <Card>
+      <CardHeader title="Notification preferences" subtitle="Choose what you're alerted about" icon={Bell} />
       <ul className="divide-y divide-border">
         {PREF_TOGGLES.map((t) => (
           <li key={t.key} className="flex items-center justify-between gap-3 py-3">
@@ -259,10 +244,19 @@ function PrefsCard({ user, onSaved }) {
               type="button"
               role="switch"
               aria-checked={isOn(t.key)}
+              aria-label={t.label}
               onClick={() => toggle(t.key)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isOn(t.key) ? 'bg-brand' : 'bg-surface-2'}`}
+              className={cn(
+                'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-medium ease-standard',
+                isOn(t.key) ? 'bg-brand' : 'bg-surface-2'
+              )}
             >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${isOn(t.key) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span
+                className={cn(
+                  'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform duration-medium ease-emphasized',
+                  isOn(t.key) ? 'translate-x-5' : 'translate-x-0.5'
+                )}
+              />
             </button>
           </li>
         ))}
@@ -276,7 +270,87 @@ function PrefsCard({ user, onSaved }) {
   );
 }
 
-function PasswordCard() {
+// ── Appearance ─────────────────────────────────────────────────────────────────────
+/** Miniature app-window preview for a theme option (or a two-tone split for "device"). */
+function ThemePreview({ optKey }) {
+  const isDevice = optKey === 'device';
+  const p = optKey === 'dark' ? PALETTE.dark : PALETTE.light;
+  return (
+    <span
+      className="relative block h-14 w-full overflow-hidden rounded-xl border border-border"
+      style={
+        isDevice
+          ? { background: `linear-gradient(120deg, ${PALETTE.light.bg} 0 52%, ${PALETTE.dark.bg} 52% 100%)` }
+          : { background: p.bg }
+      }
+    >
+      {/* Representative surface card + brand accent bar. */}
+      <span
+        className="absolute left-2 top-2 flex h-8 w-[64%] items-center rounded-md px-1.5"
+        style={{ background: p.surface, border: `1px solid ${p.line}` }}
+      >
+        <span className="h-1.5 w-7 rounded-full" style={{ background: p.brand }} />
+      </span>
+      {isDevice && (
+        <span
+          className="absolute bottom-1.5 right-2 flex h-5 w-5 items-center justify-center rounded-md"
+          style={{ background: PALETTE.dark.surface, border: `1px solid ${PALETTE.dark.line}` }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: PALETTE.dark.brand }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function AppearanceSection() {
+  const themePref = useThemeStore((s) => s.pref);
+  const setThemePref = useThemeStore((s) => s.setPref);
+
+  return (
+    <Card>
+      <CardHeader title="Appearance" subtitle="Choose how EV Hub looks" icon={Palette} />
+      <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-3">
+        {THEME_OPTIONS.map((opt) => {
+          const active = themePref === opt.key;
+          const OptIcon = opt.icon;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setThemePref(opt.key)}
+              className={cn(
+                'group relative flex flex-col items-center gap-3 rounded-2xl border p-3 text-center',
+                'transition-[background-color,border-color] duration-medium ease-emphasized',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
+                active ? 'border-brand bg-brand/10' : 'border-border hover:border-border-strong hover:bg-surface-2'
+              )}
+            >
+              <ThemePreview optKey={opt.key} />
+              <span className={cn('flex items-center gap-1.5 text-sm font-medium', active ? 'text-brand-strong' : 'text-muted group-hover:text-content')}>
+                <OptIcon className="h-4 w-4" />
+                {opt.label}
+              </span>
+              {active && (
+                <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-content">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs text-faint">
+        Dark uses a true black (AMOLED) background. Device follows your system setting automatically.
+      </p>
+    </Card>
+  );
+}
+
+// ── Security ─────────────────────────────────────────────────────────────────────
+function SecuritySection() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -308,7 +382,7 @@ function PasswordCard() {
 
   return (
     <Card>
-      <CardHeader title="Change password" icon={KeyRound} />
+      <CardHeader title="Change password" subtitle="Use a strong, unique password" icon={KeyRound} />
       <div className="space-y-4">
         <Input label="Current password" type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} error={errors.currentPassword} />
         <Input label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} error={errors.newPassword} hint="8+ chars, with upper, lower, number & symbol." />
@@ -320,5 +394,68 @@ function PasswordCard() {
         </div>
       </div>
     </Card>
+  );
+}
+
+// ── About & help ─────────────────────────────────────────────────────────────────
+function AboutSection() {
+  const patchUser = useAuthStore((s) => s.patchUser);
+  const [replaying, setReplaying] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const replay = async () => {
+    setResetting(true);
+    try {
+      const updated = await userApi.resetOnboarding();
+      patchUser(updated);
+      setReplaying(true);
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const finishReplay = async () => {
+    setReplaying(false);
+    try {
+      const updated = await userApi.completeOnboarding();
+      patchUser(updated);
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader title="How the app works" subtitle="Replay the welcome walkthrough any time" icon={SlidersHorizontal} />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            A quick tour of chargers, queueing, nudges, carpooling, and notifications.
+          </p>
+          <Button variant="secondary" onClick={replay} loading={resetting} className="shrink-0">
+            <RotateCcw className="h-4 w-4" />
+            Replay
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="About" icon={Info} />
+        <dl className="space-y-2.5 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted">App</dt>
+            <dd className="font-medium text-content">EV Hub — Astera Labs</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted">Charging guidelines</dt>
+            <dd className="font-medium text-content">Taylor Frostholm</dd>
+          </div>
+        </dl>
+      </Card>
+
+      {replaying && <OnboardingFlow onFinish={finishReplay} />}
+    </div>
   );
 }

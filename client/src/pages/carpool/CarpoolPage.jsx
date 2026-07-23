@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Search, CalendarRange, Repeat, UsersRound, Plus, Leaf, MapPin, Clock, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
@@ -6,7 +6,7 @@ import { Tabs } from '@/components/common/Tabs.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Card } from '@/components/common/Card.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
-import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
+import { EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { RideCard } from '@/components/carpool/RideCard.jsx';
 import { RideFormModal } from '@/components/carpool/RideFormModal.jsx';
@@ -22,6 +22,7 @@ import { carpoolApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { formatDateTime } from '@/utils/time.js';
+import { cn } from '@/utils/cn.js';
 import { ENV, DIRECTION_LABEL, WEEKDAYS, CARPOOL_ROLE } from '@/utils/constants.js';
 
 const TABS = [
@@ -31,6 +32,33 @@ const TABS = [
   { key: 'schedules', label: 'Recurring', icon: Repeat },
   { key: 'groups', label: 'Groups', icon: UsersRound },
 ];
+
+// Entry-motion helpers, shared with the rest of the rebuild: stagger children in with the
+// M3 emphasized-decelerate curve; `backwards` fill keeps delayed items hidden pre-animation.
+const ENTER = 'animate-slide-up [animation-fill-mode:backwards]';
+const stagger = (i) => ({ animationDelay: `${Math.min(i, 8) * 40}ms` });
+
+/** Skeleton grid sized to RideCard while a ride list loads. */
+function RideGridSkeleton({ count = 3 }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="skeleton h-56 rounded-2xl" />
+      ))}
+    </div>
+  );
+}
+
+/** Skeleton stack for the single-column request/schedule lists. */
+function ListSkeleton({ count = 3 }) {
+  return (
+    <ul className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <li key={i} className="skeleton h-24 rounded-2xl" />
+      ))}
+    </ul>
+  );
+}
 
 export default function CarpoolPage() {
   const [tab, setTab] = useState('find');
@@ -54,11 +82,14 @@ export default function CarpoolPage() {
 
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
 
-      {tab === 'find' && <FindTab groups={groupOptions} />}
-      {tab === 'mine' && <MyRidesTab groups={groupOptions} />}
-      {tab === 'requests' && <RequestsTab groups={groupOptions} />}
-      {tab === 'schedules' && <SchedulesTab groups={groupOptions} />}
-      {tab === 'groups' && <GroupsPanel onGroupsChanged={groups.refetch} />}
+      {/* Re-key each tab panel so it animates in on switch, and screen readers see a fresh region. */}
+      <div key={tab} className="animate-fade-in" role="tabpanel">
+        {tab === 'find' && <FindTab groups={groupOptions} />}
+        {tab === 'mine' && <MyRidesTab groups={groupOptions} />}
+        {tab === 'requests' && <RequestsTab groups={groupOptions} />}
+        {tab === 'schedules' && <SchedulesTab groups={groupOptions} />}
+        {tab === 'groups' && <GroupsPanel onGroupsChanged={groups.refetch} />}
+      </div>
     </div>
   );
 }
@@ -83,7 +114,7 @@ function FindTab({ groups }) {
       </div>
 
       {rides.loading && !rides.data ? (
-        <Spinner label="Finding rides…" />
+        <RideGridSkeleton />
       ) : rides.error ? (
         <ErrorState error={rides.error} onRetry={rides.refetch} />
       ) : (rides.data || []).length === 0 ? (
@@ -94,8 +125,10 @@ function FindTab({ groups }) {
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rides.data.map((ride) => (
-            <RideCard key={ride.id} ride={ride} variant="browse" onBook={setBookRide} />
+          {rides.data.map((ride, i) => (
+            <div key={ride.id} className={ENTER} style={stagger(i)}>
+              <RideCard ride={ride} variant="browse" onBook={setBookRide} />
+            </div>
           ))}
         </div>
       )}
@@ -167,7 +200,19 @@ function MyRidesTab({ groups }) {
     }
   };
 
-  if (mine.loading && !mine.data) return <Spinner />;
+  if (mine.loading && !mine.data) {
+    return (
+      <>
+        <div className="mb-4 flex justify-end">
+          <Button size="sm" onClick={() => setOfferOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Offer a ride
+          </Button>
+        </div>
+        <RideGridSkeleton count={2} />
+      </>
+    );
+  }
   if (mine.error) return <ErrorState error={mine.error} onRetry={mine.refetch} />;
 
   return (
@@ -185,16 +230,17 @@ function MyRidesTab({ groups }) {
           <EmptyState icon={Car} title="No rides offered" description="Offer a ride to start sharing your commute." />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {driving.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                variant="driving"
-                busy={busyId === ride.id}
-                onManageBookings={(r) => setManageRideId(r.id)}
-                onComplete={complete}
-                onCancel={cancel}
-              />
+            {driving.map((ride, i) => (
+              <div key={ride.id} className={ENTER} style={stagger(i)}>
+                <RideCard
+                  ride={ride}
+                  variant="driving"
+                  busy={busyId === ride.id}
+                  onManageBookings={(r) => setManageRideId(r.id)}
+                  onComplete={complete}
+                  onCancel={cancel}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -206,8 +252,10 @@ function MyRidesTab({ groups }) {
           <EmptyState icon={UsersRound} title="No booked rides" description="Request a seat from the Find a ride tab." />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {riding.map((ride) => (
-              <RideCard key={ride.id} ride={ride} variant="riding" busy={busyId === ride.id} onCancelSeat={cancelSeat} />
+            {riding.map((ride, i) => (
+              <div key={ride.id} className={ENTER} style={stagger(i)}>
+                <RideCard ride={ride} variant="riding" busy={busyId === ride.id} onCancelSeat={cancelSeat} />
+              </div>
             ))}
           </div>
         )}
@@ -261,17 +309,17 @@ function RequestsTab({ groups }) {
       </div>
 
       {requests.loading && !requests.data ? (
-        <Spinner />
+        <ListSkeleton />
       ) : requests.error ? (
         <ErrorState error={requests.error} onRetry={requests.refetch} />
       ) : (requests.data || []).length === 0 ? (
         <EmptyState icon={CalendarRange} title="No open requests" description="Post a request with your time window and we'll surface matching drivers." />
       ) : (
         <ul className="space-y-2">
-          {requests.data.map((req) => {
+          {requests.data.map((req, idx) => {
             const m = matchesByReq.get(req.id) || [];
             return (
-              <Card key={req.id} as="li">
+              <Card key={req.id} as="li" className={ENTER} style={stagger(idx)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-medium text-content">
@@ -357,7 +405,7 @@ function SchedulesTab({ groups }) {
       </div>
 
       {schedules.loading && !schedules.data ? (
-        <Spinner />
+        <ListSkeleton />
       ) : schedules.error ? (
         <ErrorState error={schedules.error} onRetry={schedules.refetch} />
       ) : (schedules.data || []).length === 0 ? (
@@ -368,8 +416,8 @@ function SchedulesTab({ groups }) {
         />
       ) : (
         <ul className="space-y-2">
-          {schedules.data.map((s) => (
-            <Card key={s.id} as="li" className="flex items-center justify-between gap-3">
+          {schedules.data.map((s, idx) => (
+            <Card key={s.id} as="li" className={cn('flex items-center justify-between gap-3', ENTER)} style={stagger(idx)}>
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium text-content">
                   {s.role === CARPOOL_ROLE.DRIVER ? 'Driving' : 'Riding'} · {DIRECTION_LABEL[s.direction]}

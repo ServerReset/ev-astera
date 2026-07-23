@@ -59,8 +59,6 @@ insert into settings (location_id, key, value) values
   ('11111111-1111-1111-1111-111111111111', 'max_nudges_per_session', '5'),
   ('11111111-1111-1111-1111-111111111111', 'emergency_cooldown_hours', '24'),
   ('11111111-1111-1111-1111-111111111111', 'emergency_response_window_minutes', '10'),
-  ('11111111-1111-1111-1111-111111111111', 'reservation_buffer_minutes', '15'),
-  ('11111111-1111-1111-1111-111111111111', 'reservation_min_advance_minutes', '30'),
   ('11111111-1111-1111-1111-111111111111', 'daily_reset_hour', '0'),
   ('11111111-1111-1111-1111-111111111111', 'weekly_reset_day', '1'),
   -- carpool

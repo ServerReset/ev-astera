@@ -10,7 +10,6 @@ import { userService } from './user/user.service.js';
 import { chargerService } from './charger/charger.service.js';
 import { sessionService } from './session/session.service.js';
 import { queueService } from './queue/queue.service.js';
-import { reservationService } from './reservation/reservation.service.js';
 import { notificationService } from './notification/notification.service.js';
 import { messageService } from './message/message.service.js';
 import { carpoolService } from './carpool/carpool.service.js';
@@ -22,7 +21,6 @@ export function registerAllServices() {
   registerService('charger', chargerService);
   registerService('session', sessionService);
   registerService('queue', queueService);
-  registerService('reservation', reservationService);
   registerService('notification', notificationService);
   registerService('message', messageService);
   registerService('carpool', carpoolService);

@@ -101,23 +101,15 @@ export const joinQueueSchema = z.object({
 export const leaveQueueSchema = z.object({ queueEntryId: uuidSchema });
 export const claimQueueSchema = z.object({ queueEntryId: uuidSchema });
 
-// ── Reservations ─────────────────────────────────────────────────────────────
-export const createReservationSchema = z
-  .object({
-    chargerId: uuidSchema,
-    startAt: z.string().datetime(),
-    endAt: z.string().datetime(),
-  })
-  .refine((d) => new Date(d.endAt) > new Date(d.startAt), {
-    message: 'End must be after start',
-    path: ['endAt'],
-  });
-
 // ── Messaging ─────────────────────────────────────────────────────────────────
 export const nudgeSchema = z.object({
   chargerId: uuidSchema,
   sessionId: uuidSchema,
   message: z.string().trim().min(1).max(100),
+});
+export const nudgeReactSchema = z.object({
+  messageId: uuidSchema,
+  reaction: z.enum(['up', 'down']),
 });
 export const emergencyRequestSchema = z.object({
   reason: z.enum(EMERGENCY_REASONS),
@@ -147,6 +139,12 @@ export const adminUpdateUserSchema = z.object({
   role: z.enum(['user', 'admin']).optional(),
   active: z.boolean().optional(),
   resetWeek: z.boolean().optional(),
+});
+export const adminCreateUserSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  displayName: z.string().trim().min(1).max(80),
+  role: z.enum(['user', 'admin']),
 });
 
 // ── Carpool ──────────────────────────────────────────────────────────────────

@@ -5,13 +5,12 @@
  * add one import line here. Sidebar/BottomNav render from `nav`; App.jsx renders `routes`.
  */
 import dashboard from './dashboard/index.js';
-import reservations from './reservations/index.js';
 import carpool from './carpool/index.js';
 import notifications from './notifications/index.js';
 import profile from './profile/index.js';
 import admin from './admin/index.js';
 
-export const clientModules = [dashboard, reservations, carpool, notifications, profile, admin];
+export const clientModules = [dashboard, carpool, notifications, profile, admin];
 
 /** All routes flattened, in declaration order. */
 export const allRoutes = clientModules.flatMap((m) => m.routes || []);

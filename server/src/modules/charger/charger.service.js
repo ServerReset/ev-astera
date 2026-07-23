@@ -1,10 +1,10 @@
 /**
  * Charger service: the dashboard aggregation. Returns every charger with its active session,
- * queue counts, next reservation, and any carpool tie-in ("driver is carpooling today").
+ * queue counts, and any carpool tie-in ("driver is carpooling today").
  *
- * listWithState() is the main read path for charger/session/reservation state, so it also
- * drives the compute-on-read lazy transitions (overtime sessions, reservation
- * activation/completion) that replace the old per-minute cron jobs.
+ * listWithState() is the main read path for charger/session state, so it also
+ * drives the compute-on-read lazy transitions (overtime sessions) that replace
+ * the old per-minute cron jobs.
  */
 import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
@@ -14,12 +14,9 @@ import {
   CHARGER_STATUS,
   SESSION_STATUS,
   QUEUE_STATUS,
-  RESERVATION_STATUS,
   RIDE_STATUS,
 } from '../../../../shared/constants.js';
-import { now } from '../../utils/timeUtils.js';
 import { transitionOvertimeSessions } from '../session/session.service.js';
-import { transitionReservations } from '../reservation/reservation.service.js';
 
 function sessionDto(s, driver) {
   if (!s) return null;
@@ -58,15 +55,6 @@ export const chargerService = {
       select: { id: true, charger_id: true, status: true },
     });
 
-    // Upcoming reservations today.
-    const reservations = await prisma.reservations.findMany({
-      where: { location_id: locationId, status: RESERVATION_STATUS.UPCOMING, end_at: { gte: now() } },
-      select: { id: true, charger_id: true, user_id: true, start_at: true, end_at: true, location_id: true, warned_at: true, status: true, users: { select: { display_name: true } } },
-      orderBy: { start_at: 'asc' },
-    });
-    await transitionReservations(reservations);
-    const upcomingReservations = reservations.filter((r) => r.status === RESERVATION_STATUS.UPCOMING);
-
     // Carpool tie-in: rides today linked to a session on these chargers.
     const sessionIds = sessions.map((s) => s.id);
     const rides = sessionIds.length
@@ -85,7 +73,6 @@ export const chargerService = {
     return chargers.map((c) => {
       const s = bySession.get(c.id);
       const queueCount = queue.filter((q) => q.charger_id === c.id).length + anyQueueCount;
-      const nextRes = upcomingReservations.find((r) => r.charger_id === c.id);
       const ride = s ? rides.find((r) => r.linked_session_id === s.id) : null;
 
       let status = c.status;
@@ -101,9 +88,6 @@ export const chargerService = {
         offlineReason: c.offline_reason,
         session: sessionDto(s, s?.users),
         queueCount,
-        nextReservation: nextRes
-          ? { id: nextRes.id, startAt: nextRes.start_at, userDisplayName: nextRes.users?.display_name }
-          : null,
         carpool: ride
           ? { rideId: ride.id, departAt: ride.depart_at, seatsAvailable: ride.seats_available, direction: ride.direction }
           : null,

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary.jsx';
 import { registerServiceWorker } from './registerSW.js';
+import '@/stores/themeStore.js'; // side effect: applies + live-follows the theme preference
 import './index.css';
 
 createRoot(document.getElementById('root')).render(

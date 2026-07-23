@@ -1,6 +1,6 @@
 # Astera Labs EV Charger Hub + Carpool
 
-A production-ready Progressive Web App for managing workplace EV chargers **and** coordinating carpools. Built as a modular, feature-sliced monorepo designed to grow: every domain (chargers, sessions, queue, reservations, carpool, …) is a self-contained module that plugs into a registry with zero changes to the core.
+A production-ready Progressive Web App for managing workplace EV chargers **and** coordinating carpools. Built as a modular, feature-sliced monorepo designed to grow: every domain (chargers, sessions, queue, carpool, …) is a self-contained module that plugs into a registry with zero changes to the core.
 
 > This repo is the full build of the original workplace EV-charging prompt, extended with a first-class **Carpooling** capability: ride matching, recurring commutes, an EV-charging tie-in (charger queue priority for carpool drivers), and an incentives/impact layer (CO₂ + miles saved, credits, leaderboard).
 
@@ -29,12 +29,12 @@ A production-ready Progressive Web App for managing workplace EV chargers **and*
      │
      ├── REST /api/... ─────────► Vercel serverless function (api/[[...path]].js, Express)
      │                               ├── module registry (chargers, sessions, queue,
-     │                               │     reservations, carpool, messaging, …)
+     │                               │     carpool, messaging, …)
      │                               ├── event bus (side-effects decoupled from services,
      │                               │     awaited inline — safe on serverless)
      │                               ├── provider layer (auth: local|entra, notify: inApp|push|email|teams)
      │                               ├── compute-on-read status transitions (overtime, expired
-     │                               │     queue entries, reservation start/end) — no polling cron
+     │                               │     queue entries) — no polling cron
      │                               └── Prisma → Vercel Postgres
      │
      ├── daily Vercel Cron ─────► api/cron/daily.js (dailyReset, weeklyReset, cleanup,
@@ -78,7 +78,7 @@ export default defineModule({
 });
 ```
 
-`server/src/modules/registry.js` imports every module's manifest and the core (`app.js`, `events/listeners/index.js`) iterates the registry. To add a feature you (1) create the folder, (2) add one import line to `registry.js`. Nothing else in the core changes. The genuinely time-based jobs (daily/weekly resets, carpool materialize/match/complete) aren't module-declared — they're plain functions called in sequence from [`api/cron/daily.js`](api/cron/daily.js) on Vercel's daily cron trigger; everything else that used to be a frequent cron sweep (session overtime, expired queue entries, reservation start/end) is now computed lazily on read (see `transitionOvertimeSessions`/`transitionExpiredQueueEntries`/`transitionReservations` in the relevant `*.service.js` files).
+`server/src/modules/registry.js` imports every module's manifest and the core (`app.js`, `events/listeners/index.js`) iterates the registry. To add a feature you (1) create the folder, (2) add one import line to `registry.js`. Nothing else in the core changes. The genuinely time-based jobs (daily/weekly resets, carpool materialize/match/complete) aren't module-declared — they're plain functions called in sequence from [`api/cron/daily.js`](api/cron/daily.js) on Vercel's daily cron trigger; everything else that used to be a frequent cron sweep (session overtime, expired queue entries) is now computed lazily on read (see `transitionOvertimeSessions`/`transitionExpiredQueueEntries` in the relevant `*.service.js` files).
 
 On the client the same idea is mirrored in `client/src/modules/registry.js`: each feature contributes nav items, routes, and realtime subscriptions.
 
@@ -138,7 +138,7 @@ Everything — client build and API — deploys as **one Vercel project**, from 
 
 ## Acceptance criteria
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/CONTRACTS.md`](docs/CONTRACTS.md) for the full system contract, and [`docs/CARPOOL.md`](docs/CARPOOL.md) for the carpool module's matching/impact rules — together these are the acceptance spec for chargers, sessions, queue, reservations, messaging, and carpooling.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/CONTRACTS.md`](docs/CONTRACTS.md) for the full system contract, and [`docs/CARPOOL.md`](docs/CARPOOL.md) for the carpool module's matching/impact rules — together these are the acceptance spec for chargers, sessions, queue, messaging, and carpooling.
 
 ---
 

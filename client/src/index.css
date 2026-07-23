@@ -3,33 +3,79 @@
 @tailwind utilities;
 
 /*
- * ── Design system: permanent dark mode ──────────────────────────────────────
+ * ── Design system: Astera Labs, Device/Light/Dark theme ─────────────────────
  * Colors are declared as space-separated RGB channels so Tailwind's
- * `rgb(var(--token) / <alpha-value>)` can apply opacity. There is no light theme
- * and no `dark:` variant — this palette IS the theme, applied globally.
+ * `rgb(var(--token) / <alpha-value>)` can apply opacity — the same token doubles as an M3-style
+ * "container" surface via alpha (e.g. `bg-brand/15`). `--c-brand`/`--c-brand-strong` are the
+ * real Astera Labs brand blue (#3c79bc); the app's secondary neutral is the brand gray
+ * (#656769). `themeStore.js` sets `data-theme` on <html>; dark is true AMOLED black.
  */
 :root {
+  /* Fallback (matches dark) for the instant before index.html's inline script runs. */
+  --c-bg: 0 0 0;
+  --c-bg-elevated: 10 10 12;
+  --c-surface: 18 18 20;
+  --c-surface-2: 28 28 31;
+  --c-border: 44 45 49;
+  --c-border-strong: 68 70 76;
+  --c-content: 227 226 230;
+  --c-muted: 178 180 186;
+  --c-faint: 130 132 139;
+  --c-brand: 60 121 188;
+  --c-brand-strong: 90 150 214;
+  --c-brand-content: 255 255 255;
+  --c-success: 74 222 128;
+  --c-warning: 251 191 36;
+  --c-danger: 248 113 113;
+  --c-info: 96 165 250;
+}
+
+[data-theme='dark'] {
   color-scheme: dark;
 
-  --c-bg: 8 12 20;            /* app background            #080c14 */
-  --c-bg-elevated: 11 18 32;  /* elevated background       #0b1220 */
-  --c-surface: 17 24 39;      /* cards                     #111827 */
-  --c-surface-2: 25 34 54;    /* nested / hover surfaces   #192236 */
-  --c-border: 38 50 74;       /* hairline borders          #26324a */
-  --c-border-strong: 55 71 102;
+  --c-bg: 0 0 0;               /* true AMOLED black          #000000 */
+  --c-bg-elevated: 10 10 12;   /* elevated background        #0a0a0c */
+  --c-surface: 18 18 20;       /* cards                      #121214 */
+  --c-surface-2: 28 28 31;     /* nested / hover surfaces    #1c1c1f */
+  --c-border: 44 45 49;        /* hairline borders           #2c2d31 */
+  --c-border-strong: 68 70 76; /* #44464c */
 
-  --c-content: 236 240 248;   /* primary text             */
-  --c-muted: 156 170 197;     /* secondary text           */
-  --c-faint: 100 116 145;     /* tertiary / placeholder   */
+  --c-content: 227 226 230;    /* primary text             */
+  --c-muted: 178 180 186;      /* secondary text           */
+  --c-faint: 130 132 139;      /* tertiary / placeholder   */
 
-  --c-brand: 45 212 191;      /* teal — charging/green energy #2dd4bf */
-  --c-brand-strong: 20 184 166;
-  --c-brand-content: 4 20 18; /* text on brand fills      */
+  --c-brand: 60 121 188;       /* Astera Labs blue          #3c79bc */
+  --c-brand-strong: 90 150 214;/* lighter, for hover/pop on black #5a96d6 */
+  --c-brand-content: 255 255 255;
 
-  --c-success: 52 211 153;    /* emerald  */
-  --c-warning: 251 191 36;    /* amber    */
-  --c-danger: 248 113 113;    /* red      */
-  --c-info: 96 165 250;       /* blue     */
+  --c-success: 74 222 128;     /* #4ade80 */
+  --c-warning: 251 191 36;     /* #fbbf24 */
+  --c-danger: 248 113 113;     /* #f87171 */
+  --c-info: 96 165 250;        /* #60a5fa */
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --c-bg: 250 250 252;         /* app background             #fafafc */
+  --c-bg-elevated: 244 245 248;/* #f4f5f8 */
+  --c-surface: 255 255 255;    /* cards                       #ffffff */
+  --c-surface-2: 237 238 242;  /* nested / hover surfaces     #edeef2 */
+  --c-border: 222 224 229;     /* #dee0e5 */
+  --c-border-strong: 195 198 205; /* #c3c6cd */
+
+  --c-content: 26 27 30;       /* primary text             */
+  --c-muted: 84 87 94;         /* secondary text           */
+  --c-faint: 130 133 140;      /* tertiary / placeholder   */
+
+  --c-brand: 60 121 188;       /* Astera Labs blue          #3c79bc */
+  --c-brand-strong: 42 96 153; /* darker, for hover/active on white #2a6099 */
+  --c-brand-content: 255 255 255;
+
+  --c-success: 22 163 74;      /* #16a34a — darker for contrast on light bg */
+  --c-warning: 217 119 6;      /* #d97706 */
+  --c-danger: 220 38 38;       /* #dc2626 */
+  --c-info: 37 99 235;         /* #2563eb */
 }
 
 * {

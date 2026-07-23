@@ -34,6 +34,7 @@ function toPublicUser(row) {
     parkingSpot: row.parking_spot,
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
+    onboardedAt: row.onboarded_at,
   };
 }
 

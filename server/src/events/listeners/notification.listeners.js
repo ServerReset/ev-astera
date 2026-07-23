@@ -1,13 +1,12 @@
 /**
  * Core notification listeners: turn domain events into user notifications.
  * Module-specific notifications (e.g. carpool) live in that module's listeners file;
- * this file covers the cross-cutting charger/queue/session/reservation flows.
+ * this file covers the cross-cutting charger/queue/session flows.
  */
 import { EVENTS } from '../events.js';
 import { dispatchNotification, dispatchBulk } from '../../providers/notifications/index.js';
 import { prisma } from '../../db/prisma.js';
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from '../../../../shared/constants.js';
-import { formatTime } from '../../utils/timeUtils.js';
 
 async function chargerName(chargerId) {
   if (!chargerId) return 'a charger';
@@ -80,34 +79,6 @@ export const notificationListeners = [
           metadata: { chargerId: p.chargerId, sessionId: p.sessionId },
         }
       );
-    },
-  },
-  {
-    event: EVENTS.RESERVATION_STARTING,
-    handler: async (p) => {
-      const name = await chargerName(p.chargerId);
-      await dispatchNotification(p.userId, {
-        locationId: p.locationId,
-        type: NOTIFICATION_TYPES.RESERVATION_STARTING,
-        priority: NOTIFICATION_PRIORITY.HIGH,
-        title: 'Your reservation is starting',
-        body: `${name} is reserved for you now.`,
-        actionUrl: '/reservations',
-      });
-    },
-  },
-  {
-    event: EVENTS.RESERVATION_WARN_WALKUP,
-    handler: async (p) => {
-      const name = await chargerName(p.chargerId);
-      await dispatchNotification(p.userId, {
-        locationId: p.locationId,
-        type: NOTIFICATION_TYPES.RESERVATION_WARNING,
-        priority: NOTIFICATION_PRIORITY.HIGH,
-        title: 'Reservation starting soon',
-        body: `A reservation on ${name} starts at ${formatTime(p.startAt)}. Please wrap up.`,
-        actionUrl: '/',
-      });
     },
   },
   {

@@ -3,12 +3,13 @@
  * registry where behavior must match user flows (e.g. force-ending a session, charger
  * on/offline), and reads aggregate stats directly.
  */
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { services } from '../../services/index.js';
 import { configService } from '../../services/config.service.js';
-import { NotFoundError } from '../../utils/errors.js';
+import { NotFoundError, ConflictError } from '../../utils/errors.js';
 import {
   SESSION_STATUS,
   QUEUE_STATUS,
@@ -155,6 +156,43 @@ export const adminService = {
       if (!count) throw new NotFoundError('User not found');
     }
     return { success: true };
+  },
+
+  /** Admin-delegated account creation: sets email + temp password + role directly, no invite email, no session issued. */
+  async createUser(locationId, { email, password, displayName, role }) {
+    const existing = await prisma.users.findUnique({ where: { email }, select: { id: true } });
+    if (existing) throw new ConflictError('An account with this email already exists');
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    let data;
+    try {
+      data = await prisma.users.create({
+        data: {
+          location_id: locationId,
+          email,
+          password_hash: passwordHash,
+          display_name: displayName,
+          role,
+        },
+      });
+    } catch {
+      throw new ConflictError('Could not create account');
+    }
+
+    try {
+      await emit(EVENTS.USER_REGISTERED, { locationId, userId: data.id });
+    } catch {
+      // Non-fatal: the account is created either way.
+    }
+
+    return {
+      id: data.id,
+      email: data.email,
+      displayName: data.display_name,
+      role: data.role,
+      active: data.active,
+      createdAt: data.created_at,
+    };
   },
 
   /** Recent audit log entries for the admin activity feed. */

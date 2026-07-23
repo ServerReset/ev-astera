@@ -33,6 +33,7 @@ create table if not exists users (
   failed_attempts     integer not null default 0,
   locked_until        timestamptz,
   last_active_at      timestamptz,
+  onboarded_at        timestamptz,
   created_at          timestamptz not null default now()
 );
 create index if not exists idx_users_location on users(location_id);
@@ -110,23 +111,6 @@ create index if not exists idx_queue_status on queue_entries(status);
 -- Ordering key for advancement: priority desc, joined_at asc.
 create index if not exists idx_queue_order on queue_entries(charger_id, priority desc, joined_at asc)
   where status = 'waiting';
-
--- ── Reservations ──────────────────────────────────────────────────────────────
-create table if not exists reservations (
-  id            uuid primary key default gen_random_uuid(),
-  location_id   uuid not null references locations(id) on delete cascade,
-  charger_id    uuid not null references chargers(id) on delete cascade,
-  user_id       uuid not null references users(id) on delete cascade,
-  status        text not null default 'upcoming'
-                  check (status in ('upcoming','active','completed','cancelled')),
-  start_at      timestamptz not null,
-  end_at        timestamptz not null,
-  warned_at     timestamptz,                        -- buffer warning sent
-  created_at    timestamptz not null default now()
-);
-create index if not exists idx_res_charger on reservations(charger_id);
-create index if not exists idx_res_user on reservations(user_id);
-create index if not exists idx_res_window on reservations(start_at, end_at);
 
 -- ── Notifications ─────────────────────────────────────────────────────────────
 create table if not exists notifications (
@@ -390,10 +374,10 @@ create trigger trg_chargers_updated before update on chargers
 --
 --  Model: enable RLS on every table (default-deny), then open a narrow, SELECT-only
 --  allowlist for anon on exactly the tables the client subscribes to via Realtime. `sessions`
---  and `reservations` are both included for the same reason: each is a record of who is
---  using (or has booked) a shared charger, not personal content — the dashboard/reservations
---  UI already shows this to every logged-in employee, so it's the same category as
---  `chargers`/`queue_entries`, not the same category as `notifications` below. Every other
+--  is included for the same reason: it's a record of who is using a shared charger, not
+--  personal content — the dashboard UI already shows this to every logged-in employee, so
+--  it's the same category as `chargers`/`queue_entries`, not the same category as
+--  `notifications` below. Every other
 --  table — including `users` (password_hash), `refresh_tokens` (token_hash), `settings`,
 --  `audit_log`, `messages`, `emergency_requests`, and the full carpool scheduling/credits
 --  tables — gets RLS with NO policy at all, so anon can neither read nor write a single row;
@@ -412,8 +396,8 @@ create trigger trg_chargers_updated before update on chargers
 --  on graceful no-op when Supabase isn't configured); the notification bell still works via
 --  the authenticated REST fetch in notificationStore.refresh(), just without a live push.
 --
---  Residual tradeoff, accepted and documented rather than silently shipped: the seven allowed
---  tables (chargers, sessions, queue_entries, reservations, announcements, carpool_rides,
+--  Residual tradeoff, accepted and documented rather than silently shipped: the six allowed
+--  tables (chargers, sessions, queue_entries, announcements, carpool_rides,
 --  carpool_bookings) are readable by ANYONE holding the anon key — including logged-out
 --  visitors — not just authenticated employees, since the anon connection has no user
 --  session to gate on. The data in them (charger/session/queue status, ride pickup
@@ -434,7 +418,6 @@ alter table refresh_tokens enable row level security;
 alter table chargers enable row level security;
 alter table sessions enable row level security;
 alter table queue_entries enable row level security;
-alter table reservations enable row level security;
 alter table notifications enable row level security;
 alter table push_subscriptions enable row level security;
 alter table messages enable row level security;
@@ -469,10 +452,6 @@ drop policy if exists anon_read_queue_entries on queue_entries;
 create policy anon_read_queue_entries on queue_entries for select to anon using (true);
 grant select on queue_entries to anon;
 
-drop policy if exists anon_read_reservations on reservations;
-create policy anon_read_reservations on reservations for select to anon using (true);
-grant select on reservations to anon;
-
 drop policy if exists anon_read_announcements on announcements;
 create policy anon_read_announcements on announcements for select to anon using (true);
 grant select on announcements to anon;
@@ -487,7 +466,7 @@ grant select on carpool_bookings to anon;
 
 -- ============================================================================
 --  Realtime: after running this, enable Realtime in the Supabase dashboard for:
---    chargers, sessions, queue_entries, reservations, notifications, announcements,
+--    chargers, sessions, queue_entries, notifications, announcements,
 --    carpool_rides, carpool_bookings
 --  (notifications is enabled here for completeness/future use, but per the RLS policy
 --  above the anon key will not actually receive broadcasts for it — see comment.)

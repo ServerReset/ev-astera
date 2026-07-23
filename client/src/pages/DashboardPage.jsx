@@ -11,6 +11,7 @@ import { EtaModal } from '@/components/session/EtaModal.jsx';
 import { NudgeModal } from '@/components/session/NudgeModal.jsx';
 import { EmergencyModal } from '@/components/session/EmergencyModal.jsx';
 import { EmergencyBanner } from '@/components/session/EmergencyBanner.jsx';
+import { NudgeInboxWidget } from '@/components/dashboard/NudgeInboxWidget.jsx';
 import { QueuePanel } from '@/components/queue/QueuePanel.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
@@ -86,6 +87,7 @@ export default function DashboardPage() {
       />
 
       <EmergencyBanner />
+      <NudgeInboxWidget />
 
       {mySession && (
         <div className="mb-5">

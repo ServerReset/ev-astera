@@ -5,16 +5,19 @@ import { BottomNav } from './BottomNav.jsx';
 import { Header } from './Header.jsx';
 import { Spinner } from '@/components/common/States.jsx';
 import { useNotificationSync } from '@/hooks/useNotificationSync.js';
+import { OnboardingGate } from '@/components/onboarding/OnboardingGate.jsx';
 
 /**
  * Authenticated app shell: sidebar (desktop) + bottom nav (mobile) + header, with the routed
- * page rendered in the main region. Also boots the notification realtime/refresh sync.
+ * page rendered in the main region. Also boots the notification realtime/refresh sync and the
+ * first-run onboarding gate.
  */
 export function AppLayout() {
   useNotificationSync();
 
   return (
     <div className="flex min-h-screen bg-bg">
+      <OnboardingGate />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />

@@ -19,6 +19,7 @@ function toPublicUser(row) {
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
     createdAt: row.created_at,
+    onboardedAt: row.onboarded_at,
   };
 }
 
@@ -39,6 +40,28 @@ export const userService = {
     let data;
     try {
       data = await prisma.users.update({ where: { id: userId }, data: update });
+    } catch {
+      throw new NotFoundError('User not found');
+    }
+    await emit(EVENTS.USER_UPDATED, { userId, locationId: data.location_id });
+    return toPublicUser(data);
+  },
+
+  async completeOnboarding(userId) {
+    let data;
+    try {
+      data = await prisma.users.update({ where: { id: userId }, data: { onboarded_at: now() } });
+    } catch {
+      throw new NotFoundError('User not found');
+    }
+    await emit(EVENTS.USER_UPDATED, { userId, locationId: data.location_id });
+    return toPublicUser(data);
+  },
+
+  async resetOnboarding(userId) {
+    let data;
+    try {
+      data = await prisma.users.update({ where: { id: userId }, data: { onboarded_at: null } });
     } catch {
       throw new NotFoundError('User not found');
     }

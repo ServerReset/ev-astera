@@ -106,21 +106,6 @@ CREATE INDEX idx_queue_entries_charger_id ON queue_entries(charger_id);
 CREATE INDEX idx_queue_entries_user_id ON queue_entries(user_id);
 CREATE INDEX idx_queue_entries_status ON queue_entries(status);
 
-CREATE TABLE reservations (
-  id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
-  charger_id  TEXT NOT NULL REFERENCES chargers(id) ON DELETE CASCADE,
-  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status      TEXT NOT NULL DEFAULT 'upcoming',
-  start_at    TIMESTAMP(3) NOT NULL,
-  end_at      TIMESTAMP(3) NOT NULL,
-  warned_at   TIMESTAMP(3),
-  created_at  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_reservations_charger_id ON reservations(charger_id);
-CREATE INDEX idx_reservations_user_id ON reservations(user_id);
-CREATE INDEX idx_reservations_start_end ON reservations(start_at, end_at);
-
 CREATE TABLE notifications (
   id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
@@ -157,6 +142,7 @@ CREATE TABLE messages (
   session_id   TEXT REFERENCES sessions(id) ON DELETE SET NULL,
   body         TEXT,
   metadata     JSONB NOT NULL DEFAULT '{}',
+  reaction     TEXT,
   created_at   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_messages_recipient_created ON messages(recipient_id, created_at DESC);

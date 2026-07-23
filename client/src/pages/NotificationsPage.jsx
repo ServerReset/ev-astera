@@ -6,6 +6,7 @@ import { Card } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Icon } from '@/components/common/Icon.jsx';
 import { Spinner, EmptyState } from '@/components/common/States.jsx';
+import { NudgeReactionButtons } from '@/components/notifications/NudgeReactionButtons.jsx';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
@@ -115,6 +116,11 @@ export default function NotificationsPage() {
                       <span className="shrink-0 text-xs text-faint">{relativeTime(n.createdAt)}</span>
                     </div>
                     {n.body && <p className="mt-0.5 text-sm text-muted">{n.body}</p>}
+                    {n.type === 'nudge' && (
+                      <div className="mt-1.5">
+                        <NudgeReactionButtons messageId={n.metadata?.messageId} initialReaction={n.metadata?.reaction} />
+                      </div>
+                    )}
                   </div>
                   {!n.readAt && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}
                 </button>

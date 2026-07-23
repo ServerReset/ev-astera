@@ -24,7 +24,21 @@ export const messageListeners = [
         title: `👋 Nudge from ${from}`,
         body: p.message,
         actionUrl: '/',
-        metadata: { chargerId: p.chargerId, sessionId: p.sessionId },
+        metadata: { messageId: p.messageId, chargerId: p.chargerId, sessionId: p.sessionId },
+      });
+    },
+  },
+  {
+    event: EVENTS.NUDGE_REACTED,
+    handler: async (p) => {
+      await dispatchNotification(p.senderId, {
+        locationId: p.locationId,
+        type: NOTIFICATION_TYPES.NUDGE_REACTION,
+        priority: NOTIFICATION_PRIORITY.NORMAL,
+        title: p.reaction === 'up' ? '👍 Your nudge got a thumbs up' : '👎 Your nudge got a thumbs down',
+        body: p.reaction === 'up' ? 'They acknowledged your nudge.' : "They didn't want to move yet.",
+        actionUrl: '/',
+        metadata: { messageId: p.messageId, reaction: p.reaction, chargerId: p.chargerId },
       });
     },
   },

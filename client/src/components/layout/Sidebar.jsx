@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { Zap } from 'lucide-react';
 import { navForRole } from '@/modules/registry.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { Icon } from '@/components/common/Icon.jsx';
+import { AsteraMark } from '@/components/common/AsteraMark.jsx';
 import { cn } from '@/utils/cn.js';
 
 /** Desktop left sidebar. Hidden below `md`; BottomNav takes over on mobile. */
@@ -13,9 +13,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-bg-elevated">
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-brand-content">
-          <Zap className="h-5 w-5" />
-        </span>
+        <AsteraMark size={36} className="rounded-xl" />
         <div className="leading-tight">
           <p className="font-semibold text-content">EV Hub</p>
           <p className="text-[11px] text-faint">Astera Labs</p>

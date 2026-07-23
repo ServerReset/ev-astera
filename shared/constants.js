@@ -33,23 +33,14 @@ export const QUEUE_STATUS = Object.freeze({
 
 export const QUEUE_TARGET_ANY = 'any';
 
-// ── Reservations ─────────────────────────────────────────────────────────────
-export const RESERVATION_STATUS = Object.freeze({
-  UPCOMING: 'upcoming',
-  ACTIVE: 'active',
-  COMPLETED: 'completed',
-  CANCELLED: 'cancelled',
-});
-
 // ── Notifications ────────────────────────────────────────────────────────────
 export const NOTIFICATION_TYPES = Object.freeze({
   QUEUE_TURN: 'queue_turn',
   QUEUE_SKIPPED: 'queue_skipped',
   SESSION_OVERTIME: 'session_overtime',
   SESSION_ENDING: 'session_ending',
-  RESERVATION_STARTING: 'reservation_starting',
-  RESERVATION_WARNING: 'reservation_warning',
   NUDGE: 'nudge',
+  NUDGE_REACTION: 'nudge_reaction',
   EMERGENCY: 'emergency',
   ANNOUNCEMENT: 'announcement',
   ADMIN_ALERT: 'admin_alert',
@@ -114,8 +105,6 @@ export const SETTING_KEYS = Object.freeze({
   MAX_NUDGES_PER_SESSION: 'max_nudges_per_session',
   EMERGENCY_COOLDOWN_HOURS: 'emergency_cooldown_hours',
   EMERGENCY_RESPONSE_WINDOW_MINUTES: 'emergency_response_window_minutes',
-  RESERVATION_BUFFER_MINUTES: 'reservation_buffer_minutes',
-  RESERVATION_MIN_ADVANCE_MINUTES: 'reservation_min_advance_minutes',
   DAILY_RESET_HOUR: 'daily_reset_hour',
   WEEKLY_RESET_DAY: 'weekly_reset_day',
   // carpool
@@ -146,8 +135,6 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.MAX_NUDGES_PER_SESSION]: 5,
   [SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS]: 24,
   [SETTING_KEYS.EMERGENCY_RESPONSE_WINDOW_MINUTES]: 10,
-  [SETTING_KEYS.RESERVATION_BUFFER_MINUTES]: 15,
-  [SETTING_KEYS.RESERVATION_MIN_ADVANCE_MINUTES]: 30,
   [SETTING_KEYS.DAILY_RESET_HOUR]: 0,
   [SETTING_KEYS.WEEKLY_RESET_DAY]: 1,
   [SETTING_KEYS.CARPOOL_ENABLED]: true,

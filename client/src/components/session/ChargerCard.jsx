@@ -1,4 +1,4 @@
-import { Zap, User, Users, CalendarClock, Car, Hand } from 'lucide-react';
+import { Zap, User, Users, Car, Hand } from 'lucide-react';
 import { Badge } from '@/components/common/Badge.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { CHARGER_STATUS, CHARGER_STATUS_META, DIRECTION_LABEL } from '@/utils/constants.js';
@@ -7,7 +7,7 @@ import { cn } from '@/utils/cn.js';
 
 /**
  * A single charger tile for the dashboard grid. Shows live status, the current session
- * (with occupant + ETA), queue depth, next reservation, and — the carpool tie-in — a chip
+ * (with occupant + ETA), queue depth, and — the carpool tie-in — a chip
  * when the occupant is carpooling today. Action buttons are contextual to the viewer.
  */
 export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEndMine }) {
@@ -70,15 +70,6 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
               Carpooling {DIRECTION_LABEL[charger.carpool.direction]} · departs {formatTime(charger.carpool.departAt)}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Next reservation hint */}
-      {charger.nextReservation && (
-        <div className="flex items-center gap-1.5 text-xs text-muted">
-          <CalendarClock className="h-3.5 w-3.5" />
-          Reserved {formatTime(charger.nextReservation.startAt)}
-          {charger.nextReservation.userDisplayName ? ` · ${charger.nextReservation.userDisplayName}` : ''}
         </div>
       )}
 

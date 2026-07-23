@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, User, LogOut, Settings, Zap } from 'lucide-react';
+import { Bell, User, LogOut, Settings } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore.js';
 import { useNotificationStore } from '@/stores/notificationStore.js';
+import { AsteraMark } from '@/components/common/AsteraMark.jsx';
 import { cn } from '@/utils/cn.js';
 
 /** Top bar: mobile brand, spacer, notification bell w/ unread badge, and user menu. */
@@ -32,9 +33,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-bg-elevated/95 px-4 backdrop-blur md:px-6">
       <Link to="/" className="flex items-center gap-2 md:hidden">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-brand-content">
-          <Zap className="h-4 w-4" />
-        </span>
+        <AsteraMark size={32} className="rounded-lg" />
         <span className="font-semibold">EV Hub</span>
       </Link>
 
@@ -75,7 +74,7 @@ export function Header() {
               <p className="truncate text-sm font-medium text-content">{user?.displayName}</p>
               <p className="truncate text-xs text-faint">{user?.email}</p>
             </div>
-            <MenuItem icon={User} label="Profile" onClick={() => { setMenuOpen(false); navigate('/profile'); }} />
+            <MenuItem icon={User} label="Settings" onClick={() => { setMenuOpen(false); navigate('/settings'); }} />
             <MenuItem icon={Settings} label="Notifications" onClick={() => { setMenuOpen(false); navigate('/notifications'); }} />
             <button
               role="menuitem"

@@ -18,7 +18,6 @@ server/src/
 │   ├── charger/
 │   ├── session/
 │   ├── queue/
-│   ├── reservation/
 │   ├── notification/
 │   ├── message/
 │   ├── admin/
@@ -49,7 +48,7 @@ In production (`api/[[...path]].js`), module-top-level code runs once per cold s
 4. Start web-push (VAPID) and the config-service cache warmer.
 5. (local dev only) `listen(PORT)`.
 
-There is no cron scheduler process. The handful of genuinely time-based jobs (`dailyReset`, `weeklyReset`, `cleanup`, carpool materialize/match/complete) are plain functions invoked in sequence by `api/cron/daily.js` when Vercel's daily Cron trigger hits it (`Authorization: Bearer $CRON_SECRET`, verified before running anything). Everything that used to be a frequent polling sweep — session overtime, expired queue entries, reservation start/end transitions, carpool reminders — is now computed lazily inside the relevant read path instead (`transitionOvertimeSessions`, `transitionExpiredQueueEntries`, `transitionReservations`), emitting the same events the old cron jobs did so downstream listeners (notifications, audit log) are unaffected. Carpool reminders (previously a 5-minute sweep) have no daily-cron equivalent and are dropped.
+There is no cron scheduler process. The handful of genuinely time-based jobs (`dailyReset`, `weeklyReset`, `cleanup`, carpool materialize/match/complete) are plain functions invoked in sequence by `api/cron/daily.js` when Vercel's daily Cron trigger hits it (`Authorization: Bearer $CRON_SECRET`, verified before running anything). Everything that used to be a frequent polling sweep — session overtime, expired queue entries, carpool reminders — is now computed lazily inside the relevant read path instead (`transitionOvertimeSessions`, `transitionExpiredQueueEntries`), emitting the same events the old cron jobs did so downstream listeners (notifications, audit log) are unaffected. Carpool reminders (previously a 5-minute sweep) have no daily-cron equivalent and are dropped.
 
 ### Request lifecycle
 

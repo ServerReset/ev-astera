@@ -32,7 +32,6 @@ model locations {
   chargers               chargers[]
   sessions               sessions[]
   queue_entries          queue_entries[]
-  reservations           reservations[]
   notifications          notifications[]
   messages               messages[]
   emergency_requests     emergency_requests[]
@@ -63,6 +62,7 @@ model users {
   failed_attempts     Int       @default(0)
   locked_until        DateTime?
   last_active_at      DateTime?
+  onboarded_at        DateTime?
   created_at          DateTime  @default(now())
 
   locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
@@ -70,7 +70,6 @@ model users {
   refresh_tokens             refresh_tokens[]
   sessions                   sessions[]
   queue_entries               queue_entries[]
-  reservations                reservations[]
   notifications                notifications[]
   push_subscriptions          push_subscriptions[]
   sent_messages               messages[]              @relation("message_sender")
@@ -119,7 +118,6 @@ model chargers {
 
   sessions      sessions[]
   queue_entries queue_entries[]
-  reservations  reservations[]
   messages      messages[]
 
   @@index([location_id])
@@ -177,26 +175,6 @@ model queue_entries {
   // idx_queue_order (partial ordering index) added via raw-SQL migration.
 }
 
-model reservations {
-  id          String    @id @default(uuid())
-  location_id String
-  charger_id  String
-  user_id     String
-  status      String    @default("upcoming")
-  start_at    DateTime
-  end_at      DateTime
-  warned_at   DateTime?
-  created_at  DateTime  @default(now())
-
-  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
-  chargers  chargers  @relation(fields: [charger_id], references: [id], onDelete: Cascade)
-  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([charger_id])
-  @@index([user_id])
-  @@index([start_at, end_at])
-}
-
 model notifications {
   id          String    @id @default(uuid())
   location_id String
@@ -240,6 +218,7 @@ model messages {
   session_id   String?
   body         String?
   metadata     Json     @default("{}")
+  reaction     String?
   created_at   DateTime @default(now())
 
   locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)

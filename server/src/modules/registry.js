@@ -12,7 +12,6 @@ import userModule from './user/index.js';
 import chargerModule from './charger/index.js';
 import sessionModule from './session/index.js';
 import queueModule from './queue/index.js';
-import reservationModule from './reservation/index.js';
 import notificationModule from './notification/index.js';
 import messageModule from './message/index.js';
 import carpoolModule from './carpool/index.js';
@@ -24,7 +23,6 @@ export const modules = [
   chargerModule,
   sessionModule,
   queueModule,
-  reservationModule,
   notificationModule,
   messageModule,
   carpoolModule,

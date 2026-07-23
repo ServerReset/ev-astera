@@ -26,6 +26,8 @@ export const userApi = {
   changePassword: (body) => api.patch('/users/me/password', body),
   stats: () => api.get('/users/me/stats'),
   history: (page = 1) => api.get('/users/me/history', { params: { page } }),
+  completeOnboarding: () => api.post('/users/me/onboarding/complete'),
+  resetOnboarding: () => api.post('/users/me/onboarding/reset'),
 };
 
 // ── Chargers ─────────────────────────────────────────────────────────────────
@@ -51,17 +53,10 @@ export const queueApi = {
   leave: (queueEntryId) => api.post(L('/queue/leave'), { queueEntryId }),
 };
 
-// ── Reservations ─────────────────────────────────────────────────────────────
-export const reservationApi = {
-  upcoming: () => api.get(L('/reservations')),
-  mine: () => api.get(L('/reservations/me')),
-  create: (body) => api.post(L('/reservations'), body),
-  cancel: (reservationId) => api.delete(L(`/reservations/${reservationId}`)),
-};
-
 // ── Messages (nudge / emergency) ────────────────────────────────────────────────
 export const messageApi = {
   nudge: (body) => api.post(L('/messages/nudge'), body),
+  reactToNudge: (body) => api.post(L('/messages/nudge/react'), body),
   emergencies: () => api.get(L('/messages/emergencies')),
   requestEmergency: (body) => api.post(L('/messages/emergency'), body),
   respondEmergency: (body) => api.post(L('/messages/emergency/respond'), body),
@@ -125,5 +120,6 @@ export const adminApi = {
   deleteAnnouncement: (id) => api.delete(L(`/admin/announcements/${id}`)),
   listUsers: (page = 1, search = '') => api.get(L('/admin/users'), { params: { page, search } }),
   updateUser: (userId, patch) => api.patch(L(`/admin/users/${userId}`), patch),
+  createUser: (body) => api.post(L('/admin/users'), body),
   audit: (page = 1) => api.get(L('/admin/audit'), { params: { page } }),
 };

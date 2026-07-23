@@ -20,18 +20,13 @@ export const EVENTS = Object.freeze({
   QUEUE_CLAIMED: 'queue.claimed',
   QUEUE_SKIPPED: 'queue.skipped',
 
-  // Reservations
-  RESERVATION_CREATED: 'reservation.created',
-  RESERVATION_CANCELLED: 'reservation.cancelled',
-  RESERVATION_STARTING: 'reservation.starting',
-  RESERVATION_WARN_WALKUP: 'reservation.warn_walkup',
-
   // Chargers
   CHARGER_ONLINE: 'charger.online',
   CHARGER_OFFLINE: 'charger.offline',
 
   // Messaging
   NUDGE_SENT: 'message.nudge_sent',
+  NUDGE_REACTED: 'message.nudge_reacted',
   EMERGENCY_REQUESTED: 'message.emergency_requested',
   EMERGENCY_RESPONDED: 'message.emergency_responded',
 

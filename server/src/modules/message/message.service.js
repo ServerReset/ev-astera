@@ -6,7 +6,7 @@ import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { configService } from '../../services/config.service.js';
-import { BusinessRuleError, NotFoundError } from '../../utils/errors.js';
+import { AuthorizationError, BusinessRuleError, NotFoundError } from '../../utils/errors.js';
 import { SESSION_STATUS, SETTING_KEYS } from '../../../../shared/constants.js';
 import { addMinutes, addHours, now, diffMinutes } from '../../utils/timeUtils.js';
 
@@ -60,6 +60,7 @@ export const messageService = {
 
     await emit(EVENTS.NUDGE_SENT, {
       locationId,
+      messageId: data.id,
       chargerId,
       sessionId,
       senderId,
@@ -67,6 +68,24 @@ export const messageService = {
       message,
     });
     return { id: data.id, success: true };
+  },
+
+  /** The nudge recipient thumbs-up/thumbs-down's it. Re-reacting overwrites the previous value. */
+  async reactToNudge(userId, { messageId, reaction }) {
+    const message = await prisma.messages.findUnique({ where: { id: messageId } });
+    if (!message || message.kind !== 'nudge') throw new NotFoundError('Nudge not found');
+    if (message.recipient_id !== userId) throw new AuthorizationError('Only the recipient can react to this nudge');
+
+    const updated = await prisma.messages.update({ where: { id: messageId }, data: { reaction } });
+
+    await emit(EVENTS.NUDGE_REACTED, {
+      locationId: updated.location_id,
+      messageId: updated.id,
+      reaction,
+      senderId: updated.sender_id,
+      chargerId: updated.charger_id,
+    });
+    return { id: updated.id, reaction, success: true };
   },
 
   /**

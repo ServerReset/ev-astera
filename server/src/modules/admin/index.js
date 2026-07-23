@@ -13,6 +13,7 @@ import {
   updateSettingsSchema,
   setOfflineSchema,
   adminUpdateUserSchema,
+  adminCreateUserSchema,
 } from '../../../../shared/validation.js';
 import { adminService } from './admin.service.js';
 
@@ -78,6 +79,11 @@ export default defineModule({
       '/users/:userId',
       validate(adminUpdateUserSchema),
       asyncHandler(async (req, res) => ok(res, await adminService.updateUser(req.locationId, req.params.userId, req.body)))
+    );
+    router.post(
+      '/users',
+      validate(adminCreateUserSchema),
+      asyncHandler(async (req, res) => created(res, await adminService.createUser(req.locationId, req.body)))
     );
 
     // Audit feed

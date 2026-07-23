@@ -50,5 +50,15 @@ export default defineModule({
         ok(res, await userService.getHistory(req.user.userId, page));
       })
     );
+
+    router.post(
+      '/me/onboarding/complete',
+      asyncHandler(async (req, res) => ok(res, await userService.completeOnboarding(req.user.userId)))
+    );
+
+    router.post(
+      '/me/onboarding/reset',
+      asyncHandler(async (req, res) => ok(res, await userService.resetOnboarding(req.user.userId)))
+    );
   },
 });

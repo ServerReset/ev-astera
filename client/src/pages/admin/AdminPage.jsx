@@ -3,13 +3,13 @@ import {
   ShieldCheck, Activity, Zap, Settings as SettingsIcon, Megaphone, Users as UsersIcon, ScrollText,
   Plus, Trash2, Power, PowerOff, StopCircle, Search,
 } from 'lucide-react';
-import { announcementSchema } from '@shared/validation.js';
+import { announcementSchema, adminCreateUserSchema } from '@shared/validation.js';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Tabs } from '@/components/common/Tabs.jsx';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Modal } from '@/components/common/Modal.jsx';
-import { Input, Textarea } from '@/components/common/Input.jsx';
+import { Input, Textarea, Select } from '@/components/common/Input.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
@@ -235,10 +235,8 @@ const SETTING_GROUPS = [
     ],
   },
   {
-    title: 'Reservations & emergencies',
+    title: 'Emergencies',
     fields: [
-      { key: SETTING_KEYS.RESERVATION_BUFFER_MINUTES, label: 'Reservation buffer (min)', type: 'number' },
-      { key: SETTING_KEYS.RESERVATION_MIN_ADVANCE_MINUTES, label: 'Min advance booking (min)', type: 'number' },
       { key: SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS, label: 'Emergency cooldown (hours)', type: 'number' },
       { key: SETTING_KEYS.EMERGENCY_RESPONSE_WINDOW_MINUTES, label: 'Emergency response window (min)', type: 'number' },
     ],
@@ -445,6 +443,7 @@ function UsersTab() {
   const [query, setQuery] = useState('');
   const users = useApi(() => adminApi.listUsers(1, query), [query]);
   const [busyId, setBusyId] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const act = async (userId, patch) => {
     setBusyId(userId);
@@ -461,18 +460,24 @@ function UsersTab() {
 
   return (
     <>
-      <form
-        className="mb-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setQuery(search.trim());
-        }}
-      >
-        <Input className="flex-1" placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button type="submit" variant="secondary">
-          <Search className="h-4 w-4" />
+      <div className="mb-4 flex gap-2">
+        <form
+          className="flex flex-1 gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setQuery(search.trim());
+          }}
+        >
+          <Input className="flex-1" placeholder="Search by name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Button type="submit" variant="secondary">
+            <Search className="h-4 w-4" />
+          </Button>
+        </form>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Create admin/user
         </Button>
-      </form>
+      </div>
 
       {users.loading && !users.data ? (
         <Spinner />
@@ -516,7 +521,81 @@ function UsersTab() {
           ))}
         </ul>
       )}
+      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); users.refetch(); }} />
     </>
+  );
+}
+
+function CreateUserModal({ open, onClose, onCreated }) {
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user');
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setEmail('');
+    setDisplayName('');
+    setPassword('');
+    setRole('user');
+    setErrors({});
+  };
+
+  const submit = async () => {
+    setErrors({});
+    const parsed = adminCreateUserSchema.safeParse({ email: email.trim(), displayName: displayName.trim(), password, role });
+    if (!parsed.success) {
+      const fe = {};
+      for (const issue of parsed.error.issues) fe[issue.path[0] ?? '_form'] = issue.message;
+      setErrors(fe);
+      return;
+    }
+    setSaving(true);
+    try {
+      await adminApi.createUser(parsed.data);
+      toast.success('Account created.');
+      reset();
+      onCreated();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => { reset(); onClose(); }}
+      title="Create admin/user"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
+          <Button onClick={submit} loading={saving}>Create</Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
+        <Input label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} error={errors.displayName} />
+        <Input
+          label="Temporary password"
+          type="text"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={errors.password}
+          hint="Share this with the new user — they can change it after logging in."
+        />
+        <Select
+          label="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          error={errors.role}
+          options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]}
+        />
+      </div>
+    </Modal>
   );
 }
 

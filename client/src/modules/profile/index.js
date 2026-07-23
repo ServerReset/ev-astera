@@ -1,11 +1,11 @@
 import { lazy } from 'react';
 
-const ProfilePage = lazy(() => import('@/pages/ProfilePage.jsx'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage.jsx'));
 
-/** Profile module manifest — account, vehicle, stats, notification prefs. Reachable from the
- *  header avatar; not shown in the primary nav bar. */
+/** Settings module manifest — profile, notification prefs, and app settings (theme, onboarding
+ *  replay). Reachable from the header avatar; not shown in the primary nav bar. */
 export default {
-  name: 'profile',
+  name: 'settings',
   nav: [],
-  routes: [{ path: '/profile', element: ProfilePage }],
+  routes: [{ path: '/settings', element: SettingsPage }],
 };

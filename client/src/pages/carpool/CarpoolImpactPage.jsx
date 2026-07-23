@@ -51,7 +51,7 @@ export default function CarpoolImpactPage() {
         {impact.loading && !impact.data ? (
           <StatsSkeleton />
         ) : impact.error ? (
-          <ErrorState error={impact.error} onRetry={impact.refetch} />
+          <ErrorState error={impact.error} onRetry={impact.refetch} title="Could not load your impact" />
         ) : (
           <div className="animate-fade-in">
             <ImpactStats impact={impact.data} />
@@ -62,7 +62,7 @@ export default function CarpoolImpactPage() {
       {board.loading && !board.data ? (
         <div className="skeleton h-80 rounded-2xl" />
       ) : board.error ? (
-        <ErrorState error={board.error} onRetry={board.refetch} />
+        <ErrorState error={board.error} onRetry={board.refetch} title="Could not load the leaderboard" />
       ) : (
         <div className="animate-fade-in">
           <Leaderboard rows={board.data || []} highlightUserId={userId} window={window} onWindowChange={setWindow} />

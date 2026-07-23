@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   ShieldCheck, Activity, Zap, Settings as SettingsIcon, Megaphone, Users as UsersIcon, ScrollText,
-  Plus, Trash2, Power, PowerOff, StopCircle, Search, Car, Leaf, Pencil,
+  Plus, Trash2, Power, PowerOff, StopCircle, Search, Car, Leaf, Pencil, CalendarClock, UserSquare2,
+  KeyRound, Copy, Check,
 } from 'lucide-react';
 import { announcementSchema, adminCreateUserSchema, chargerNameSchema } from '@shared/validation.js';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
@@ -15,6 +16,7 @@ import { Switch } from '@/components/common/Switch.jsx';
 import { EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { useApi } from '@/hooks/useApi.js';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { adminApi, chargerApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
@@ -31,6 +33,7 @@ import { ENV, CHARGER_STATUS_META, SETTING_KEYS } from '@/utils/constants.js';
 const SECTIONS = [
   { key: 'overview', label: 'Overview', icon: Activity },
   { key: 'chargers', label: 'Chargers', icon: Zap },
+  { key: 'carpool', label: 'Carpool', icon: Car },
   { key: 'settings', label: 'Settings', icon: SettingsIcon },
   { key: 'announce', label: 'Announcements', icon: Megaphone },
   { key: 'users', label: 'Users', icon: UsersIcon },
@@ -98,6 +101,7 @@ export default function AdminPage() {
         <div key={section} className="animate-fade-in">
           {section === 'overview' && <OverviewTab />}
           {section === 'chargers' && <ChargersTab />}
+          {section === 'carpool' && <CarpoolTab />}
           {section === 'settings' && <SettingsTab />}
           {section === 'announce' && <AnnouncementsTab />}
           {section === 'users' && <UsersTab />}
@@ -124,7 +128,7 @@ function OverviewTab() {
       </div>
     );
   }
-  if (overview.error) return <ErrorState error={overview.error} onRetry={overview.refetch} />;
+  if (overview.error) return <ErrorState error={overview.error} onRetry={overview.refetch} title="Could not load the dashboard overview" />;
 
   const o = overview.data || {};
   const tiles = [
@@ -223,7 +227,7 @@ function ChargersTab() {
       </div>
     );
   }
-  if (chargers.error) return <ErrorState error={chargers.error} onRetry={chargers.refetch} />;
+  if (chargers.error) return <ErrorState error={chargers.error} onRetry={chargers.refetch} title="Could not load chargers" />;
 
   const list = chargers.data || [];
 
@@ -420,6 +424,268 @@ function OfflineModal({ charger, onClose, onDone }) {
   );
 }
 
+// ── Carpool ──────────────────────────────────────────────────────────────────────
+// Location-wide visibility + force-cancel for rides/requests/schedules/groups. Regular users
+// only see their own via the self-service carpool endpoints; these are the admin overrides
+// (no ownership check) delegated through adminService → carpoolService.
+const CARPOOL_SECTIONS = [
+  { key: 'rides', label: 'Rides', icon: Car },
+  { key: 'requests', label: 'Requests', icon: Search },
+  { key: 'schedules', label: 'Schedules', icon: CalendarClock },
+  { key: 'groups', label: 'Groups', icon: UserSquare2 },
+];
+
+function CarpoolTab() {
+  const [section, setSection] = useState('rides');
+  return (
+    <div>
+      <Tabs tabs={CARPOOL_SECTIONS} value={section} onChange={setSection} />
+      {section === 'rides' && <CarpoolRidesPanel />}
+      {section === 'requests' && <CarpoolRequestsPanel />}
+      {section === 'schedules' && <CarpoolSchedulesPanel />}
+      {section === 'groups' && <CarpoolGroupsPanel />}
+    </div>
+  );
+}
+
+function CarpoolRidesPanel() {
+  const rides = useApi(() => adminApi.listCarpoolRides(), []);
+  const [confirm, confirmDialog] = useConfirm();
+  const [busyId, setBusyId] = useState(null);
+  useRealtime('admin-carpool-rides', ['carpool_rides', 'carpool_bookings'], rides.refetch, {
+    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
+  });
+
+  const cancel = async (r) => {
+    if (!(await confirm({
+      title: 'Cancel this ride?',
+      message: `Cancel ${r.driverName || 'this driver'}'s ride departing ${formatDateTime(r.departAt)}? Any riders booked will be notified.`,
+      danger: true,
+      confirmLabel: 'Cancel ride',
+    }))) return;
+    setBusyId(r.id);
+    try {
+      await adminApi.cancelCarpoolRide(r.id);
+      toast.success('Ride cancelled.');
+      rides.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (rides.loading && !rides.data) {
+    return (
+      <ul className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => <li key={i} className="skeleton h-20 rounded-2xl" />)}
+      </ul>
+    );
+  }
+  if (rides.error) return <ErrorState error={rides.error} onRetry={rides.refetch} title="Could not load rides" />;
+
+  const list = rides.data || [];
+  if (list.length === 0) return <EmptyState icon={Car} title="No open rides" description="Rides drivers post will show up here." />;
+
+  return (
+    <>
+      <ul className="space-y-2">
+        {list.map((r, i) => (
+          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+            <div className="min-w-0">
+              <p className="font-medium text-content">
+                {r.driverName || 'A driver'} · {r.direction === 'to_site' ? 'To work' : 'From work'}
+              </p>
+              <p className="text-sm text-muted">{r.origin?.label}</p>
+              <p className="text-xs text-faint">
+                Departs {formatDateTime(r.departAt)} · {r.seatsAvailable}/{r.seatsTotal} seats free
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" className="shrink-0 text-danger" loading={busyId === r.id} onClick={() => cancel(r)}>
+              <Trash2 className="h-4 w-4" />
+              Cancel
+            </Button>
+          </Card>
+        ))}
+      </ul>
+      {confirmDialog}
+    </>
+  );
+}
+
+function CarpoolRequestsPanel() {
+  const requests = useApi(() => adminApi.listCarpoolRequests(), []);
+  const [confirm, confirmDialog] = useConfirm();
+  const [busyId, setBusyId] = useState(null);
+  useRealtime('admin-carpool-requests', ['carpool_requests'], requests.refetch, {
+    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
+  });
+
+  const cancel = async (r) => {
+    if (!(await confirm({ title: 'Cancel this request?', message: `Cancel ${r.riderName || 'this rider'}'s ride request?`, danger: true, confirmLabel: 'Cancel request' }))) return;
+    setBusyId(r.id);
+    try {
+      await adminApi.cancelCarpoolRequest(r.id);
+      toast.success('Request cancelled.');
+      requests.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (requests.loading && !requests.data) {
+    return (
+      <ul className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => <li key={i} className="skeleton h-20 rounded-2xl" />)}
+      </ul>
+    );
+  }
+  if (requests.error) return <ErrorState error={requests.error} onRetry={requests.refetch} title="Could not load ride requests" />;
+
+  const list = requests.data || [];
+  if (list.length === 0) return <EmptyState icon={Search} title="No open requests" description="Riders looking for a ride will show up here." />;
+
+  return (
+    <>
+      <ul className="space-y-2">
+        {list.map((r, i) => (
+          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+            <div className="min-w-0">
+              <p className="font-medium text-content">
+                {r.riderName || 'A rider'} · {r.direction === 'to_site' ? 'To work' : 'From work'}
+              </p>
+              <p className="text-sm text-muted">{r.origin?.label}</p>
+              <p className="text-xs text-faint">
+                {formatDateTime(r.windowStart)} – {formatDateTime(r.windowEnd)}
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" className="shrink-0 text-danger" loading={busyId === r.id} onClick={() => cancel(r)}>
+              <Trash2 className="h-4 w-4" />
+              Cancel
+            </Button>
+          </Card>
+        ))}
+      </ul>
+      {confirmDialog}
+    </>
+  );
+}
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function CarpoolSchedulesPanel() {
+  const schedules = useApi(() => adminApi.listCarpoolSchedules(), []);
+  const [confirm, confirmDialog] = useConfirm();
+  const [busyId, setBusyId] = useState(null);
+
+  const remove = async (s) => {
+    if (!(await confirm({ title: 'Delete this recurring commute?', message: `Delete ${s.userName || 'this user'}'s recurring commute? This can't be undone.`, danger: true, confirmLabel: 'Delete' }))) return;
+    setBusyId(s.id);
+    try {
+      await adminApi.deleteCarpoolSchedule(s.id);
+      toast.success('Recurring commute deleted.');
+      schedules.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (schedules.loading && !schedules.data) {
+    return (
+      <ul className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => <li key={i} className="skeleton h-20 rounded-2xl" />)}
+      </ul>
+    );
+  }
+  if (schedules.error) return <ErrorState error={schedules.error} onRetry={schedules.refetch} title="Could not load recurring commutes" />;
+
+  const list = schedules.data || [];
+  if (list.length === 0) return <EmptyState icon={CalendarClock} title="No recurring commutes" description="Schedules users set up will show up here." />;
+
+  return (
+    <>
+      <ul className="space-y-2">
+        {list.map((s, i) => (
+          <Card key={s.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 font-medium text-content">
+                {s.userName || 'A user'} · {s.direction === 'to_site' ? 'To work' : 'From work'}
+                {!s.active && <Badge tone="faint">Inactive</Badge>}
+              </p>
+              <p className="text-sm text-muted">{s.origin?.label}</p>
+              <p className="text-xs text-faint">
+                {s.daysOfWeek?.map((d) => DAY_LABELS[d]).join(', ')} at {s.departTime}
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" className="shrink-0 text-danger" loading={busyId === s.id} onClick={() => remove(s)}>
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </Card>
+        ))}
+      </ul>
+      {confirmDialog}
+    </>
+  );
+}
+
+function CarpoolGroupsPanel() {
+  const groups = useApi(() => adminApi.listCarpoolGroups(), []);
+  const [confirm, confirmDialog] = useConfirm();
+  const [busyId, setBusyId] = useState(null);
+
+  const remove = async (g) => {
+    if (!(await confirm({ title: 'Delete this group?', message: `Delete "${g.name}"? Its ${g.memberCount} member(s) will be removed from it. This can't be undone.`, danger: true, confirmLabel: 'Delete' }))) return;
+    setBusyId(g.id);
+    try {
+      await adminApi.deleteCarpoolGroup(g.id);
+      toast.success('Group deleted.');
+      groups.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (groups.loading && !groups.data) {
+    return (
+      <ul className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => <li key={i} className="skeleton h-16 rounded-2xl" />)}
+      </ul>
+    );
+  }
+  if (groups.error) return <ErrorState error={groups.error} onRetry={groups.refetch} title="Could not load carpool groups" />;
+
+  const list = groups.data || [];
+  if (list.length === 0) return <EmptyState icon={UserSquare2} title="No carpool groups" description="Groups users create will show up here." />;
+
+  return (
+    <>
+      <ul className="space-y-2">
+        {list.map((g, i) => (
+          <Card key={g.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+            <div className="min-w-0">
+              <p className="font-medium text-content">{g.name}</p>
+              {g.description && <p className="text-sm text-muted">{g.description}</p>}
+              <p className="text-xs text-faint">{g.memberCount} member{g.memberCount === 1 ? '' : 's'}</p>
+            </div>
+            <Button size="sm" variant="ghost" className="shrink-0 text-danger" loading={busyId === g.id} onClick={() => remove(g)}>
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </Card>
+        ))}
+      </ul>
+      {confirmDialog}
+    </>
+  );
+}
+
 // ── Settings ─────────────────────────────────────────────────────────────────────
 // Human labels + input types for each business-rule setting. Grouped for the form.
 const SETTING_GROUPS = [
@@ -489,6 +755,7 @@ function SettingsTab() {
   // Initialize the editable draft from the fetched settings once.
   const values = draft ?? settings.data ?? {};
   const setValue = (key, v) => setDraft({ ...(draft ?? settings.data ?? {}), [key]: v });
+  const glassRef = useLiquidGlass(true, { scale: -35, chroma: 2, blur: 8 });
 
   const save = async () => {
     setSaving(true);
@@ -513,7 +780,7 @@ function SettingsTab() {
   };
 
   if (settings.loading && !settings.data) return <SettingsSkeleton />;
-  if (settings.error) return <ErrorState error={settings.error} onRetry={settings.refetch} />;
+  if (settings.error) return <ErrorState error={settings.error} onRetry={settings.refetch} title="Could not load settings" />;
 
   return (
     <div className="space-y-5">
@@ -542,7 +809,7 @@ function SettingsTab() {
       ))}
 
       {/* Sticky action bar: floating chrome, so a subtle translucent surface is fair game. */}
-      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface/85 px-4 py-3 backdrop-blur-sm">
+      <div ref={glassRef} className="lg-panel sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
         <p className="text-sm text-muted">{draft ? 'You have unsaved changes.' : 'All changes saved.'}</p>
         <Button onClick={save} loading={saving} disabled={!draft}>
           Save settings
@@ -585,7 +852,7 @@ function AnnouncementsTab() {
           ))}
         </ul>
       ) : list.error ? (
-        <ErrorState error={list.error} onRetry={list.refetch} />
+        <ErrorState error={list.error} onRetry={list.refetch} title="Could not load announcements" />
       ) : (list.data || []).length === 0 ? (
         <EmptyState icon={Megaphone} title="No announcements" description="Post one to notify everyone at the site." />
       ) : (
@@ -672,6 +939,9 @@ function UsersTab() {
   const users = useApi(() => adminApi.listUsers(1, query), [query]);
   const [busyId, setBusyId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [resetFor, setResetFor] = useState(null);
+  const [tempPassword, setTempPassword] = useState(null);
+  const [confirm, confirmDialog] = useConfirm();
 
   const act = async (userId, patch) => {
     setBusyId(userId);
@@ -679,6 +949,24 @@ function UsersTab() {
       await adminApi.updateUser(userId, patch);
       toast.success('User updated.');
       users.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetPassword = async (u) => {
+    if (!(await confirm({
+      title: 'Reset this password?',
+      message: `Set a new temporary password for ${u.displayName}? Their existing sessions will be signed out and they'll need this new password to sign back in.`,
+      confirmLabel: 'Reset password',
+    }))) return;
+    setBusyId(u.id);
+    try {
+      const { tempPassword: pw } = await adminApi.resetUserPassword(u.id);
+      setResetFor(u);
+      setTempPassword(pw);
     } catch (err) {
       toast.error(normalizeError(err).message);
     } finally {
@@ -716,7 +1004,7 @@ function UsersTab() {
           ))}
         </ul>
       ) : users.error ? (
-        <ErrorState error={users.error} onRetry={users.refetch} />
+        <ErrorState error={users.error} onRetry={users.refetch} title="Could not load users" />
       ) : items.length === 0 ? (
         <EmptyState icon={UsersIcon} title="No users found" />
       ) : (
@@ -742,6 +1030,10 @@ function UsersTab() {
                     onClick={() => act(u.id, { role: u.role === 'admin' ? 'user' : 'admin' })}
                   >
                     {u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
+                  </Button>
+                  <Button size="sm" variant="ghost" loading={busyId === u.id} onClick={() => resetPassword(u)}>
+                    <KeyRound className="h-4 w-4" />
+                    Reset password
                   </Button>
                   <Button
                     size="sm"
@@ -792,6 +1084,10 @@ function UsersTab() {
                         >
                           {u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
                         </Button>
+                        <Button size="sm" variant="ghost" loading={busyId === u.id} onClick={() => resetPassword(u)}>
+                          <KeyRound className="h-4 w-4" />
+                          Reset password
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -811,7 +1107,56 @@ function UsersTab() {
         </>
       )}
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); users.refetch(); }} />
+      <TempPasswordModal
+        user={resetFor}
+        password={tempPassword}
+        onClose={() => {
+          setResetFor(null);
+          setTempPassword(null);
+        }}
+      />
+      {confirmDialog}
     </>
+  );
+}
+
+function TempPasswordModal({ user, password, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy — select and copy the password manually.");
+    }
+  };
+
+  return (
+    <Modal
+      open={Boolean(user)}
+      onClose={onClose}
+      title={`New password for ${user?.displayName || 'this user'}`}
+      size="sm"
+      footer={
+        <div className="flex justify-end">
+          <Button onClick={onClose}>Done</Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-muted">
+          Share this with them directly — it won't be shown again. They can change it from Settings after signing in.
+        </p>
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2.5">
+          <code className="flex-1 select-all font-mono text-sm text-content">{password}</code>
+          <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy password">
+            {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -902,7 +1247,7 @@ function AuditTab() {
       </ul>
     );
   }
-  if (audit.error) return <ErrorState error={audit.error} onRetry={audit.refetch} />;
+  if (audit.error) return <ErrorState error={audit.error} onRetry={audit.refetch} title="Could not load activity" />;
 
   const items = audit.data?.items || [];
   if (items.length === 0) {

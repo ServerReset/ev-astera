@@ -45,8 +45,6 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional().default(false),
 });
 
-export const forgotPasswordSchema = z.object({ email: emailSchema });
-export const resetPasswordSchema = z.object({ token: z.string().min(10), password: passwordSchema });
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1),

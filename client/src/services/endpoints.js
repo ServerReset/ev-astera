@@ -15,8 +15,6 @@ export const authApi = {
   login: (body) => api.post('/auth/login', body),
   refresh: () => api.post('/auth/refresh', {}),
   logout: () => api.post('/auth/logout', {}),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
 };
 
 // ── Users (root-scoped) ─────────────────────────────────────────────────────────
@@ -124,5 +122,14 @@ export const adminApi = {
   listUsers: (page = 1, search = '') => api.get(L('/admin/users'), { params: { page, search } }),
   updateUser: (userId, patch) => api.patch(L(`/admin/users/${userId}`), patch),
   createUser: (body) => api.post(L('/admin/users'), body),
+  resetUserPassword: (userId) => api.post(L(`/admin/users/${userId}/reset-password`), {}),
   audit: (page = 1) => api.get(L('/admin/audit'), { params: { page } }),
+  listCarpoolRides: () => api.get(L('/admin/carpool/rides')),
+  cancelCarpoolRide: (rideId) => api.delete(L(`/admin/carpool/rides/${rideId}`)),
+  listCarpoolRequests: () => api.get(L('/admin/carpool/requests')),
+  cancelCarpoolRequest: (requestId) => api.delete(L(`/admin/carpool/requests/${requestId}`)),
+  listCarpoolSchedules: () => api.get(L('/admin/carpool/schedules')),
+  deleteCarpoolSchedule: (scheduleId) => api.delete(L(`/admin/carpool/schedules/${scheduleId}`)),
+  listCarpoolGroups: () => api.get(L('/admin/carpool/groups')),
+  deleteCarpoolGroup: (groupId) => api.delete(L(`/admin/carpool/groups/${groupId}`)),
 };

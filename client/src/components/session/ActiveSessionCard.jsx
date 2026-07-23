@@ -3,7 +3,7 @@ import { Zap, Clock, Timer } from 'lucide-react';
 import { Card } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
-import { useCountdown } from '@/hooks/useCountdown.js';
+import { useCountdown, useElapsed } from '@/hooks/useCountdown.js';
 import { formatTime } from '@/utils/time.js';
 import { SESSION_STATUS } from '@/utils/constants.js';
 import { cn } from '@/utils/cn.js';
@@ -14,7 +14,9 @@ import { cn } from '@/utils/cn.js';
  */
 export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
   const overtime = session.status === SESSION_STATUS.OVERTIME;
-  const { label, done } = useCountdown(session.etaAt);
+  const { label: countdownLabel, done } = useCountdown(session.etaAt);
+  const { label: elapsedLabel } = useElapsed(session.etaAt);
+  const label = overtime ? elapsedLabel : countdownLabel;
   const [busy, setBusy] = useState(false);
 
   const wrap = (fn) => async () => {

@@ -122,7 +122,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : chargers.error ? (
-            <ErrorState error={chargers.error} onRetry={chargers.refetch} />
+            <ErrorState error={chargers.error} onRetry={chargers.refetch} title="Could not load chargers" />
           ) : list.length === 0 ? (
             <EmptyState
               icon={Zap}

@@ -38,7 +38,7 @@ export function RideBookingsModal({ open, onClose, rideId, onChanged }) {
       {ride.loading ? (
         <Spinner />
       ) : ride.error ? (
-        <ErrorState error={ride.error} onRetry={ride.refetch} />
+        <ErrorState error={ride.error} onRetry={ride.refetch} title="Could not load this ride" />
       ) : bookings.length === 0 ? (
         <EmptyState icon={UserCheck} title="No requests yet" description="Riders who request a seat will show up here for you to confirm." />
       ) : (

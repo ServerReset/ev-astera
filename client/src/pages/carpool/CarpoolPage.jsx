@@ -116,7 +116,7 @@ function FindTab({ groups }) {
       {rides.loading && !rides.data ? (
         <RideGridSkeleton />
       ) : rides.error ? (
-        <ErrorState error={rides.error} onRetry={rides.refetch} />
+        <ErrorState error={rides.error} onRetry={rides.refetch} title="Could not load available rides" />
       ) : (rides.data || []).length === 0 ? (
         <EmptyState
           icon={Search}
@@ -213,7 +213,7 @@ function MyRidesTab({ groups }) {
       </>
     );
   }
-  if (mine.error) return <ErrorState error={mine.error} onRetry={mine.refetch} />;
+  if (mine.error) return <ErrorState error={mine.error} onRetry={mine.refetch} title="Could not load your rides" />;
 
   return (
     <>
@@ -311,7 +311,7 @@ function RequestsTab({ groups }) {
       {requests.loading && !requests.data ? (
         <ListSkeleton />
       ) : requests.error ? (
-        <ErrorState error={requests.error} onRetry={requests.refetch} />
+        <ErrorState error={requests.error} onRetry={requests.refetch} title="Could not load ride requests" />
       ) : (requests.data || []).length === 0 ? (
         <EmptyState icon={CalendarRange} title="No open requests" description="Post a request with your time window and we'll surface matching drivers." />
       ) : (
@@ -407,7 +407,7 @@ function SchedulesTab({ groups }) {
       {schedules.loading && !schedules.data ? (
         <ListSkeleton />
       ) : schedules.error ? (
-        <ErrorState error={schedules.error} onRetry={schedules.refetch} />
+        <ErrorState error={schedules.error} onRetry={schedules.refetch} title="Could not load recurring commutes" />
       ) : (schedules.data || []).length === 0 ? (
         <EmptyState
           icon={Repeat}

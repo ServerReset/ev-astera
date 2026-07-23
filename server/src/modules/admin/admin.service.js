@@ -4,6 +4,7 @@
  * on/offline), and reads aggregate stats directly.
  */
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
@@ -17,6 +18,32 @@ import {
   PAGE_SIZE,
 } from '../../../../shared/constants.js';
 import { startOfWeek, now, addDays } from '../../utils/timeUtils.js';
+
+// Unambiguous character set (no 0/O/1/I/l) since an admin reads this aloud or types it once.
+const TEMP_PW_SETS = {
+  upper: 'ABCDEFGHJKMNPQRSTUVWXYZ',
+  lower: 'abcdefghjkmnpqrstuvwxyz',
+  digit: '23456789',
+  symbol: '!@#$%&*?',
+};
+const TEMP_PW_ALL = Object.values(TEMP_PW_SETS).join('');
+
+function randomChar(set) {
+  return set[crypto.randomInt(set.length)];
+}
+
+/** A random temp password guaranteed to satisfy passwordSchema (upper/lower/digit/symbol). */
+function generateTempPassword(length = 12) {
+  const required = Object.values(TEMP_PW_SETS).map(randomChar);
+  const rest = Array.from({ length: length - required.length }, () => randomChar(TEMP_PW_ALL));
+  const chars = [...required, ...rest];
+  // Fisher-Yates shuffle so the guaranteed classes aren't always in the same leading positions.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
 
 export const adminService = {
   /** High-level dashboard numbers for the admin home. */
@@ -81,6 +108,32 @@ export const adminService = {
     return updated;
   },
 
+  // ── Carpool (delegate to carpool service for location-wide admin views + force-cancel) ──
+  async listCarpoolRides(locationId) {
+    return services.carpool.adminListRides(locationId);
+  },
+  async cancelCarpoolRide(locationId, rideId) {
+    return services.carpool.adminCancelRide(locationId, rideId);
+  },
+  async listCarpoolRequests(locationId) {
+    return services.carpool.adminListRequests(locationId);
+  },
+  async cancelCarpoolRequest(locationId, requestId) {
+    return services.carpool.adminCancelRequest(locationId, requestId);
+  },
+  async listCarpoolSchedules(locationId) {
+    return services.carpool.adminListSchedules(locationId);
+  },
+  async deleteCarpoolSchedule(locationId, scheduleId) {
+    return services.carpool.adminDeleteSchedule(locationId, scheduleId);
+  },
+  async listCarpoolGroups(locationId) {
+    return services.carpool.adminListGroups(locationId);
+  },
+  async deleteCarpoolGroup(locationId, groupId) {
+    return services.carpool.adminDeleteGroup(locationId, groupId);
+  },
+
   // ── Announcements ────────────────────────────────────────────────────────────────
   async listAnnouncements(locationId) {
     return prisma.announcements.findMany({
@@ -103,7 +156,7 @@ export const adminService = {
         },
       });
     } catch {
-      throw new ConflictError('Could not create announcement');
+      throw new ConflictError(`Could not create the announcement "${body.title}". Please try again.`);
     }
     if (data.active) {
       await emit(EVENTS.ANNOUNCEMENT_CREATED, { locationId, title: data.title, body: data.body, announcementId: data.id });
@@ -164,6 +217,27 @@ export const adminService = {
     return { success: true };
   },
 
+  /**
+   * Admin-driven password reset (no email sending in this deployment): generates a fresh
+   * temporary password, sets it directly, and revokes all the user's refresh tokens so any
+   * existing sessions are forced to sign in again with it. The plaintext is returned once —
+   * the caller (admin UI) must show it to the admin immediately; it is never stored or logged.
+   */
+  async resetUserPassword(locationId, userId) {
+    const user = await prisma.users.findFirst({ where: { id: userId, location_id: locationId }, select: { id: true } });
+    if (!user) throw new NotFoundError('User not found');
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    await prisma.users.update({
+      where: { id: userId },
+      data: { password_hash: passwordHash, failed_attempts: 0, locked_until: null },
+    });
+    await prisma.refresh_tokens.updateMany({ where: { user_id: userId }, data: { revoked: true } });
+
+    return { tempPassword };
+  },
+
   /** Admin-delegated account creation: sets email + temp password + role directly, no invite email, no session issued. */
   async createUser(locationId, { email, password, displayName, role }) {
     const existing = await prisma.users.findUnique({ where: { email }, select: { id: true } });
@@ -182,7 +256,7 @@ export const adminService = {
         },
       });
     } catch {
-      throw new ConflictError('Could not create account');
+      throw new ConflictError('Could not create the account. Please check the details and try again.');
     }
 
     try {

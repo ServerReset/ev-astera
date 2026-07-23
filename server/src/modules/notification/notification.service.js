@@ -3,7 +3,7 @@
  * providers, driven by event listeners). Also manages Web Push subscriptions.
  */
 import { prisma } from '../../db/prisma.js';
-import { NotFoundError } from '../../utils/errors.js';
+import { NotFoundError, AppError } from '../../utils/errors.js';
 import { PAGE_SIZE } from '../../../../shared/constants.js';
 import { now } from '../../utils/timeUtils.js';
 
@@ -66,8 +66,8 @@ export const notificationService = {
         create: { user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth },
         update: { user_id: userId, p256dh: keys.p256dh, auth: keys.auth },
       });
-    } catch (err) {
-      throw new Error(`push subscribe failed: ${err.message}`);
+    } catch {
+      throw new AppError("Couldn't enable push notifications on this device. Please try again.", 500, 'PUSH_SUBSCRIBE_FAILED');
     }
     return { success: true };
   },

@@ -19,7 +19,7 @@ import { cn } from '@/utils/cn.js';
 export function NavFloating() {
   const role = useAuthStore((s) => s.user?.role) || 'user';
   const nav = navForRole(role).slice(0, 4);
-  const glassRef = useLiquidGlass(true, { scale: -70, blur: 5 });
+  const glassRef = useLiquidGlass(true, { scale: -45, chroma: 2, blur: 6 });
   const [accountOpen, setAccountOpen] = useState(false);
 
   return (

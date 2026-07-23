@@ -53,7 +53,7 @@ export function GroupsPanel({ onGroupsChanged }) {
       {groups.loading ? (
         <Spinner />
       ) : groups.error ? (
-        <ErrorState error={groups.error} onRetry={groups.refetch} />
+        <ErrorState error={groups.error} onRetry={groups.refetch} title="Could not load carpool groups" />
       ) : (groups.data || []).length === 0 ? (
         <EmptyState icon={UsersRound} title="No groups yet" description="Create one to carpool within a smaller circle." />
       ) : (

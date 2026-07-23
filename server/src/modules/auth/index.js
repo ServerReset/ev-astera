@@ -5,12 +5,7 @@ import { validate } from '../../middleware/validate.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authLimiter } from '../../middleware/rateLimiter.js';
 import { ok, created } from '../../utils/respond.js';
-import {
-  registerSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-} from '../../../../shared/validation.js';
+import { registerSchema, loginSchema } from '../../../../shared/validation.js';
 import { authService, setRefreshCookie, clearRefreshCookie, refreshCookieName } from './auth.service.js';
 
 export default defineModule({
@@ -56,27 +51,6 @@ export default defineModule({
         const token = req.cookies?.[refreshCookieName];
         await authService.logout(req.user.userId, token);
         clearRefreshCookie(res);
-        ok(res, { success: true });
-      })
-    );
-
-    router.post(
-      '/forgot-password',
-      authLimiter,
-      validate(forgotPasswordSchema),
-      asyncHandler(async (req, res) => {
-        await authService.requestPasswordReset(req.body.email);
-        // Always generic — no user enumeration.
-        ok(res, { message: 'If that email exists, a reset link has been sent.' });
-      })
-    );
-
-    router.post(
-      '/reset-password',
-      authLimiter,
-      validate(resetPasswordSchema),
-      asyncHandler(async (req, res) => {
-        await authService.resetPassword(req.body.token, req.body.password);
         ok(res, { success: true });
       })
     );

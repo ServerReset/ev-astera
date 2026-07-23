@@ -58,6 +58,12 @@ export function msUntil(value) {
   return Math.max(0, toDate(value).getTime() - Date.now());
 }
 
+/** Milliseconds elapsed since a past ISO instant (clamped at 0). */
+export function msSince(value) {
+  if (!value) return 0;
+  return Math.max(0, Date.now() - toDate(value).getTime());
+}
+
 /** "mm:ss" from a millisecond duration. */
 export function formatCountdown(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));

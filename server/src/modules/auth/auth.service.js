@@ -45,12 +45,4 @@ export const authService = {
   async changePassword(userId, currentPassword, newPassword) {
     return authProvider.changePassword(userId, currentPassword, newPassword);
   },
-
-  async requestPasswordReset(email) {
-    return authProvider.requestPasswordReset(email);
-  },
-
-  async resetPassword(token, newPassword) {
-    return authProvider.resetPassword(token, newPassword);
-  },
 };

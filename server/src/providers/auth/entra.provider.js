@@ -15,7 +15,5 @@ export const entraProvider = {
   verifyAccessToken: nope('verifyAccessToken'),
   refreshAccessToken: nope('refreshAccessToken'),
   changePassword: nope('changePassword'),
-  requestPasswordReset: nope('requestPasswordReset'),
-  resetPassword: nope('resetPassword'),
   logout: nope('logout'),
 };

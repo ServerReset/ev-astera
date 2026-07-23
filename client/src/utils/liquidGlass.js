@@ -156,20 +156,20 @@ function resolveRadius(el, w, h, override) {
  *
  * @param {Element} el
  * @param {Object} [opts]
- * @param {number} [opts.scale=-112]     Displacement strength (negative = magnifying bulge).
- * @param {number} [opts.chroma=6]       Per-channel scale stagger; 0 disables the prism fringe.
+ * @param {number} [opts.scale=-60]      Displacement strength (negative = magnifying bulge).
+ * @param {number} [opts.chroma=3]       Per-channel scale stagger; 0 disables the prism fringe.
  * @param {number} [opts.border=0.07]    Neutral inset as a fraction of the smaller side.
  * @param {number} [opts.mapBlur=12]     Edge-curvature softness (px) of the map's gray inset.
  * @param {number} [opts.blur=3]         Backdrop blur (px) behind the glass interior.
- * @param {number} [opts.saturate=1.5]   Backdrop saturation boost.
+ * @param {number} [opts.saturate=1.3]   Backdrop saturation boost.
  * @param {number} [opts.radius]         Corner radius override (px); default reads border-radius.
- * @param {number} [opts.fallbackBlur=16] Frosted blur (px) where refraction is unsupported.
+ * @param {number} [opts.fallbackBlur=14] Frosted blur (px) where refraction is unsupported.
  * @returns {{supported: boolean, refresh: Function, destroy: Function}}
  */
 export function liquidGlass(el, opts) {
   const o = Object.assign(
-    { scale: -112, chroma: 6, border: 0.07, mapBlur: 12,
-      blur: 3, saturate: 1.5, radius: null, fallbackBlur: 16 },
+    { scale: -60, chroma: 3, border: 0.07, mapBlur: 12,
+      blur: 3, saturate: 1.3, radius: null, fallbackBlur: 14 },
     opts
   );
 

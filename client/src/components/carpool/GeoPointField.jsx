@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/common/Input.jsx';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 
 const MIN_QUERY_LENGTH = 3;
 const DEBOUNCE_MS = 350;
@@ -21,6 +22,7 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
   const containerRef = useRef(null);
+  const glassRef = useLiquidGlass(open, { scale: -35, chroma: 2, blur: 8, border: 0.1 });
 
   useEffect(() => {
     const query = v.label.trim();
@@ -80,7 +82,7 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
         autoComplete="off"
       />
       {open && (loading || suggestions.length > 0) && (
-        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-elevation-3">
+        <ul ref={glassRef} className="lg-panel absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border shadow-elevation-3">
           {loading && suggestions.length === 0 && (
             <li className="px-3 py-2 text-sm text-faint">Searching…</li>
           )}

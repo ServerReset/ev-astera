@@ -18,9 +18,11 @@ export function OnboardingGate() {
       const updated = await userApi.completeOnboarding();
       patchUser(updated);
     } catch {
+      // Server unreachable — don't trap the user behind the walkthrough forever; let them
+      // in and this will simply reappear next load if the patch never actually landed.
       patchUser({ onboardedAt: new Date().toISOString() });
     }
   };
 
-  return <OnboardingFlow onFinish={finish} />;
+  return <OnboardingFlow onFinish={finish} persistKey={`onboarding-step-${user.id}`} />;
 }

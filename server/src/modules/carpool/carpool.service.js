@@ -181,7 +181,7 @@ export const carpoolService = {
         include: { driver: { select: { display_name: true } } },
       });
     } catch {
-      throw new ConflictError('Could not post ride.');
+      throw new ConflictError('Could not post your ride. Please check the details and try again.');
     }
     await emit(EVENTS.CARPOOL_RIDE_POSTED, { locationId, rideId: data.id, driverId, direction: data.direction, departAt: data.depart_at, groupId: data.group_id });
     return rideDto(data);
@@ -264,7 +264,7 @@ export const carpoolService = {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictError('You already requested a seat on this ride.');
       }
-      throw new ConflictError('Could not request a seat.');
+      throw new ConflictError('Could not request a seat on this ride. Please try again.');
     }
     await emit(EVENTS.CARPOOL_BOOKING_REQUESTED, { locationId, rideId, bookingId: data.id, riderId, driverId: r.driver_id });
     return { id: data.id, status: data.status };
@@ -377,7 +377,7 @@ export const carpoolService = {
         },
       });
     } catch {
-      throw new ConflictError('Could not post request.');
+      throw new ConflictError('Could not post your ride request. Please check the details and try again.');
     }
     return { id: data.id, status: data.status };
   },
@@ -427,7 +427,7 @@ export const carpoolService = {
         },
       });
     } catch {
-      throw new ConflictError('Could not create schedule.');
+      throw new ConflictError('Could not create your recurring commute. Please check the details and try again.');
     }
     await emit(EVENTS.CARPOOL_SCHEDULE_CREATED, { locationId, scheduleId: data.id, userId, role: data.role });
     return { id: data.id };
@@ -490,8 +490,11 @@ export const carpoolService = {
       data = await prisma.carpool_groups.create({
         data: { location_id: locationId, name, description: description || null, created_by: userId },
       });
-    } catch {
-      throw new ConflictError('Could not create group.');
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictError(`A group named "${name}" already exists.`);
+      }
+      throw new ConflictError('Could not create the group. Please try again.');
     }
     await prisma.carpool_group_members.create({ data: { group_id: data.id, user_id: userId } });
     return { id: data.id };
@@ -582,6 +585,105 @@ export const carpoolService = {
       .map((u) => ({ ...u, co2Kg: Math.round(u.co2Kg * 10) / 10 }))
       .sort((a, b) => b.co2Kg - a.co2Kg)
       .slice(0, 50);
+  },
+
+  // ── Admin overrides: location-wide visibility + force-cancel, no ownership check ──────
+  async adminListRides(locationId) {
+    const rides = await prisma.carpool_rides.findMany({
+      where: { location_id: locationId, status: { in: [RIDE_STATUS.OPEN, RIDE_STATUS.FULL] } },
+      include: { driver: { select: { display_name: true } } },
+      orderBy: { depart_at: 'asc' },
+    });
+    return rides.map((r) => rideDto(r, { driverName: r.driver?.display_name }));
+  },
+
+  async adminCancelRide(locationId, rideId) {
+    const r = await prisma.carpool_rides.findFirst({ where: { id: rideId, location_id: locationId } });
+    if (!r) throw new NotFoundError('Ride not found');
+    if ([RIDE_STATUS.COMPLETED, RIDE_STATUS.CANCELLED].includes(r.status)) throw new BusinessRuleError('Ride already closed.');
+
+    await prisma.carpool_rides.update({ where: { id: rideId }, data: { status: RIDE_STATUS.CANCELLED } });
+    const bookings = await prisma.carpool_bookings.findMany({
+      where: { ride_id: rideId, status: { in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED] } },
+      select: { id: true, rider_id: true },
+    });
+    await prisma.carpool_bookings.updateMany({
+      where: { ride_id: rideId, status: { in: [BOOKING_STATUS.REQUESTED, BOOKING_STATUS.CONFIRMED] } },
+      data: { status: BOOKING_STATUS.CANCELLED },
+    });
+    await emit(EVENTS.CARPOOL_RIDE_CANCELLED, {
+      locationId,
+      rideId,
+      driverId: r.driver_id,
+      affectedRiders: bookings.map((b) => b.rider_id),
+    });
+    return { success: true };
+  },
+
+  async adminListRequests(locationId) {
+    const data = await prisma.carpool_requests.findMany({
+      where: { location_id: locationId, status: RIDE_REQUEST_STATUS.OPEN },
+      include: { rider: { select: { display_name: true } } },
+      orderBy: { window_start: 'asc' },
+    });
+    return data.map((r) => ({
+      id: r.id,
+      riderId: r.rider_id,
+      riderName: r.rider?.display_name,
+      direction: r.direction,
+      origin: { label: r.origin_label },
+      windowStart: r.window_start,
+      windowEnd: r.window_end,
+      groupId: r.group_id,
+    }));
+  },
+
+  async adminCancelRequest(locationId, requestId) {
+    const r = await prisma.carpool_requests.findFirst({ where: { id: requestId, location_id: locationId } });
+    if (!r) throw new NotFoundError('Request not found');
+    await prisma.carpool_requests.update({ where: { id: requestId }, data: { status: RIDE_REQUEST_STATUS.CANCELLED } });
+    return { success: true };
+  },
+
+  async adminListSchedules(locationId) {
+    const data = await prisma.carpool_schedules.findMany({
+      where: { location_id: locationId },
+      include: { users: { select: { display_name: true } } },
+      orderBy: { created_at: 'desc' },
+    });
+    return data.map((s) => ({
+      id: s.id,
+      userId: s.user_id,
+      userName: s.users?.display_name,
+      role: s.role,
+      direction: s.direction,
+      daysOfWeek: s.days_of_week,
+      departTime: s.depart_time,
+      origin: { label: s.origin_label },
+      seats: s.seats,
+      groupId: s.group_id,
+      active: s.active,
+    }));
+  },
+
+  async adminDeleteSchedule(locationId, scheduleId) {
+    const s = await prisma.carpool_schedules.findFirst({ where: { id: scheduleId, location_id: locationId }, select: { user_id: true } });
+    if (!s) throw new NotFoundError('Schedule not found');
+    await prisma.carpool_schedules.delete({ where: { id: scheduleId } });
+    await emit(EVENTS.CARPOOL_SCHEDULE_CANCELLED, { locationId, scheduleId, userId: s.user_id });
+    return { success: true };
+  },
+
+  async adminListGroups(locationId) {
+    return this.listGroups(locationId, null).then((groups) => groups.map(({ isMember, ...g }) => g));
+  },
+
+  async adminDeleteGroup(locationId, groupId) {
+    const g = await prisma.carpool_groups.findFirst({ where: { id: groupId, location_id: locationId }, select: { id: true } });
+    if (!g) throw new NotFoundError('Group not found');
+    await prisma.carpool_group_members.deleteMany({ where: { group_id: groupId } });
+    await prisma.carpool_groups.delete({ where: { id: groupId } });
+    return { success: true };
   },
 
   async myImpact(locationId, userId) {

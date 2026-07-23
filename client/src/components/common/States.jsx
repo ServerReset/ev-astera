@@ -34,12 +34,12 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
 }
 
 /** Error-state placeholder with retry. */
-export function ErrorState({ error, onRetry }) {
+export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 py-10 px-6 text-center">
       <AlertCircle className="h-7 w-7 text-danger" />
       <div>
-        <p className="font-medium text-content">Something went wrong</p>
+        <p className="font-medium text-content">{title}</p>
         <p className="mt-1 text-sm text-muted">{error?.message || 'Please try again.'}</p>
       </div>
       {onRetry && (

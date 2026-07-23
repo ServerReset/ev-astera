@@ -110,7 +110,7 @@ export const queueService = {
         data: { location_id: locationId, charger_id: chargerId, user_id: userId, status: QUEUE_STATUS.WAITING },
       });
     } catch {
-      throw new ConflictError('Could not join the queue.');
+      throw new ConflictError('Could not join the queue for this charger. Please try again.');
     }
 
     await emit(EVENTS.QUEUE_JOINED, { locationId, chargerId, userId, queueEntryId: data.id });

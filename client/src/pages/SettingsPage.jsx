@@ -139,7 +139,7 @@ function StatsCard({ stats }) {
           ))}
         </div>
       ) : stats.error ? (
-        <ErrorState error={stats.error} onRetry={stats.refetch} />
+        <ErrorState error={stats.error} onRetry={stats.refetch} title="Could not load your usage stats" />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat icon={Zap} label="This week" value={`${s?.weeklySessionsUsed ?? 0}/${s?.weeklySessionsMax ?? 0}`} />

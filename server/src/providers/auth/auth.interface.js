@@ -10,9 +10,11 @@
  * verifyAccessToken(token)            → { userId, email, role }
  * refreshAccessToken(refreshToken)    → { accessToken, user }
  * changePassword(userId, currentPassword, newPassword) → void
- * requestPasswordReset(email)         → void   (never reveals existence)
- * resetPassword(token, newPassword)   → void
  * logout(userId, refreshToken)        → void
+ *
+ * There is no self-service "forgot password" — this deployment has no outbound email, so a
+ * locked-out user must ask an admin to reset their password (Admin → Users → Reset password),
+ * which sets and reveals a one-time temp password server-side (see admin.service.js).
  */
 export const AUTH_PROVIDER_METHODS = [
   'register',
@@ -20,7 +22,5 @@ export const AUTH_PROVIDER_METHODS = [
   'verifyAccessToken',
   'refreshAccessToken',
   'changePassword',
-  'requestPasswordReset',
-  'resetPassword',
   'logout',
 ];

@@ -57,6 +57,28 @@ export default defineModule({
       asyncHandler(async (req, res) => ok(res, await adminService.forceEndSession(req.locationId, req.params.sessionId, req.user.userId)))
     );
 
+    // Carpool
+    router.get('/carpool/rides', asyncHandler(async (req, res) => ok(res, await adminService.listCarpoolRides(req.locationId))));
+    router.delete(
+      '/carpool/rides/:rideId',
+      asyncHandler(async (req, res) => ok(res, await adminService.cancelCarpoolRide(req.locationId, req.params.rideId)))
+    );
+    router.get('/carpool/requests', asyncHandler(async (req, res) => ok(res, await adminService.listCarpoolRequests(req.locationId))));
+    router.delete(
+      '/carpool/requests/:requestId',
+      asyncHandler(async (req, res) => ok(res, await adminService.cancelCarpoolRequest(req.locationId, req.params.requestId)))
+    );
+    router.get('/carpool/schedules', asyncHandler(async (req, res) => ok(res, await adminService.listCarpoolSchedules(req.locationId))));
+    router.delete(
+      '/carpool/schedules/:scheduleId',
+      asyncHandler(async (req, res) => ok(res, await adminService.deleteCarpoolSchedule(req.locationId, req.params.scheduleId)))
+    );
+    router.get('/carpool/groups', asyncHandler(async (req, res) => ok(res, await adminService.listCarpoolGroups(req.locationId))));
+    router.delete(
+      '/carpool/groups/:groupId',
+      asyncHandler(async (req, res) => ok(res, await adminService.deleteCarpoolGroup(req.locationId, req.params.groupId)))
+    );
+
     // Settings
     router.get('/settings', asyncHandler(async (req, res) => ok(res, await adminService.getSettings(req.locationId))));
     router.patch(
@@ -94,6 +116,10 @@ export default defineModule({
       '/users',
       validate(adminCreateUserSchema),
       asyncHandler(async (req, res) => created(res, await adminService.createUser(req.locationId, req.body)))
+    );
+    router.post(
+      '/users/:userId/reset-password',
+      asyncHandler(async (req, res) => ok(res, await adminService.resetUserPassword(req.locationId, req.params.userId)))
     );
 
     // Audit feed

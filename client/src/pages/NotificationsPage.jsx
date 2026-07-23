@@ -143,7 +143,7 @@ export default function NotificationsPage() {
           ))}
         </ul>
       ) : error && items.length === 0 ? (
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={error} onRetry={refresh} title="Could not load notifications" />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Bell}

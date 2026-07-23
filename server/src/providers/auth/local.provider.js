@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { prisma } from '../../db/prisma.js';
 import { env } from '../../config/index.js';
 import {
+  AppError,
   AuthenticationError,
   ConflictError,
   BusinessRuleError,
@@ -53,8 +54,8 @@ async function issueRefreshToken(userId, remember) {
     await prisma.refresh_tokens.create({
       data: { user_id: userId, token_hash: hashToken(raw), expires_at: expiresAt },
     });
-  } catch (err) {
-    throw new Error(`refresh token insert failed: ${err.message}`);
+  } catch {
+    throw new AppError('Could not complete sign-in. Please try again.', 500, 'REFRESH_TOKEN_FAILED');
   }
   return raw;
 }
@@ -156,16 +157,6 @@ export const localProvider = {
     await prisma.users.update({ where: { id: userId }, data: { password_hash: hash } });
     // Revoke all refresh tokens on password change.
     await prisma.refresh_tokens.updateMany({ where: { user_id: userId }, data: { revoked: true } });
-  },
-
-  async requestPasswordReset(_email) {
-    // v1: employees are known; email sending is a future email-channel concern.
-    // Always resolve silently (no user enumeration). Real implementation would email a token.
-  },
-
-  async resetPassword(_token, _newPassword) {
-    // Placeholder for the token-based flow; wired when the email channel is implemented.
-    throw new ValidationError('Password reset link is invalid or has expired');
   },
 
   async logout(userId, refreshToken) {

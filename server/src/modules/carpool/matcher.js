@@ -1,20 +1,12 @@
 /**
  * Carpool matcher. Scores a candidate ride for a rider on 0–100:
  *
- *   score = 45*routeOverlap + 30*timeFit + 15*reliability + 10*groupAffinity
+ *   score = 55*timeFit + 27*reliability + 18*groupAffinity
  *
  * See docs/CARPOOL.md §"The matcher". Pure functions — no I/O — so they're trivially testable.
  */
-import { haversineMiles, detourMiles } from '../../utils/geo.js';
 
-const WEIGHTS = Object.freeze({ routeOverlap: 45, timeFit: 30, reliability: 15, groupAffinity: 10 });
-
-/** 1 when the detour is ~0, decaying to 0 at the configured cap. */
-export function routeOverlapScore(driverOrigin, pickup, site, maxDetourMiles) {
-  const detour = detourMiles(driverOrigin, pickup, site);
-  if (!Number.isFinite(detour)) return 0;
-  return Math.max(0, 1 - detour / Math.max(0.1, maxDetourMiles));
-}
+const WEIGHTS = Object.freeze({ timeFit: 55, reliability: 27, groupAffinity: 18 });
 
 /** 1 when depart_at is at the center of [windowStart, windowEnd], 0 at/outside the edges. */
 export function timeFitScore(departAt, windowStart, windowEnd) {
@@ -39,21 +31,17 @@ export function groupAffinityScore(riderGroupIds = [], rideGroupId = null) {
 
 /**
  * Score one ride for one rider.
- * @param {object} ride       { origin:{lat,lng}, depart_at, group_id, driverStats:{completed,cancelled} }
- * @param {object} rider      { pickup:{lat,lng}, windowStart, windowEnd, groupIds:[] }
- * @param {object} site       { lat, lng }
- * @param {object} cfg        { maxDetourMiles }
+ * @param {object} ride       { depart_at, group_id, driverStats:{completed,cancelled} }
+ * @param {object} rider      { windowStart, windowEnd, groupIds:[] }
  * @returns {{score:number, parts:object}}
  */
-export function scoreRide(ride, rider, site, cfg) {
+export function scoreRide(ride, rider) {
   const parts = {
-    routeOverlap: routeOverlapScore(ride.origin, rider.pickup, site, cfg.maxDetourMiles),
     timeFit: timeFitScore(ride.depart_at, rider.windowStart, rider.windowEnd),
     reliability: reliabilityScore(ride.driverStats?.completed, ride.driverStats?.cancelled),
     groupAffinity: groupAffinityScore(rider.groupIds, ride.group_id),
   };
   const score =
-    WEIGHTS.routeOverlap * parts.routeOverlap +
     WEIGHTS.timeFit * parts.timeFit +
     WEIGHTS.reliability * parts.reliability +
     WEIGHTS.groupAffinity * parts.groupAffinity;
@@ -64,8 +52,8 @@ export function scoreRide(ride, rider, site, cfg) {
  * Rank rides for a rider, best first. Ties broken by earliest depart_at.
  * Returns [{ ride, score, parts }].
  */
-export function rankRides(rides, rider, site, cfg) {
+export function rankRides(rides, rider) {
   return rides
-    .map((ride) => ({ ride, ...scoreRide(ride, rider, site, cfg) }))
+    .map((ride) => ({ ride, ...scoreRide(ride, rider) }))
     .sort((a, b) => b.score - a.score || new Date(a.ride.depart_at) - new Date(b.ride.depart_at));
 }

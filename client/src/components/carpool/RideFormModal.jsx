@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { postRideSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -9,6 +9,7 @@ import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { toLocalInputValue, localInputToISO } from '@/utils/time.js';
 import { CARPOOL_DIRECTION, DIRECTION_LABEL } from '@/utils/constants.js';
+import { useHqAddress } from '@/hooks/useHqAddress.js';
 
 /**
  * Offer a ride (Feature 1). Posts to carpoolApi.postRide with a body matching postRideSchema.
@@ -25,6 +26,16 @@ export function RideFormModal({ open, onClose, onCreated, groups = [], linkedSes
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const hqAddress = useHqAddress();
+  const autoFilledRef = useRef(null);
+  useEffect(() => {
+    if (direction !== CARPOOL_DIRECTION.FROM_SITE || !hqAddress) return;
+    const isUntouched = !origin?.label || origin.label === autoFilledRef.current;
+    if (!isUntouched) return;
+    autoFilledRef.current = hqAddress;
+    setOrigin({ label: hqAddress });
+  }, [direction, hqAddress, origin]);
 
   const submit = async () => {
     setErrors({});

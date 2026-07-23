@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createScheduleSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -9,6 +9,7 @@ import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { CARPOOL_DIRECTION, CARPOOL_ROLE, DIRECTION_LABEL, WEEKDAYS } from '@/utils/constants.js';
 import { cn } from '@/utils/cn.js';
+import { useHqAddress } from '@/hooks/useHqAddress.js';
 
 /**
  * Create a recurring commute schedule (Feature 2). The server materializes rides/requests
@@ -25,6 +26,16 @@ export function ScheduleFormModal({ open, onClose, onCreated, groups = [] }) {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const hqAddress = useHqAddress();
+  const autoFilledRef = useRef(null);
+  useEffect(() => {
+    if (direction !== CARPOOL_DIRECTION.FROM_SITE || !hqAddress) return;
+    const isUntouched = !origin?.label || origin.label === autoFilledRef.current;
+    if (!isUntouched) return;
+    autoFilledRef.current = hqAddress;
+    setOrigin({ label: hqAddress });
+  }, [direction, hqAddress, origin]);
 
   const toggleDay = (d) => setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort()));
 

@@ -74,6 +74,7 @@ export const notificationApi = {
 
 // ── Carpool ──────────────────────────────────────────────────────────────────
 export const carpoolApi = {
+  getConfig: () => api.get(L('/carpool/config')),
   listRides: (params) => api.get(L('/carpool/rides'), { params }),
   myRides: () => api.get(L('/carpool/rides/mine')),
   getRide: (rideId) => api.get(L(`/carpool/rides/${rideId}`)),
@@ -109,6 +110,8 @@ export const carpoolApi = {
 // ── Admin (location-scoped, admin-gated) ────────────────────────────────────────
 export const adminApi = {
   overview: () => api.get(L('/admin/overview')),
+  createCharger: (body) => api.post(L('/admin/chargers'), body),
+  deleteCharger: (chargerId) => api.delete(L(`/admin/chargers/${chargerId}`)),
   setChargerOffline: (chargerId, reason) => api.post(L(`/admin/chargers/${chargerId}/offline`), { reason }),
   setChargerOnline: (chargerId) => api.post(L(`/admin/chargers/${chargerId}/online`), {}),
   renameCharger: (chargerId, name) => api.patch(L(`/admin/chargers/${chargerId}`), { name }),

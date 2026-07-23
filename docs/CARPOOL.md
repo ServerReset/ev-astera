@@ -4,9 +4,9 @@ Carpooling is a first-class feature module. It reuses the same seams as everythi
 
 ## Data model (see schema.sql for full DDL)
 
-- `carpool_rides` — a driver's offered trip. `direction` (`to_site` | `from_site`), `origin_label`, `origin_lat/lng`, `depart_at`, `seats_total`, `seats_available`, `status` (`open|full|in_progress|completed|cancelled`), optional `schedule_id`, optional `linked_session_id` (the driver's charging session that day).
-- `carpool_bookings` — a rider's seat on a ride. `status` (`requested|confirmed|declined|cancelled|completed`), `pickup_label`, `pickup_lat/lng`, `seats` (default 1).
-- `carpool_requests` — a rider's open "I need a ride" ask, used by the matcher when no direct booking exists. `direction`, `origin_lat/lng`, `window_start/end`, `status` (`open|matched|expired|cancelled`).
+- `carpool_rides` — a driver's offered trip. `direction` (`to_site` | `from_site`), `origin_label` (free-text address/place name — no coordinates), `depart_at`, `seats_total`, `seats_available`, `status` (`open|full|in_progress|completed|cancelled`), optional `schedule_id`, optional `linked_session_id` (the driver's charging session that day).
+- `carpool_bookings` — a rider's seat on a ride. `status` (`requested|confirmed|declined|cancelled|completed`), `pickup_label` (free-text), `seats` (default 1).
+- `carpool_requests` — a rider's open "I need a ride" ask, used by the matcher when no direct booking exists. `direction`, `origin_label` (free-text), `window_start/end`, `status` (`open|matched|expired|cancelled`).
 - `carpool_schedules` — recurring intent. `days_of_week` (int[] 0–6), `depart_time` (local), `direction`, `role` (`driver|rider`), `seats`, `active`. The `carpoolMaterialize` job turns these into concrete rides/requests for the next N days.
 - `carpool_groups` / `carpool_group_members` — named standing groups (e.g. "North Bay commute"); members see each other's rides first and share a group leaderboard.
 - `carpool_trip_logs` — one row per completed trip participant: `miles`, `co2_grams_saved`, `credits_awarded`. Source of truth for impact.
@@ -24,13 +24,12 @@ All carry `location_id`.
 
 ```
 score =
-    45 * routeOverlap      // 1 - normalized(detour distance driver takes for this pickup)
-  + 30 * timeFit           // how well depart_at sits inside the rider's window (1 at center → 0 at edges)
-  + 15 * reliability       // driver's completed-trip ratio (completed / (completed+cancelled)), smoothed
-  + 10 * groupAffinity     // 1 if same carpool group, else 0
+    55 * timeFit           // how well depart_at sits inside the rider's window (1 at center → 0 at edges)
+  + 27 * reliability        // driver's completed-trip ratio (completed / (completed+cancelled)), smoothed
+  + 18 * groupAffinity      // 1 if same carpool group, else 0
 ```
 
-Distances use the haversine helper in `utils/timeUtils.js`'s sibling `geo.js`. `routeOverlap` approximates detour as `d(driverOrigin, pickup) + d(pickup, site) - d(driverOrigin, site)`, normalized by a config cap (`carpool_max_detour_miles`). Ties broken by earliest `depart_at`. Matches above `carpool_min_match_score` (config, default 55) can be auto-suggested; the `carpoolMatch` job pairs open `carpool_requests` with open rides and emits `CARPOOL_MATCH_FOUND` (notifies both sides).
+Carpool origins/pickups are free-text addresses only — no coordinates are captured — so the matcher has no distance/detour term. Ties broken by earliest `depart_at`. Matches above `carpool_min_match_score` (config, default 55) can be auto-suggested; the `carpoolMatch` job pairs open `carpool_requests` with open rides and emits `CARPOOL_MATCH_FOUND` (notifies both sides).
 
 ## Feature 2 — Recurring commutes
 
@@ -52,7 +51,7 @@ This is fully opt-in and admin-configurable — set `carpool_priority_enabled=fa
 
 On `CARPOOL_TRIP_COMPLETED` (driver taps "Trip done", or the `carpoolComplete` cron auto-completes rides whose `depart_at` passed and had confirmed riders):
 
-- `miles` = haversine(origin, site) (one-way) — or driver-entered override.
+- `miles` = driver-entered override, or `carpool_default_trip_miles` (config, default 12 — a location-wide one-way average, since no coordinates are captured to compute an actual distance).
 - `co2_grams_saved` = `miles * riders * carpool_co2_grams_per_mile` (config, default 400 g/mi ≈ avg US gas car) minus the driver's own trip (the driver would have driven anyway), i.e. counted per **rider** displaced.
 - credits: driver earns `carpool_credit_per_trip + carpool_credit_per_rider * riders`; each rider earns `carpool_credit_per_trip`. Written to `carpool_credits_ledger`, balance denormalized to `users.carpool_credits`.
 - `carpool_trip_logs` rows written for driver + each rider.
@@ -108,7 +107,7 @@ Enable Supabase Realtime on `carpool_rides` and `carpool_bookings`. The client s
 |---|---|---|
 | `carpool_enabled` | `true` | Master switch for the module UI |
 | `carpool_min_lead_minutes` | `30` | Min lead time to post/book a ride |
-| `carpool_max_detour_miles` | `8` | Detour cap used to normalize route overlap |
+| `carpool_default_trip_miles` | `12` | One-way mileage assumed when a driver doesn't enter an override |
 | `carpool_min_match_score` | `55` | Threshold for auto-suggested matches |
 | `carpool_materialize_days` | `2` | Look-ahead days for recurring schedules |
 | `carpool_reminder_lead_minutes` | `30` | When to remind about a departure |

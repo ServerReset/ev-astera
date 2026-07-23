@@ -2,6 +2,9 @@
  * Carpool impact + credits math and persistence. Called when a trip completes.
  * Writes trip logs + credit ledger rows and denormalizes the balance onto users.carpool_credits.
  *
+ * No coordinates are captured for carpool locations, so mileage is either a driver-entered
+ * override or a configurable location-wide average (carpool_default_trip_miles):
+ *   oneWayMiles = milesOverride ?? carpool_default_trip_miles
  * CO2 is counted per RIDER displaced (the driver would have driven anyway):
  *   co2_grams_saved(per rider) = oneWayMiles * carpool_co2_grams_per_mile
  * Credits:
@@ -13,7 +16,6 @@ import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { configService } from '../../services/config.service.js';
 import { CREDIT_KIND, CARPOOL_ROLE, SETTING_KEYS } from '../../../../shared/constants.js';
-import { haversineMiles } from '../../utils/geo.js';
 import { now } from '../../utils/timeUtils.js';
 
 /** Award credits to a user: append to ledger + bump denormalized balance. Returns new balance. */
@@ -43,20 +45,18 @@ export async function awardCredits(locationId, userId, amount, reason, rideId = 
  * award credits, flip ride → completed. Idempotent-ish: guarded by ride.status upstream.
  * @returns {{miles, co2Grams, riders, driverCredits}}
  */
-export async function completeRideImpact(ride, site, milesOverride = null) {
+export async function completeRideImpact(ride, milesOverride = null) {
   const locationId = ride.location_id;
   const co2PerMile = await configService.getNumber(SETTING_KEYS.CARPOOL_CO2_GRAMS_PER_MILE, locationId);
   const creditPerTrip = await configService.getNumber(SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP, locationId);
   const creditPerRider = await configService.getNumber(SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER, locationId);
+  const defaultTripMiles = await configService.getNumber(SETTING_KEYS.CARPOOL_DEFAULT_TRIP_MILES, locationId);
 
   // Confirmed riders on this ride.
   const riders = await prisma.carpool_bookings.findMany({ where: { ride_id: ride.id, status: 'confirmed' } });
   const riderCount = riders.reduce((n, b) => n + (b.seats || 1), 0);
 
-  const oneWayMiles =
-    milesOverride != null
-      ? milesOverride
-      : haversineMiles({ lat: ride.origin_lat, lng: ride.origin_lng }, site);
+  const oneWayMiles = milesOverride != null ? milesOverride : defaultTripMiles;
   const miles = Number.isFinite(oneWayMiles) ? Math.round(oneWayMiles * 10) / 10 : 0;
   const co2PerRider = miles * co2PerMile; // grams a single displaced car would emit
   const totalCo2 = co2PerRider * riderCount;

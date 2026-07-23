@@ -9,7 +9,7 @@
 import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
-import { NotFoundError } from '../../utils/errors.js';
+import { NotFoundError, ConflictError } from '../../utils/errors.js';
 import {
   CHARGER_STATUS,
   SESSION_STATUS,
@@ -130,5 +130,28 @@ export const chargerService = {
     });
     if (!count) throw new NotFoundError('Charger not found');
     return prisma.chargers.findUnique({ where: { id: chargerId } });
+  },
+
+  async create(locationId, name) {
+    const maxPosition = await prisma.chargers.aggregate({
+      where: { location_id: locationId },
+      _max: { position: true },
+    });
+    return prisma.chargers.create({
+      data: { location_id: locationId, name, position: (maxPosition._max.position ?? -1) + 1 },
+    });
+  },
+
+  async remove(locationId, chargerId) {
+    const activeSession = await prisma.sessions.findFirst({
+      where: { charger_id: chargerId, status: { in: [SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME] } },
+    });
+    if (activeSession) throw new ConflictError('Charger has an active session — end it before deleting');
+
+    const { count } = await prisma.chargers.deleteMany({
+      where: { id: chargerId, location_id: locationId },
+    });
+    if (!count) throw new NotFoundError('Charger not found');
+    return { id: chargerId };
   },
 };

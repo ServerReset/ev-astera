@@ -50,6 +50,12 @@ export const adminService = {
   },
 
   // ── Chargers (delegate to charger service so events/side-effects match) ─────────
+  async createCharger(locationId, name) {
+    return services.charger.create(locationId, name);
+  },
+  async deleteCharger(locationId, chargerId) {
+    return services.charger.remove(locationId, chargerId);
+  },
   async setChargerOffline(locationId, chargerId, reason) {
     return services.charger.setOffline(locationId, chargerId, reason);
   },

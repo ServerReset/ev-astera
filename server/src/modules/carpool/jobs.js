@@ -23,7 +23,7 @@ import { rankRides } from './matcher.js';
 import { completeRideImpact } from './impact.js';
 
 async function activeLocations() {
-  return prisma.locations.findMany({ select: { id: true, site_lat: true, site_lng: true } });
+  return prisma.locations.findMany({ select: { id: true } });
 }
 
 // ── carpoolMaterialize ───────────────────────────────────────────────────────
@@ -57,8 +57,6 @@ export async function carpoolMaterialize() {
               driver_id: s.user_id,
               direction: s.direction,
               origin_label: s.origin_label,
-              origin_lat: s.origin_lat,
-              origin_lng: s.origin_lng,
               depart_at: departAt,
               seats_total: s.seats,
               seats_available: s.seats,
@@ -84,8 +82,6 @@ export async function carpoolMaterialize() {
               rider_id: s.user_id,
               direction: s.direction,
               origin_label: s.origin_label,
-              origin_lat: s.origin_lat,
-              origin_lng: s.origin_lng,
               window_start: addMinutes(departAt, -30),
               window_end: addMinutes(departAt, 30),
               schedule_id: s.id,
@@ -105,8 +101,6 @@ export async function carpoolMaterialize() {
 export async function carpoolMatch() {
   let actions = 0;
   for (const loc of await activeLocations()) {
-    const site = { lat: loc.site_lat, lng: loc.site_lng };
-    const maxDetourMiles = await configService.getNumber(SETTING_KEYS.CARPOOL_MAX_DETOUR_MILES, loc.id);
     const minScore = await configService.getNumber(SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE, loc.id);
 
     const requests = await prisma.carpool_requests.findMany({
@@ -125,14 +119,12 @@ export async function carpoolMatch() {
       });
       if (!rides.length) continue;
 
-      const enriched = rides.map((r) => ({ ...r, origin: { lat: r.origin_lat, lng: r.origin_lng } }));
       const rider = {
-        pickup: { lat: req.origin_lat, lng: req.origin_lng },
         windowStart: req.window_start,
         windowEnd: req.window_end,
         groupIds: [],
       };
-      const [best] = rankRides(enriched, rider, site, { maxDetourMiles });
+      const [best] = rankRides(rides, rider);
       if (best && best.score >= minScore) {
         // Mark matched (soft — rider still books explicitly) and notify both sides once.
         await prisma.carpool_requests.update({
@@ -159,7 +151,6 @@ export async function carpoolMatch() {
 export async function carpoolComplete() {
   let actions = 0;
   for (const loc of await activeLocations()) {
-    const site = { lat: loc.site_lat, lng: loc.site_lng };
     // Rides whose departure passed (with a grace of 2h) and still open/full/in_progress.
     const cutoff = addMinutes(now(), -120);
     const rides = await prisma.carpool_rides.findMany({
@@ -174,7 +165,7 @@ export async function carpoolComplete() {
     for (const ride of rides) {
       const count = await prisma.carpool_bookings.count({ where: { ride_id: ride.id, status: BOOKING_STATUS.CONFIRMED } });
       if (count > 0) {
-        await completeRideImpact(ride, site, null);
+        await completeRideImpact(ride, null);
       } else {
         // No riders — just close it out without impact.
         await prisma.carpool_rides.update({ where: { id: ride.id }, data: { status: RIDE_STATUS.COMPLETED, completed_at: now() } });

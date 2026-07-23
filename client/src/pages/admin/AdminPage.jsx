@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ShieldCheck, Activity, Zap, Settings as SettingsIcon, Megaphone, Users as UsersIcon, ScrollText,
-  Plus, Trash2, Power, PowerOff, StopCircle, Search, Car, Leaf,
+  Plus, Trash2, Power, PowerOff, StopCircle, Search, Car, Leaf, Pencil,
 } from 'lucide-react';
-import { announcementSchema, adminCreateUserSchema } from '@shared/validation.js';
+import { announcementSchema, adminCreateUserSchema, chargerNameSchema } from '@shared/validation.js';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Tabs } from '@/components/common/Tabs.jsx';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
@@ -159,6 +159,8 @@ function ChargersTab() {
   const chargers = useApi(() => chargerApi.list(), []);
   const [busyId, setBusyId] = useState(null);
   const [offlineFor, setOfflineFor] = useState(null);
+  const [renameFor, setRenameFor] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [confirm, confirmDialog] = useConfirm();
 
   useRealtime('admin-chargers', ['chargers', 'sessions'], chargers.refetch, {
@@ -193,6 +195,25 @@ function ChargersTab() {
     }
   };
 
+  const remove = async (c) => {
+    if (!(await confirm({
+      title: 'Delete charger?',
+      message: `Delete ${c.name}? This permanently removes its session history, queue entries, and messages. This can't be undone.`,
+      danger: true,
+      confirmLabel: 'Delete',
+    }))) return;
+    setBusyId(c.id);
+    try {
+      await adminApi.deleteCharger(c.id);
+      toast.success(`${c.name} deleted.`);
+      chargers.refetch();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (chargers.loading && !chargers.data) {
     return (
       <div className="grid gap-3 expanded:grid-cols-2">
@@ -208,6 +229,12 @@ function ChargersTab() {
 
   return (
     <>
+      <div className="mb-4 flex justify-end">
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Add charger
+        </Button>
+      </div>
       {list.length === 0 ? (
         <EmptyState icon={Zap} title="No chargers configured" description="Add chargers to this site to start tracking sessions." />
       ) : (
@@ -251,6 +278,21 @@ function ChargersTab() {
                       Set offline
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" onClick={() => setRenameFor(c)}>
+                    <Pencil className="h-4 w-4" />
+                    Rename
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-danger"
+                    disabled={Boolean(c.session)}
+                    loading={busyId === c.id}
+                    onClick={() => remove(c)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
                 </div>
               </Card>
             );
@@ -265,8 +307,82 @@ function ChargersTab() {
           chargers.refetch();
         }}
       />
+      <ChargerNameModal
+        open={addOpen}
+        title="Add charger"
+        confirmLabel="Add"
+        onClose={() => setAddOpen(false)}
+        onSubmit={(name) => adminApi.createCharger({ name })}
+        onDone={() => {
+          setAddOpen(false);
+          chargers.refetch();
+        }}
+        successMessage={(name) => `${name} added.`}
+      />
+      <ChargerNameModal
+        open={Boolean(renameFor)}
+        title={`Rename ${renameFor?.name || 'charger'}`}
+        confirmLabel="Rename"
+        initialName={renameFor?.name}
+        onClose={() => setRenameFor(null)}
+        onSubmit={(name) => adminApi.renameCharger(renameFor.id, name)}
+        onDone={() => {
+          setRenameFor(null);
+          chargers.refetch();
+        }}
+        successMessage={(name) => `Renamed to ${name}.`}
+      />
       {confirmDialog}
     </>
+  );
+}
+
+function ChargerNameModal({ open, title, confirmLabel, initialName = '', onClose, onSubmit, onDone, successMessage }) {
+  const [name, setName] = useState(initialName);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  // Re-seed the draft whenever the modal opens for a (possibly different) charger.
+  useEffect(() => {
+    if (open) {
+      setName(initialName || '');
+      setError(null);
+    }
+  }, [open, initialName]);
+
+  const submit = async () => {
+    const parsed = chargerNameSchema.safeParse({ name: name.trim() });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSubmit(parsed.data.name);
+      toast.success(successMessage(parsed.data.name));
+      onDone();
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={submit} loading={saving}>{confirmLabel}</Button>
+        </div>
+      }
+    >
+      <Input label="Charger name" value={name} onChange={(e) => setName(e.target.value)} error={error} placeholder="e.g. Charger 3" />
+    </Modal>
   );
 }
 
@@ -338,11 +454,12 @@ const SETTING_GROUPS = [
       { key: SETTING_KEYS.CARPOOL_ENABLED, label: 'Carpool enabled', type: 'bool' },
       { key: SETTING_KEYS.CARPOOL_PRIORITY_ENABLED, label: 'Give carpool drivers queue priority', type: 'bool' },
       { key: SETTING_KEYS.CARPOOL_MIN_LEAD_MINUTES, label: 'Min ride lead time (min)', type: 'number' },
-      { key: SETTING_KEYS.CARPOOL_MAX_DETOUR_MILES, label: 'Max detour (miles)', type: 'number' },
+      { key: SETTING_KEYS.CARPOOL_DEFAULT_TRIP_MILES, label: 'Default trip miles (used when no distance is entered)', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE, label: 'Min match score (0–100)', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_CO2_GRAMS_PER_MILE, label: 'CO₂ grams saved per mile', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP, label: 'Credits per trip (driver)', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER, label: 'Credits per rider', type: 'number' },
+      { key: SETTING_KEYS.CARPOOL_HQ_ADDRESS, label: 'Astera HQ address (auto-fills "From work" rides)', type: 'text' },
     ],
   },
 ];
@@ -381,7 +498,7 @@ function SettingsTab() {
       for (const group of SETTING_GROUPS) {
         for (const f of group.fields) {
           const raw = values[f.key];
-          patch[f.key] = f.type === 'bool' ? Boolean(raw) : Number(raw);
+          patch[f.key] = f.type === 'bool' ? Boolean(raw) : f.type === 'text' ? String(raw ?? '') : Number(raw);
         }
       }
       const updated = await adminApi.updateSettings(patch);
@@ -414,7 +531,7 @@ function SettingsTab() {
                 <Input
                   key={f.key}
                   label={f.label}
-                  type="number"
+                  type={f.type === 'text' ? 'text' : 'number'}
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValue(f.key, e.target.value)}
                 />

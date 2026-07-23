@@ -14,6 +14,7 @@ import {
   setOfflineSchema,
   adminUpdateUserSchema,
   adminCreateUserSchema,
+  chargerNameSchema,
 } from '../../../../shared/validation.js';
 import { adminService } from './admin.service.js';
 
@@ -27,6 +28,15 @@ export default defineModule({
     router.get('/overview', asyncHandler(async (req, res) => ok(res, await adminService.overview(req.locationId))));
 
     // Chargers
+    router.post(
+      '/chargers',
+      validate(chargerNameSchema),
+      asyncHandler(async (req, res) => created(res, await adminService.createCharger(req.locationId, req.body.name)))
+    );
+    router.delete(
+      '/chargers/:chargerId',
+      asyncHandler(async (req, res) => ok(res, await adminService.deleteCharger(req.locationId, req.params.chargerId)))
+    );
     router.post(
       '/chargers/:chargerId/offline',
       validate(setOfflineSchema),

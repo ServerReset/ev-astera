@@ -24,8 +24,6 @@ export const passwordSchema = z
 
 export const uuidSchema = z.string().uuid();
 const optionalShortText = z.string().trim().max(120).optional().or(z.literal(''));
-const latSchema = z.number().min(-90).max(90);
-const lngSchema = z.number().min(-180).max(180);
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export const registerSchema = z
@@ -132,6 +130,7 @@ export const announcementSchema = z.object({
 });
 export const updateSettingsSchema = z.record(z.string(), z.union([z.number(), z.boolean(), z.string()]));
 export const setOfflineSchema = z.object({ reason: z.string().trim().max(200).optional() });
+export const chargerNameSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export const adminUpdateUserSchema = z.object({
   role: z.enum(['user', 'admin']).optional(),
   active: z.boolean().optional(),
@@ -147,9 +146,7 @@ export const adminCreateUserSchema = z.object({
 // ── Carpool ──────────────────────────────────────────────────────────────────
 const directionEnum = z.enum([CARPOOL_DIRECTION.TO_SITE, CARPOOL_DIRECTION.FROM_SITE]);
 const geoPointSchema = z.object({
-  label: z.string().trim().min(2).max(120),
-  lat: latSchema,
-  lng: lngSchema,
+  label: z.string().trim().min(2).max(160),
 });
 
 export const postRideSchema = z.object({

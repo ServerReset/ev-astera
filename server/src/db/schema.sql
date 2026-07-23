@@ -233,8 +233,6 @@ create table if not exists carpool_schedules (
   days_of_week  integer[] not null,           -- 0=Sun .. 6=Sat
   depart_time   text not null,                -- 'HH:MM' local
   origin_label  text not null,
-  origin_lat    double precision not null,
-  origin_lng    double precision not null,
   seats         integer not null default 1,
   group_id      uuid references carpool_groups(id) on delete set null,
   active        boolean not null default true,
@@ -250,8 +248,6 @@ create table if not exists carpool_rides (
   driver_id         uuid not null references users(id) on delete cascade,
   direction         text not null check (direction in ('to_site','from_site')),
   origin_label      text not null,
-  origin_lat        double precision not null,
-  origin_lng        double precision not null,
   depart_at         timestamptz not null,
   seats_total       integer not null,
   seats_available   integer not null,
@@ -281,8 +277,6 @@ create table if not exists carpool_bookings (
                   check (status in ('requested','confirmed','declined','cancelled','completed')),
   seats         integer not null default 1,
   pickup_label  text,
-  pickup_lat    double precision,
-  pickup_lng    double precision,
   created_at    timestamptz not null default now(),
   unique (ride_id, rider_id)
 );
@@ -297,8 +291,6 @@ create table if not exists carpool_requests (
   rider_id      uuid not null references users(id) on delete cascade,
   direction     text not null check (direction in ('to_site','from_site')),
   origin_label  text not null,
-  origin_lat    double precision not null,
-  origin_lng    double precision not null,
   window_start  timestamptz not null,
   window_end    timestamptz not null,
   status        text not null default 'open' check (status in ('open','matched','expired','cancelled')),

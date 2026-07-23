@@ -32,6 +32,9 @@ export default defineModule({
     router.use(authenticate);
     const uid = (req) => req.user.userId;
 
+    // ── Config (read-only, non-admin-gated values riders need to compose a ride) ──
+    router.get('/config', asyncHandler(async (req, res) => ok(res, await carpoolService.getConfig(req.locationId))));
+
     // ── Rides ──────────────────────────────────────────────────────────────────
     router.get(
       '/rides',

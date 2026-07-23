@@ -2,7 +2,7 @@
  * Client module registry — the mirror of server/src/modules/registry.js.
  * Each feature contributes nav items, routes, and the realtime tables it cares about.
  * To add a feature on the client: create a folder under modules/, export a manifest, and
- * add one import line here. Sidebar/BottomNav render from `nav`; App.jsx renders `routes`.
+ * add one import line here. NavFloating renders from `nav`; App.jsx renders `routes`.
  */
 import dashboard from './dashboard/index.js';
 import carpool from './carpool/index.js';

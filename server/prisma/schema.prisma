@@ -326,8 +326,6 @@ model carpool_schedules {
   days_of_week Int[]
   depart_time  String
   origin_label String
-  origin_lat   Float
-  origin_lng   Float
   seats        Int      @default(1)
   group_id     String?
   active       Boolean  @default(true)
@@ -350,8 +348,6 @@ model carpool_rides {
   driver_id         String
   direction         String
   origin_label      String
-  origin_lat        Float
-  origin_lng        Float
   depart_at         DateTime
   seats_total       Int
   seats_available   Int
@@ -390,8 +386,6 @@ model carpool_bookings {
   status       String   @default("requested")
   seats        Int      @default(1)
   pickup_label String?
-  pickup_lat   Float?
-  pickup_lng   Float?
   created_at   DateTime @default(now())
 
   locations     locations     @relation(fields: [location_id], references: [id], onDelete: Cascade)
@@ -410,8 +404,6 @@ model carpool_requests {
   rider_id        String
   direction       String
   origin_label    String
-  origin_lat      Float
-  origin_lng      Float
   window_start    DateTime
   window_end      DateTime
   status          String   @default("open")

@@ -432,6 +432,10 @@ function AboutSection() {
             <dt className="text-muted">App</dt>
             <dd className="font-medium text-content">EV Hub — Astera Labs</dd>
           </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted">Built by</dt>
+            <dd className="font-medium text-content">Team Go Bananas — Astera Labs 2026 Hackathon</dd>
+          </div>
         </dl>
       </Card>
 

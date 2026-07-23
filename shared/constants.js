@@ -110,7 +110,7 @@ export const SETTING_KEYS = Object.freeze({
   // carpool
   CARPOOL_ENABLED: 'carpool_enabled',
   CARPOOL_MIN_LEAD_MINUTES: 'carpool_min_lead_minutes',
-  CARPOOL_MAX_DETOUR_MILES: 'carpool_max_detour_miles',
+  CARPOOL_DEFAULT_TRIP_MILES: 'carpool_default_trip_miles',
   CARPOOL_MIN_MATCH_SCORE: 'carpool_min_match_score',
   CARPOOL_MATERIALIZE_DAYS: 'carpool_materialize_days',
   CARPOOL_REMINDER_LEAD_MINUTES: 'carpool_reminder_lead_minutes',
@@ -119,6 +119,7 @@ export const SETTING_KEYS = Object.freeze({
   CARPOOL_CO2_GRAMS_PER_MILE: 'carpool_co2_grams_per_mile',
   CARPOOL_CREDIT_PER_TRIP: 'carpool_credit_per_trip',
   CARPOOL_CREDIT_PER_RIDER: 'carpool_credit_per_rider',
+  CARPOOL_HQ_ADDRESS: 'carpool_hq_address',
 });
 
 // Fallback defaults used if a setting row is somehow missing. The DB seed is authoritative.
@@ -139,7 +140,7 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.WEEKLY_RESET_DAY]: 1,
   [SETTING_KEYS.CARPOOL_ENABLED]: true,
   [SETTING_KEYS.CARPOOL_MIN_LEAD_MINUTES]: 30,
-  [SETTING_KEYS.CARPOOL_MAX_DETOUR_MILES]: 8,
+  [SETTING_KEYS.CARPOOL_DEFAULT_TRIP_MILES]: 12,
   [SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE]: 55,
   [SETTING_KEYS.CARPOOL_MATERIALIZE_DAYS]: 2,
   [SETTING_KEYS.CARPOOL_REMINDER_LEAD_MINUTES]: 30,
@@ -148,6 +149,7 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.CARPOOL_CO2_GRAMS_PER_MILE]: 400,
   [SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP]: 10,
   [SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER]: 5,
+  [SETTING_KEYS.CARPOOL_HQ_ADDRESS]: '',
 });
 
 // ── Misc ───────────────────────────────────────────────────────────────────────

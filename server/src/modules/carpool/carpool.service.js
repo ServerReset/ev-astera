@@ -26,11 +26,6 @@ import { rankRides } from './matcher.js';
 import { completeRideImpact } from './impact.js';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
-async function getSite(locationId) {
-  const data = await prisma.locations.findUnique({ where: { id: locationId }, select: { site_lat: true, site_lng: true } });
-  return { lat: data?.site_lat ?? null, lng: data?.site_lng ?? null };
-}
-
 async function myGroupIds(userId) {
   const data = await prisma.carpool_group_members.findMany({ where: { user_id: userId }, select: { group_id: true } });
   return data.map((r) => r.group_id);
@@ -52,7 +47,7 @@ function rideDto(r, extra = {}) {
     driverId: r.driver_id,
     driverName: r.driver?.display_name,
     direction: r.direction,
-    origin: { label: r.origin_label, lat: r.origin_lat, lng: r.origin_lng },
+    origin: { label: r.origin_label },
     departAt: r.depart_at,
     seatsTotal: r.seats_total,
     seatsAvailable: r.seats_available,
@@ -74,6 +69,12 @@ async function assertLead(locationId, departAt) {
 }
 
 export const carpoolService = {
+  /** Read-only config values riders need client-side (e.g. HQ address for "from work" auto-fill). */
+  async getConfig(locationId) {
+    const hqAddress = await configService.get(SETTING_KEYS.CARPOOL_HQ_ADDRESS, locationId);
+    return { hqAddress: hqAddress || '' };
+  },
+
   // ── Feature 1: rides & bookings ───────────────────────────────────────────────
   async listRides(locationId, userId, { direction, around } = {}) {
     const rides = await prisma.carpool_rides.findMany({
@@ -88,23 +89,19 @@ export const carpoolService = {
       orderBy: { depart_at: 'asc' },
     });
 
-    const site = await getSite(locationId);
     const groupIds = await myGroupIds(userId);
-    const maxDetourMiles = await configService.getNumber(SETTING_KEYS.CARPOOL_MAX_DETOUR_MILES, locationId);
 
-    // Rank for this rider. Without a pickup we use their origin heuristically = ride origin (overlap 1).
     const windowCenter = around ? new Date(around) : now();
     const enriched = [];
     for (const r of rides) {
-      enriched.push({ ...r, origin: { lat: r.origin_lat, lng: r.origin_lng }, driverStats: await driverStats(r.driver_id) });
+      enriched.push({ ...r, driverStats: await driverStats(r.driver_id) });
     }
     const rider = {
-      pickup: site, // default: score by proximity to site until the rider supplies a pickup at booking
       windowStart: addMinutes(windowCenter, -90),
       windowEnd: addMinutes(windowCenter, 90),
       groupIds,
     };
-    const ranked = rankRides(enriched, rider, site, { maxDetourMiles });
+    const ranked = rankRides(enriched, rider);
     return ranked
       .filter((x) => x.ride.driver_id !== userId)
       .map((x) => rideDto(x.ride, { matchScore: x.score, matchParts: x.parts }));
@@ -127,7 +124,7 @@ export const carpoolService = {
         riderName: b.rider?.display_name,
         status: b.status,
         seats: b.seats,
-        pickup: { label: b.pickup_label, lat: b.pickup_lat, lng: b.pickup_lng },
+        pickup: { label: b.pickup_label },
       })),
     });
   },
@@ -173,8 +170,6 @@ export const carpoolService = {
           driver_id: driverId,
           direction: body.direction,
           origin_label: body.origin.label,
-          origin_lat: body.origin.lat,
-          origin_lng: body.origin.lng,
           depart_at: body.departAt,
           seats_total: body.seatsTotal,
           seats_available: body.seatsTotal,
@@ -262,8 +257,6 @@ export const carpoolService = {
           rider_id: riderId,
           seats,
           pickup_label: pickup.label,
-          pickup_lat: pickup.lat,
-          pickup_lng: pickup.lng,
           status: BOOKING_STATUS.REQUESTED,
         },
       });
@@ -343,8 +336,7 @@ export const carpoolService = {
     if (!r) throw new NotFoundError('Ride not found');
     if (r.driver_id !== driverId) throw new AuthorizationError('Not your ride');
     if ([RIDE_STATUS.COMPLETED, RIDE_STATUS.CANCELLED].includes(r.status)) throw new BusinessRuleError('Ride already closed.');
-    const site = await getSite(locationId);
-    return completeRideImpact(r, site, milesOverride ?? null);
+    return completeRideImpact(r, milesOverride ?? null);
   },
 
   // ── Feature 1b: ride requests (rider "I need a ride") ─────────────────────────
@@ -359,7 +351,7 @@ export const carpoolService = {
       riderId: r.rider_id,
       riderName: r.rider?.display_name,
       direction: r.direction,
-      origin: { label: r.origin_label, lat: r.origin_lat, lng: r.origin_lng },
+      origin: { label: r.origin_label },
       windowStart: r.window_start,
       windowEnd: r.window_end,
       groupId: r.group_id,
@@ -378,8 +370,6 @@ export const carpoolService = {
           rider_id: riderId,
           direction: body.direction,
           origin_label: body.origin.label,
-          origin_lat: body.origin.lat,
-          origin_lng: body.origin.lng,
           window_start: body.windowStart,
           window_end: body.windowEnd,
           group_id: body.groupId || null,
@@ -412,7 +402,7 @@ export const carpoolService = {
       direction: s.direction,
       daysOfWeek: s.days_of_week,
       departTime: s.depart_time,
-      origin: { label: s.origin_label, lat: s.origin_lat, lng: s.origin_lng },
+      origin: { label: s.origin_label },
       seats: s.seats,
       groupId: s.group_id,
       active: s.active,
@@ -431,8 +421,6 @@ export const carpoolService = {
           days_of_week: body.daysOfWeek,
           depart_time: body.departTime,
           origin_label: body.origin.label,
-          origin_lat: body.origin.lat,
-          origin_lng: body.origin.lng,
           seats: body.seats ?? 1,
           group_id: body.groupId || null,
           active: body.active ?? true,
@@ -456,8 +444,6 @@ export const carpoolService = {
     if (patch.departTime) update.depart_time = patch.departTime;
     if (patch.origin) {
       update.origin_label = patch.origin.label;
-      update.origin_lat = patch.origin.lat;
-      update.origin_lng = patch.origin.lng;
     }
     if (patch.seats !== undefined) update.seats = patch.seats;
     if (patch.groupId !== undefined) update.group_id = patch.groupId || null;
@@ -535,9 +521,7 @@ export const carpoolService = {
     });
     if (!requests.length) return [];
 
-    const site = await getSite(locationId);
     const groupIds = await myGroupIds(userId);
-    const maxDetourMiles = await configService.getNumber(SETTING_KEYS.CARPOOL_MAX_DETOUR_MILES, locationId);
     const minScore = await configService.getNumber(SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE, locationId);
 
     const out = [];
@@ -554,15 +538,14 @@ export const carpoolService = {
       });
       const enriched = [];
       for (const r of rides) {
-        enriched.push({ ...r, origin: { lat: r.origin_lat, lng: r.origin_lng }, driverStats: await driverStats(r.driver_id) });
+        enriched.push({ ...r, driverStats: await driverStats(r.driver_id) });
       }
       const rider = {
-        pickup: { lat: req.origin_lat, lng: req.origin_lng },
         windowStart: req.window_start,
         windowEnd: req.window_end,
         groupIds,
       };
-      const ranked = rankRides(enriched, rider, site, { maxDetourMiles }).filter((x) => x.score >= minScore);
+      const ranked = rankRides(enriched, rider).filter((x) => x.score >= minScore);
       out.push({
         requestId: req.id,
         direction: req.direction,

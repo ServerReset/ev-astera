@@ -1,12 +1,10 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, ArrowLeft } from 'lucide-react';
+import { Leaf, ArrowLeft, Trophy, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
+import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { ErrorState } from '@/components/common/States.jsx';
 import { ImpactStats } from '@/components/carpool/ImpactStats.jsx';
-import { Leaderboard } from '@/components/carpool/Leaderboard.jsx';
 import { useApi } from '@/hooks/useApi.js';
-import { useAuthStore } from '@/stores/authStore.js';
 import { carpoolApi } from '@/services/endpoints.js';
 
 /** Skeleton matching the 6-tile ImpactStats grid so there's no layout jump on load. */
@@ -27,11 +25,7 @@ function StatsSkeleton() {
  * switch can't leave a stale board under the wrong label.
  */
 export default function CarpoolImpactPage() {
-  const userId = useAuthStore((s) => s.user?.id);
-  const [window, setWindow] = useState('week');
-
   const impact = useApi(() => carpoolApi.myImpact(), []);
-  const board = useApi(() => carpoolApi.leaderboard({ window }), [window]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -59,15 +53,16 @@ export default function CarpoolImpactPage() {
         )}
       </section>
 
-      {board.loading && !board.data ? (
-        <div className="skeleton h-80 rounded-2xl" />
-      ) : board.error ? (
-        <ErrorState error={board.error} onRetry={board.refetch} title="Could not load the leaderboard" />
-      ) : (
-        <div className="animate-fade-in">
-          <Leaderboard rows={board.data || []} highlightUserId={userId} window={window} onWindowChange={setWindow} />
-        </div>
-      )}
+      <Link to="/leaderboards" className="block">
+        <Card className="transition-colors hover:bg-surface-2">
+          <CardHeader
+            title="Leaderboards"
+            subtitle="See best/worst performers across carpool and reliability"
+            icon={Trophy}
+            action={<ChevronRight className="h-5 w-5 shrink-0 text-faint" />}
+          />
+        </Card>
+      </Link>
     </div>
   );
 }

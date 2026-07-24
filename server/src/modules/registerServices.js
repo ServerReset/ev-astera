@@ -13,6 +13,7 @@ import { queueService } from './queue/queue.service.js';
 import { notificationService } from './notification/notification.service.js';
 import { messageService } from './message/message.service.js';
 import { carpoolService } from './carpool/carpool.service.js';
+import { reliabilityService } from './reliability/reliability.service.js';
 import { adminService } from './admin/admin.service.js';
 
 export function registerAllServices() {
@@ -24,5 +25,6 @@ export function registerAllServices() {
   registerService('notification', notificationService);
   registerService('message', messageService);
   registerService('carpool', carpoolService);
+  registerService('reliability', reliabilityService);
   registerService('admin', adminService);
 }

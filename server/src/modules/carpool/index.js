@@ -91,7 +91,7 @@ export default defineModule({
     // ── Requests ─────────────────────────────────────────────────────────────────
     router.get(
       '/requests',
-      asyncHandler(async (req, res) => ok(res, await carpoolService.listRequests(req.locationId)))
+      asyncHandler(async (req, res) => ok(res, await carpoolService.listRequests(req.locationId, uid(req))))
     );
     router.post(
       '/requests',
@@ -151,6 +151,11 @@ export default defineModule({
       '/leaderboard',
       validate(leaderboardQuerySchema, 'query'),
       asyncHandler(async (req, res) => ok(res, await carpoolService.leaderboard(req.locationId, req.query)))
+    );
+    router.get(
+      '/leaderboard/totals',
+      validate(leaderboardQuerySchema, 'query'),
+      asyncHandler(async (req, res) => ok(res, await carpoolService.leaderboardTotals(req.locationId, req.query)))
     );
     router.get(
       '/impact/me',

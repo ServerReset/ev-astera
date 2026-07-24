@@ -78,6 +78,20 @@ export const messageService = {
 
     const updated = await prisma.messages.update({ where: { id: messageId }, data: { reaction } });
 
+    // Also persist onto the original nudge notification's metadata (via the message_id link)
+    // so the reaction UI still shows the saved state after a reload — the client reads
+    // `notification.metadata.reaction`, which otherwise nothing ever writes.
+    const notification = await prisma.notifications.findFirst({
+      where: { message_id: messageId, user_id: userId },
+      select: { id: true, metadata: true },
+    });
+    if (notification) {
+      await prisma.notifications.update({
+        where: { id: notification.id },
+        data: { metadata: { ...(notification.metadata || {}), reaction } },
+      });
+    }
+
     await emit(EVENTS.NUDGE_REACTED, {
       locationId: updated.location_id,
       messageId: updated.id,

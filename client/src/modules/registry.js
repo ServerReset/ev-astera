@@ -6,11 +6,12 @@
  */
 import dashboard from './dashboard/index.js';
 import carpool from './carpool/index.js';
+import leaderboards from './leaderboards/index.js';
 import notifications from './notifications/index.js';
 import profile from './profile/index.js';
 import admin from './admin/index.js';
 
-export const clientModules = [dashboard, carpool, notifications, profile, admin];
+export const clientModules = [dashboard, carpool, leaderboards, notifications, profile, admin];
 
 /** All routes flattened, in declaration order. */
 export const allRoutes = clientModules.flatMap((m) => m.routes || []);

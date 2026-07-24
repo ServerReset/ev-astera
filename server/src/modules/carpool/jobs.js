@@ -120,6 +120,7 @@ export async function carpoolMatch() {
           status: RIDE_STATUS.OPEN,
           seats_available: { gt: 0 },
           depart_at: { gte: req.window_start, lte: req.window_end },
+          driver_id: { not: req.rider_id },
         },
       });
       if (!rides.length) continue;

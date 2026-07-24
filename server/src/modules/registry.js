@@ -15,6 +15,7 @@ import queueModule from './queue/index.js';
 import notificationModule from './notification/index.js';
 import messageModule from './message/index.js';
 import carpoolModule from './carpool/index.js';
+import reliabilityModule from './reliability/index.js';
 import adminModule from './admin/index.js';
 
 export const modules = [
@@ -26,6 +27,7 @@ export const modules = [
   notificationModule,
   messageModule,
   carpoolModule,
+  reliabilityModule,
   adminModule,
 ];
 

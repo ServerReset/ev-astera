@@ -33,6 +33,9 @@ create table if not exists users (
   locked_until        timestamptz,
   last_active_at      timestamptz,
   onboarded_at        timestamptz,
+  reliability_score          double precision not null default 100,
+  reliability_locked_until   timestamptz,
+  last_reliability_event_at  timestamptz,
   created_at          timestamptz not null default now()
 );
 create index if not exists idx_users_location on users(location_id);
@@ -92,11 +95,19 @@ create table if not exists queue_entries (
   id            uuid primary key default gen_random_uuid(),
   location_id   uuid not null references locations(id) on delete cascade,
   charger_id    uuid references chargers(id) on delete cascade,   -- null => "any available"
+  -- The user's original join()-time preference (a specific charger, or NULL for "any"), kept
+  -- separate from charger_id (which gets overwritten to a concrete charger once notified) so a
+  -- missed-claim auto-requeue can restore the real preference instead of pinning them forever
+  -- to whichever one charger they happened to be notified for.
+  preferred_charger_id uuid references chargers(id) on delete set null,
   user_id       uuid not null references users(id) on delete cascade,
   status        text not null default 'waiting'
                   check (status in ('waiting','notified','claimed','fulfilled','skipped','cancelled')),
   priority      integer not null default 0,        -- carpool tie-in: higher = sooner
   priority_source text,                             -- e.g. 'carpool' for auditing
+  carpool_priority_delta      integer not null default 0,
+  reliability_priority_delta  integer not null default 0,
+  requeue_count integer not null default 0,
   notified_at   timestamptz,
   claimed_at    timestamptz,
   expires_at    timestamptz,                        -- grace / claim deadline
@@ -120,12 +131,14 @@ create table if not exists notifications (
   title         text not null,
   body          text not null,
   action_url    text,
+  message_id    uuid,   -- links a nudge notification back to its message, for reaction lookups (messages table is created below; no FK to avoid a forward reference)
   metadata      jsonb not null default '{}'::jsonb,
   read_at       timestamptz,
   created_at    timestamptz not null default now()
 );
 create index if not exists idx_notif_user on notifications(user_id, created_at desc);
 create index if not exists idx_notif_unread on notifications(user_id) where read_at is null;
+create index if not exists idx_notif_message_id on notifications(message_id);
 
 -- ── Push subscriptions ──────────────────────────────────────────────────────────
 create table if not exists push_subscriptions (
@@ -333,6 +346,24 @@ create table if not exists carpool_credits_ledger (
 create index if not exists idx_cpcred_user on carpool_credits_ledger(user_id, created_at desc);
 
 -- ============================================================================
+--  RELIABILITY
+-- ============================================================================
+
+-- One row per scoring event (overtime penalty, fast-unplug/carpool-driver bonus, lockout
+-- trigger) — the append-only audit trail behind users.reliability_score.
+create table if not exists reliability_events (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references users(id) on delete cascade,
+  type        text not null,
+  delta       double precision not null,
+  score_after double precision not null,
+  session_id  uuid,
+  metadata    jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_reliability_events_user_id_created_at on reliability_events(user_id, created_at desc);
+
+-- ============================================================================
 --  updated_at trigger for chargers
 -- ============================================================================
 create or replace function set_updated_at() returns trigger as $$
@@ -423,6 +454,7 @@ alter table carpool_bookings enable row level security;
 alter table carpool_requests enable row level security;
 alter table carpool_trip_logs enable row level security;
 alter table carpool_credits_ledger enable row level security;
+alter table reliability_events enable row level security;
 
 -- Belt-and-suspenders: Supabase grants `anon`/`authenticated` broad default privileges on
 -- tables created in `public` (independent of RLS). Revoke that blanket grant so RLS is the

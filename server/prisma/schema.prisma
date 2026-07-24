@@ -48,21 +48,24 @@ model locations {
 }
 
 model users {
-  id                  String    @id @default(uuid())
-  location_id         String
-  email               String    @unique
-  password_hash       String?
-  display_name        String
-  role                String    @default("user")
-  vehicle_description String?
-  notification_prefs  Json      @default("{}")
-  carpool_credits     Int       @default(0)
-  active              Boolean   @default(true)
-  failed_attempts     Int       @default(0)
-  locked_until        DateTime?
-  last_active_at      DateTime?
-  onboarded_at        DateTime?
-  created_at          DateTime  @default(now())
+  id                         String    @id @default(uuid())
+  location_id                String
+  email                      String    @unique
+  password_hash               String?
+  display_name               String
+  role                        String    @default("user")
+  vehicle_description         String?
+  notification_prefs          Json      @default("{}")
+  carpool_credits              Int       @default(0)
+  active                       Boolean   @default(true)
+  failed_attempts              Int       @default(0)
+  locked_until                 DateTime?
+  last_active_at               DateTime?
+  onboarded_at                 DateTime?
+  reliability_score            Float     @default(100)
+  reliability_locked_until     DateTime?
+  last_reliability_event_at    DateTime?
+  created_at                   DateTime  @default(now())
 
   locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
 
@@ -84,6 +87,7 @@ model users {
   carpool_requests_as_rider          carpool_requests[]   @relation("carpool_request_rider")
   carpool_trip_logs                   carpool_trip_logs[]
   carpool_credits_ledger               carpool_credits_ledger[]
+  reliability_events                    reliability_events[]
 
   @@index([location_id])
   @@index([email])
@@ -150,18 +154,27 @@ model sessions {
 }
 
 model queue_entries {
-  id              String    @id @default(uuid())
-  location_id     String
-  charger_id      String?
-  user_id         String
-  status          String    @default("waiting")
-  priority        Int       @default(0)
-  priority_source String?
-  notified_at     DateTime?
-  claimed_at      DateTime?
-  expires_at      DateTime?
-  joined_at       DateTime  @default(now())
-  created_at      DateTime  @default(now())
+  id                          String    @id @default(uuid())
+  location_id                 String
+  charger_id                  String?
+  // The user's original join()-time preference (a specific charger, or null for "any").
+  // charger_id gets overwritten to a concrete charger once advance() notifies this entry —
+  // preferred_charger_id never changes after creation, so an auto-requeue (see
+  // transitionExpiredQueueEntries) can restore the user's real intent instead of permanently
+  // pinning them to whichever one charger they happened to be notified for and then missed.
+  preferred_charger_id        String?
+  user_id                     String
+  status                      String    @default("waiting")
+  priority                    Int       @default(0)
+  priority_source             String?
+  carpool_priority_delta      Int       @default(0)
+  reliability_priority_delta  Int       @default(0)
+  requeue_count               Int       @default(0)
+  notified_at                 DateTime?
+  claimed_at                  DateTime?
+  expires_at                  DateTime?
+  joined_at                   DateTime  @default(now())
+  created_at                  DateTime  @default(now())
 
   locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
   chargers  chargers? @relation(fields: [charger_id], references: [id], onDelete: Cascade)
@@ -183,6 +196,7 @@ model notifications {
   body        String
   action_url  String?
   metadata    Json      @default("{}")
+  message_id  String?
   read_at     DateTime?
   created_at  DateTime  @default(now())
 
@@ -191,6 +205,7 @@ model notifications {
 
   @@index([user_id, created_at(sort: Desc)])
   @@index([user_id])
+  @@index([message_id])
 }
 
 model push_subscriptions {
@@ -456,6 +471,21 @@ model carpool_credits_ledger {
   locations     locations      @relation(fields: [location_id], references: [id], onDelete: Cascade)
   users         users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   carpool_rides carpool_rides? @relation(fields: [ride_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, created_at(sort: Desc)])
+}
+
+model reliability_events {
+  id          String   @id @default(uuid())
+  user_id     String
+  type        String
+  delta       Float
+  score_after Float
+  session_id  String?
+  metadata    Json     @default("{}")
+  created_at  DateTime @default(now())
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, created_at(sort: Desc)])
 }

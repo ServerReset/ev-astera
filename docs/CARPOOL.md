@@ -73,7 +73,7 @@ On `CARPOOL_TRIP_COMPLETED` (driver taps "Trip done", or the `carpoolComplete` c
 | POST | `/bookings/:id/confirm` | Driver confirms rider |
 | POST | `/bookings/:id/decline` | Driver declines rider |
 | POST | `/bookings/:id/cancel` | Rider/driver cancels booking |
-| GET | `/requests` | Open ride requests (for drivers to fill) |
+| GET | `/requests` | My open ride requests |
 | POST | `/requests` | Post "I need a ride" |
 | DELETE | `/requests/:id` | Cancel request |
 | GET | `/schedules` | My recurring schedules |

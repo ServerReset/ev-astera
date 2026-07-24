@@ -15,6 +15,7 @@ import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { configService } from '../../services/config.service.js';
+import { services } from '../../services/index.js';
 import { BusinessRuleError, ConflictError, NotFoundError, AuthorizationError } from '../../utils/errors.js';
 import {
   QUEUE_STATUS,
@@ -82,6 +83,15 @@ export const queueService = {
   },
 
   async join(locationId, userId, chargerId = null) {
+    // Chronically unreliable users (repeated severe overtime) are locked out entirely —
+    // a priority penalty alone wouldn't stop them from still occupying a spot.
+    if (await services.reliability.isLockedOut(userId, locationId)) {
+      const { lockedUntil } = await services.reliability.getScore(userId, locationId);
+      throw new BusinessRuleError(
+        `Your account is temporarily restricted from joining the queue due to low reliability. Try again after ${new Date(lockedUntil).toLocaleString()}.`
+      );
+    }
+
     // One active queue entry per user.
     const existing = await prisma.queue_entries.findFirst({
       where: { location_id: locationId, user_id: userId, status: { in: ACTIVE_QUEUE } },
@@ -104,10 +114,26 @@ export const queueService = {
       if (!charger) throw new NotFoundError('Charger not found');
     }
 
+    // Reliability contributes an additive priority component from the start (carpool's
+    // component is granted later, on CARPOOL_BOOKING_CONFIRMED — see carpool/listeners.js).
+    const baseline = await configService.getNumber(SETTING_KEYS.RELIABILITY_BASELINE, locationId);
+    const weight = await configService.getNumber(SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT, locationId);
+    const { score } = (await services.reliability.getScore(userId, locationId)) || { score: baseline };
+    const reliabilityDelta = Math.round((score - baseline) * weight);
+
     let data;
     try {
       data = await prisma.queue_entries.create({
-        data: { location_id: locationId, charger_id: chargerId, user_id: userId, status: QUEUE_STATUS.WAITING },
+        data: {
+          location_id: locationId,
+          charger_id: chargerId,
+          preferred_charger_id: chargerId,
+          user_id: userId,
+          status: QUEUE_STATUS.WAITING,
+          reliability_priority_delta: reliabilityDelta,
+          priority: reliabilityDelta,
+          priority_source: reliabilityDelta !== 0 ? 'reliability' : null,
+        },
       });
     } catch {
       throw new ConflictError('Could not join the queue for this charger. Please try again.');
@@ -187,8 +213,15 @@ export const queueService = {
    * Advance the queue for a charger that just became (or is) free.
    * No-op if the charger is busy or a turn is already in flight. Otherwise notifies the
    * highest-priority waiting entry (charger-specific or "any") and starts its grace period.
+   *
+   * Two chargers freeing up near-simultaneously can both pick the same top "any" candidate
+   * before either writes back — the update is therefore conditioned on the row still being
+   * WAITING (`updateMany` + checking `count`), so only the first writer actually wins the
+   * entry; a loser retries against the next-best remaining candidate instead of silently
+   * overwriting the winner's charger_id and sending a notification for a charger the entry
+   * doesn't actually end up bound to.
    */
-  async advance(locationId, chargerId) {
+  async advance(locationId, chargerId, _excludeIds = []) {
     if (!chargerId) return { advanced: false };
     if (await chargerBusy(chargerId)) return { advanced: false };
     if (await turnInFlight(locationId, chargerId)) return { advanced: false };
@@ -198,6 +231,7 @@ export const queueService = {
       where: {
         location_id: locationId,
         status: QUEUE_STATUS.WAITING,
+        id: { notIn: _excludeIds },
         OR: [{ charger_id: chargerId }, { charger_id: null }],
       },
       orderBy: [{ priority: 'desc' }, { joined_at: 'asc' }],
@@ -209,9 +243,12 @@ export const queueService = {
 
     const grace = await configService.getNumber(SETTING_KEYS.GRACE_PERIOD_MINUTES, locationId);
     const expiresAt = addMinutes(now(), grace);
-    // Bind an "any" entry to this specific charger so the claim/start targets it.
-    await prisma.queue_entries.update({
-      where: { id: next.id },
+    // Bind an "any" entry to this specific charger so the claim/start targets it. Conditioned
+    // on status still being WAITING — if a concurrent advance() call already won this row
+    // (e.g. for a different charger), this updateMany affects 0 rows and we fall through to
+    // retry against the next candidate rather than clobbering the winner's write.
+    const { count } = await prisma.queue_entries.updateMany({
+      where: { id: next.id, status: QUEUE_STATUS.WAITING },
       data: {
         status: QUEUE_STATUS.NOTIFIED,
         charger_id: chargerId,
@@ -219,6 +256,9 @@ export const queueService = {
         expires_at: expiresAt,
       },
     });
+    if (count === 0) {
+      return this.advance(locationId, chargerId, [..._excludeIds, next.id]);
+    }
 
     await emit(EVENTS.QUEUE_ADVANCED, {
       locationId,
@@ -233,8 +273,18 @@ export const queueService = {
 
 /**
  * Compute-on-read replacement for the old gracePeriodCheck cron: notified/claimed entries
- * whose deadline passed are skipped (back of the line) and the queue advances. Mutates
- * `entries` in place (removing/flagging expired ones) so list()'s caller sees fresh state.
+ * whose deadline passed are skipped, then — unless they've already been auto-requeued
+ * QUEUE_MAX_AUTO_REQUEUES times — genuinely put back at the end of the line with a fresh
+ * `joined_at`, carrying over their earned priority (a lapsed claim window isn't the user's
+ * fault in a way that should cost them a carpool/reliability boost). This is what makes the
+ * "moved to the back of the queue" notification copy actually true. Mutates `entries` in
+ * place (removing/flagging expired ones, and appending the replacement row) so list()'s
+ * caller sees fresh state without a second DB round-trip.
+ *
+ * The SKIP + replacement-create for a single entry runs inside one `$transaction` — without
+ * that, a process kill between the two writes (this app's own eventBus.js notes the Vercel
+ * serverless runtime can freeze right after a response is sent) would leave the user SKIPPED
+ * with no replacement row and no way to ever be revisited, since nothing re-scans SKIPPED rows.
  */
 export async function transitionExpiredQueueEntries(locationId, entries) {
   const nowTs = now();
@@ -246,12 +296,38 @@ export async function transitionExpiredQueueEntries(locationId, entries) {
   );
   if (!expired.length) return;
 
+  const maxAutoRequeues = await configService.getNumber(SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES, locationId);
   const chargersToAdvance = new Set();
   for (const entry of expired) {
-    await prisma.queue_entries.update({
-      where: { id: entry.id },
-      data: { status: QUEUE_STATUS.SKIPPED, notified_at: null, expires_at: null },
-    });
+    const willRequeue = entry.requeue_count < maxAutoRequeues;
+    // Restore the user's original preference (a specific charger, or "any") rather than the
+    // concrete charger_id they happened to be pinned to when notified — see the
+    // preferred_charger_id doc comment on the model for why these two can now differ.
+    const [, replacement] = await prisma.$transaction([
+      prisma.queue_entries.update({
+        where: { id: entry.id },
+        data: { status: QUEUE_STATUS.SKIPPED, notified_at: null, expires_at: null },
+      }),
+      ...(willRequeue
+        ? [
+            prisma.queue_entries.create({
+              data: {
+                location_id: entry.location_id,
+                charger_id: entry.preferred_charger_id,
+                preferred_charger_id: entry.preferred_charger_id,
+                user_id: entry.user_id,
+                status: QUEUE_STATUS.WAITING,
+                priority: entry.priority,
+                priority_source: entry.priority_source,
+                carpool_priority_delta: entry.carpool_priority_delta,
+                reliability_priority_delta: entry.reliability_priority_delta,
+                requeue_count: entry.requeue_count + 1,
+              },
+            }),
+          ]
+        : []),
+    ]);
+
     entry.status = QUEUE_STATUS.SKIPPED;
     await emit(EVENTS.QUEUE_SKIPPED, {
       locationId: entry.location_id,
@@ -259,6 +335,10 @@ export async function transitionExpiredQueueEntries(locationId, entries) {
       queueEntryId: entry.id,
       userId: entry.user_id,
     });
+
+    if (replacement) entries.push({ ...replacement, users: entry.users });
+    // Re-advance whatever charger this entry had been pinned to — it's free again since the
+    // user never claimed it (not the replacement's restored preference, which may be "any").
     if (entry.charger_id) chargersToAdvance.add(entry.charger_id);
   }
 

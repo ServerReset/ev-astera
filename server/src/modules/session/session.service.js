@@ -187,13 +187,21 @@ export const sessionService = {
     if (![SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME].includes(s.status)) {
       throw new BusinessRuleError('Session already ended.');
     }
+    const endedAt = now();
     await prisma.sessions.update({
       where: { id: sessionId },
-      data: { status: SESSION_STATUS.COMPLETED, ended_at: now() },
+      data: { status: SESSION_STATUS.COMPLETED, ended_at: endedAt },
     });
     await prisma.chargers.update({ where: { id: s.charger_id }, data: { status: CHARGER_STATUS.AVAILABLE } });
 
-    await emit(EVENTS.SESSION_ENDED, { locationId, sessionId, chargerId: s.charger_id, userId });
+    await emit(EVENTS.SESSION_ENDED, {
+      locationId,
+      sessionId,
+      chargerId: s.charger_id,
+      userId,
+      etaAt: s.eta_at,
+      endedAt,
+    });
     return { success: true };
   },
 
@@ -201,9 +209,10 @@ export const sessionService = {
   async forceEnd(locationId, sessionId, adminId) {
     const s = await prisma.sessions.findUnique({ where: { id: sessionId } });
     if (!s) throw new NotFoundError('Session not found');
+    const endedAt = now();
     await prisma.sessions.update({
       where: { id: sessionId },
-      data: { status: SESSION_STATUS.FORCE_ENDED, ended_at: now() },
+      data: { status: SESSION_STATUS.FORCE_ENDED, ended_at: endedAt },
     });
     await prisma.chargers.update({ where: { id: s.charger_id }, data: { status: CHARGER_STATUS.AVAILABLE } });
     await emit(EVENTS.SESSION_FORCE_ENDED, {
@@ -213,8 +222,17 @@ export const sessionService = {
       userId: s.user_id,
       adminId,
     });
-    // Also emit SESSION_ENDED so the queue advances.
-    await emit(EVENTS.SESSION_ENDED, { locationId, sessionId, chargerId: s.charger_id, userId: s.user_id });
+    // Also emit SESSION_ENDED so the queue advances and reliability scoring applies — a
+    // force-end almost always means the user overstayed, so it should count the same as a
+    // self-ended overtime session, not be exempt from the penalty.
+    await emit(EVENTS.SESSION_ENDED, {
+      locationId,
+      sessionId,
+      chargerId: s.charger_id,
+      userId: s.user_id,
+      etaAt: s.eta_at,
+      endedAt,
+    });
     return { success: true };
   },
 };

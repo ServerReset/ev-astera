@@ -120,6 +120,24 @@ export const SETTING_KEYS = Object.freeze({
   CARPOOL_CREDIT_PER_TRIP: 'carpool_credit_per_trip',
   CARPOOL_CREDIT_PER_RIDER: 'carpool_credit_per_rider',
   CARPOOL_HQ_ADDRESS: 'carpool_hq_address',
+  // registration gating
+  SIGNUP_RELEASE_AT: 'signup_release_at',
+  SIGNUP_GEOFENCE_ENABLED: 'signup_geofence_enabled',
+  SIGNUP_GEOFENCE_RADIUS_METERS: 'signup_geofence_radius_meters',
+  // queue
+  QUEUE_MAX_AUTO_REQUEUES: 'queue_max_auto_requeues',
+  // reliability score
+  RELIABILITY_ENABLED: 'reliability_enabled',
+  RELIABILITY_BASELINE: 'reliability_baseline',
+  RELIABILITY_OVERTIME_GRACE_MINUTES: 'reliability_overtime_grace_minutes',
+  RELIABILITY_OVERTIME_PENALTY_PER_MINUTE: 'reliability_overtime_penalty_per_minute',
+  RELIABILITY_OVERTIME_ESCALATION_FACTOR: 'reliability_overtime_escalation_factor',
+  RELIABILITY_FAST_UNPLUG_BONUS: 'reliability_fast_unplug_bonus',
+  RELIABILITY_CARPOOL_DRIVER_BONUS: 'reliability_carpool_driver_bonus',
+  RELIABILITY_DECAY_PER_DAY: 'reliability_decay_per_day',
+  RELIABILITY_LOCKOUT_THRESHOLD: 'reliability_lockout_threshold',
+  RELIABILITY_LOCKOUT_DURATION_HOURS: 'reliability_lockout_duration_hours',
+  RELIABILITY_QUEUE_WEIGHT: 'reliability_queue_weight',
 });
 
 // Fallback defaults used if a setting row is somehow missing. The DB seed is authoritative.
@@ -150,6 +168,21 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP]: 10,
   [SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER]: 5,
   [SETTING_KEYS.CARPOOL_HQ_ADDRESS]: '',
+  [SETTING_KEYS.SIGNUP_RELEASE_AT]: '',
+  [SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED]: true,
+  [SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS]: 500,
+  [SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES]: 2,
+  [SETTING_KEYS.RELIABILITY_ENABLED]: true,
+  [SETTING_KEYS.RELIABILITY_BASELINE]: 100,
+  [SETTING_KEYS.RELIABILITY_OVERTIME_GRACE_MINUTES]: 5,
+  [SETTING_KEYS.RELIABILITY_OVERTIME_PENALTY_PER_MINUTE]: 1.5,
+  [SETTING_KEYS.RELIABILITY_OVERTIME_ESCALATION_FACTOR]: 1.08,
+  [SETTING_KEYS.RELIABILITY_FAST_UNPLUG_BONUS]: 3,
+  [SETTING_KEYS.RELIABILITY_CARPOOL_DRIVER_BONUS]: 2,
+  [SETTING_KEYS.RELIABILITY_DECAY_PER_DAY]: 1,
+  [SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD]: 40,
+  [SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS]: 48,
+  [SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT]: 0.3,
 });
 
 // ── Misc ───────────────────────────────────────────────────────────────────────

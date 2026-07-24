@@ -7,6 +7,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { prisma } from '../../db/prisma.js';
 import { env } from '../../config/index.js';
+import { configService } from '../../services/config.service.js';
+import { haversineMiles } from '../../utils/geo.js';
+import { SETTING_KEYS } from '../../../../shared/constants.js';
 import {
   AppError,
   AuthenticationError,
@@ -61,8 +64,53 @@ async function issueRefreshToken(userId, remember) {
 }
 
 export const localProvider = {
-  async register({ email, password, displayName, vehicleDescription, locationId }) {
+  async register({ email, password, displayName, vehicleDescription, lat, lng, locationId }) {
     const loc = locationId || env.defaultLocationId;
+
+    // Fails CLOSED, not open: a signup gate is a security/business control, so any
+    // misconfiguration (unparseable date, missing office coordinates, non-numeric radius)
+    // should block registration and surface a clear server-side error rather than silently
+    // letting everyone through — the opposite of what an admin enabling these gates intends.
+    const releaseAt = await configService.get(SETTING_KEYS.SIGNUP_RELEASE_AT, loc);
+    if (releaseAt) {
+      const releaseDate = new Date(releaseAt);
+      if (Number.isNaN(releaseDate.getTime())) {
+        throw new AppError(
+          'Signups are misconfigured (invalid release date) — contact an admin.',
+          500,
+          'SIGNUP_RELEASE_AT_INVALID'
+        );
+      }
+      if (new Date() < releaseDate) throw new BusinessRuleError('Signups are not open yet.');
+    }
+
+    const geoEnabled = await configService.getBool(SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, loc);
+    if (geoEnabled) {
+      if (lat == null || lng == null) {
+        throw new BusinessRuleError('Location is required to sign up — enable location access and try again.');
+      }
+      const location = await prisma.locations.findUnique({ where: { id: loc }, select: { site_lat: true, site_lng: true } });
+      if (location?.site_lat == null || location?.site_lng == null) {
+        throw new AppError(
+          'Signups are misconfigured (office location not set) — contact an admin.',
+          500,
+          'SIGNUP_GEOFENCE_MISCONFIGURED'
+        );
+      }
+      const radiusMeters = await configService.getNumber(SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS, loc);
+      if (Number.isNaN(radiusMeters)) {
+        throw new AppError(
+          'Signups are misconfigured (geofence radius) — contact an admin.',
+          500,
+          'SIGNUP_GEOFENCE_MISCONFIGURED'
+        );
+      }
+      const distanceMeters = haversineMiles({ lat, lng }, { lat: location.site_lat, lng: location.site_lng }) * 1609.34;
+      if (distanceMeters > radiusMeters) {
+        throw new BusinessRuleError('You must be near the office to sign up.');
+      }
+    }
+
     const existing = await prisma.users.findUnique({ where: { email }, select: { id: true } });
     if (existing) throw new ConflictError('An account with this email already exists');
 

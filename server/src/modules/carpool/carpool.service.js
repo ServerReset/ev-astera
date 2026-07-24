@@ -358,14 +358,34 @@ export const carpoolService = {
     if (!r) throw new NotFoundError('Ride not found');
     if (r.driver_id !== driverId) throw new AuthorizationError('Not your ride');
     if ([RIDE_STATUS.COMPLETED, RIDE_STATUS.CANCELLED].includes(r.status)) throw new BusinessRuleError('Ride already closed.');
+    if (new Date(r.depart_at) > now()) {
+      throw new BusinessRuleError("This ride hasn't departed yet.");
+    }
+
+    // Mirror carpoolComplete's (jobs.js) rule exactly: a ride with no confirmed riders closes
+    // out with zero impact/credits/reliability bonus, instead of the driver being able to
+    // post-then-immediately-complete an empty ride for free carpool_credit_per_trip credits
+    // and a RELIABILITY_CARPOOL_DRIVER_BONUS on repeat.
+    const confirmedCount = await prisma.carpool_bookings.count({
+      where: { ride_id: rideId, status: BOOKING_STATUS.CONFIRMED },
+    });
+    if (confirmedCount === 0) {
+      await prisma.carpool_rides.update({ where: { id: rideId }, data: { status: RIDE_STATUS.COMPLETED, completed_at: now() } });
+      return { miles: 0, co2Grams: 0, riders: 0, driverCredits: 0 };
+    }
+
     return completeRideImpact(r, milesOverride ?? null);
   },
 
   // ── Feature 1b: ride requests (rider "I need a ride") ─────────────────────────
-  async listRequests(locationId) {
+  // Scoped to the caller's own requests — the client (CarpoolPage's "Requests" tab) renders
+  // this as personal request management (a "Request a ride" button, a Cancel action per row,
+  // and the caller's own suggested-drivers matches merged in), not a public browse list, so
+  // an unscoped query here leaked every rider's pickup address and time window to everyone.
+  async listRequests(locationId, riderId) {
     await ensureMaterialized(locationId);
     const data = await prisma.carpool_requests.findMany({
-      where: { location_id: locationId, status: RIDE_REQUEST_STATUS.OPEN, window_end: { gte: now() } },
+      where: { location_id: locationId, rider_id: riderId, status: RIDE_REQUEST_STATUS.OPEN, window_end: { gte: now() } },
       include: { rider: { select: { display_name: true } } },
       orderBy: { window_start: 'asc' },
     });
@@ -559,6 +579,7 @@ export const carpoolService = {
           status: RIDE_STATUS.OPEN,
           seats_available: { gt: 0 },
           depart_at: { gte: req.window_start, lte: req.window_end },
+          driver_id: { not: userId },
         },
         include: { driver: { select: { display_name: true } } },
       });
@@ -608,6 +629,25 @@ export const carpoolService = {
       .map((u) => ({ ...u, co2Kg: Math.round(u.co2Kg * 10) / 10 }))
       .sort((a, b) => b.co2Kg - a.co2Kg)
       .slice(0, 50);
+  },
+
+  /**
+   * True location-wide totals for a window — unlike leaderboard(), which caps at the top 50
+   * users by design (a ranked board, not a report). Summed directly from the DB with an
+   * aggregate query rather than the capped in-memory leaderboard array, so this number is
+   * correct even when more than 50 distinct users logged trips in the window.
+   */
+  async leaderboardTotals(locationId, { window = 'week' } = {}) {
+    const since = window === 'all' ? null : window === 'month' ? addMinutes(now(), -43200) : addMinutes(now(), -10080);
+    const agg = await prisma.carpool_trip_logs.aggregate({
+      where: { location_id: locationId, ...(since ? { created_at: { gte: since } } : {}) },
+      _sum: { co2_grams_saved: true },
+      _count: { _all: true },
+    });
+    return {
+      co2Kg: Math.round(((agg._sum.co2_grams_saved || 0) / 1000) * 10) / 10,
+      trips: agg._count._all,
+    };
   },
 
   // ── Admin overrides: location-wide visibility + force-cancel, no ownership check ──────

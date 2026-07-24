@@ -16,14 +16,15 @@ export const messageListeners = [
   {
     event: EVENTS.NUDGE_SENT,
     handler: async (p) => {
-      const from = await displayName(p.senderId);
+      // Nudges are anonymous to the recipient — never look up or surface the sender's name here.
       await dispatchNotification(p.recipientId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.NUDGE,
         priority: NOTIFICATION_PRIORITY.HIGH,
-        title: `👋 Nudge from ${from}`,
+        title: '👋 You got a nudge!',
         body: p.message,
         actionUrl: '/',
+        messageId: p.messageId,
         metadata: { messageId: p.messageId, chargerId: p.chargerId, sessionId: p.sessionId },
       });
     },

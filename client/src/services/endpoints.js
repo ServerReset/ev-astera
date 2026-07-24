@@ -11,6 +11,7 @@ const L = (path) => `/locations/${loc()}${path}`;
 
 // ── Auth (root-scoped) ─────────────────────────────────────────────────────────
 export const authApi = {
+  signupStatus: () => api.get('/auth/signup-status'),
   register: (body) => api.post('/auth/register', body),
   login: (body) => api.post('/auth/login', body),
   refresh: () => api.post('/auth/refresh', {}),
@@ -102,7 +103,14 @@ export const carpoolApi = {
 
   matches: () => api.get(L('/carpool/matches')),
   leaderboard: (params) => api.get(L('/carpool/leaderboard'), { params }),
+  leaderboardTotals: (params) => api.get(L('/carpool/leaderboard/totals'), { params }),
   myImpact: () => api.get(L('/carpool/impact/me')),
+};
+
+// ── Reliability ──────────────────────────────────────────────────────────────────
+export const reliabilityApi = {
+  me: () => api.get(L('/reliability/me')),
+  leaderboard: (limit) => api.get(L('/reliability/leaderboard'), { params: { limit } }),
 };
 
 // ── Admin (location-scoped, admin-gated) ────────────────────────────────────────

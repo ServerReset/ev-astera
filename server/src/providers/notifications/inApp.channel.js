@@ -12,7 +12,7 @@ export const inAppChannel = {
   },
 
   async send(userId, payload) {
-    const { title, body, type, priority = NOTIFICATION_PRIORITY.NORMAL, actionUrl = null, metadata = {}, locationId } = payload;
+    const { title, body, type, priority = NOTIFICATION_PRIORITY.NORMAL, actionUrl = null, metadata = {}, locationId, messageId = null } = payload;
     try {
       await prisma.notifications.create({
         data: {
@@ -24,6 +24,7 @@ export const inAppChannel = {
           body,
           action_url: actionUrl,
           metadata,
+          message_id: messageId,
         },
       });
     } catch (err) {
@@ -34,7 +35,7 @@ export const inAppChannel = {
   },
 
   async sendBulk(userIds, payload) {
-    const { title, body, type, priority = NOTIFICATION_PRIORITY.NORMAL, actionUrl = null, metadata = {}, locationId } = payload;
+    const { title, body, type, priority = NOTIFICATION_PRIORITY.NORMAL, actionUrl = null, metadata = {}, locationId, messageId = null } = payload;
     if (!userIds.length) return;
     const rows = userIds.map((user_id) => ({
       user_id,
@@ -45,6 +46,7 @@ export const inAppChannel = {
       body,
       action_url: actionUrl,
       metadata,
+      message_id: messageId,
     }));
     try {
       await prisma.notifications.createMany({ data: rows });

@@ -728,6 +728,31 @@ const SETTING_GROUPS = [
       { key: SETTING_KEYS.CARPOOL_HQ_ADDRESS, label: 'Astera HQ address (auto-fills "From work" rides)', type: 'text' },
     ],
   },
+  {
+    title: 'Registration',
+    fields: [
+      { key: SETTING_KEYS.SIGNUP_RELEASE_AT, label: 'Signups open at (ISO date/time, blank = open now)', type: 'text' },
+      { key: SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, label: 'Require on-site location to sign up', type: 'bool' },
+      { key: SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS, label: 'Signup geofence radius (meters)', type: 'number' },
+    ],
+  },
+  {
+    title: 'Reliability score',
+    fields: [
+      { key: SETTING_KEYS.RELIABILITY_ENABLED, label: 'Enable reliability scoring', type: 'bool' },
+      { key: SETTING_KEYS.RELIABILITY_BASELINE, label: 'Baseline score', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_GRACE_MINUTES, label: 'Overtime grace period (min)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_PENALTY_PER_MINUTE, label: 'Overtime penalty per minute', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_ESCALATION_FACTOR, label: 'Overtime penalty escalation factor', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_FAST_UNPLUG_BONUS, label: 'Fast unplug bonus', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_CARPOOL_DRIVER_BONUS, label: 'Carpool driver bonus (per trip)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_DECAY_PER_DAY, label: 'Passive decay toward baseline (points/day)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD, label: 'Lockout threshold score', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS, label: 'Lockout duration (hours)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT, label: 'Queue priority weight', type: 'number' },
+      { key: SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES, label: 'Max automatic queue re-joins after a missed turn', type: 'number' },
+    ],
+  },
 ];
 
 function SettingsSkeleton() {
@@ -758,6 +783,19 @@ function SettingsTab() {
   const glassRef = useLiquidGlass(true, { scale: -35, chroma: 2, blur: 8 });
 
   const save = async () => {
+    // Validate number fields before coercing — Number('') is 0, not NaN, so a field the admin
+    // cleared out would otherwise silently persist as a real 0 (e.g. degenerating the overtime
+    // escalation factor to a flat per-minute penalty) instead of surfacing as a mistake.
+    for (const group of SETTING_GROUPS) {
+      for (const f of group.fields) {
+        if (f.type !== 'number') continue;
+        const raw = values[f.key];
+        if (raw === '' || raw == null || Number.isNaN(Number(raw))) {
+          toast.error(`"${f.label}" needs a number.`);
+          return;
+        }
+      }
+    }
     setSaving(true);
     try {
       // Only send the keys we manage, coerced to their types.

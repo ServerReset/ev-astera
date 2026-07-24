@@ -53,6 +53,9 @@ export const carpoolListeners = [
       });
 
       // Feature 3: grant the driver charger-queue priority (if enabled and currently queued).
+      // Tracked in its own carpool_priority_delta column (not written directly to `priority`)
+      // so it can coexist with an independent reliability boost on the same entry — releasing
+      // one on SESSION_ENDED must not stomp the other (see the SESSION_ENDED handler below).
       const enabled = await configService.getBool(SETTING_KEYS.CARPOOL_PRIORITY_ENABLED, p.locationId);
       if (!enabled) return;
       const weight = await configService.getNumber(SETTING_KEYS.CARPOOL_PRIORITY_WEIGHT, p.locationId);
@@ -62,12 +65,16 @@ export const carpoolListeners = [
           user_id: p.driverId,
           status: { in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED] },
         },
-        select: { id: true, priority: true },
+        select: { id: true, carpool_priority_delta: true, reliability_priority_delta: true },
       });
-      if (entry && entry.priority < weight) {
+      if (entry && entry.carpool_priority_delta < weight) {
         await prisma.queue_entries.update({
           where: { id: entry.id },
-          data: { priority: weight, priority_source: 'carpool' },
+          data: {
+            carpool_priority_delta: weight,
+            priority: weight + entry.reliability_priority_delta,
+            priority_source: 'carpool',
+          },
         });
         await emit(EVENTS.CARPOOL_PRIORITY_GRANTED, {
           locationId: p.locationId,
@@ -147,17 +154,29 @@ export const carpoolListeners = [
     },
   },
   {
-    // Release any carpool priority hold when the driver's session ends.
+    // Release any carpool priority hold when the driver's session ends. Only the carpool
+    // component is cleared — a concurrently-active reliability boost/penalty on the same
+    // entry (see reliability/queue.service.js) must survive this.
     event: EVENTS.SESSION_ENDED,
     handler: async (p) => {
-      await prisma.queue_entries.updateMany({
+      const entries = await prisma.queue_entries.findMany({
         where: {
           user_id: p.userId,
-          priority_source: 'carpool',
+          carpool_priority_delta: { not: 0 },
           status: { in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED] },
         },
-        data: { priority: 0, priority_source: null },
+        select: { id: true, reliability_priority_delta: true },
       });
+      for (const entry of entries) {
+        await prisma.queue_entries.update({
+          where: { id: entry.id },
+          data: {
+            carpool_priority_delta: 0,
+            priority: entry.reliability_priority_delta,
+            priority_source: entry.reliability_priority_delta !== 0 ? 'reliability' : null,
+          },
+        });
+      }
     },
   },
 ];

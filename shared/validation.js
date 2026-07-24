@@ -32,7 +32,9 @@ export const registerSchema = z
     email: asteraEmailSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
-    vehicleDescription: optionalShortText,
+    vehicleDescription: z.string().trim().min(1, 'Vehicle description is required').max(120),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Passwords do not match',

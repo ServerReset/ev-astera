@@ -199,11 +199,114 @@ body {
   background: rgb(var(--c-border-strong));
   border-radius: 9999px;
 }
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-brand) / 0.6);
+}
+
+/* ── Native browser chrome, themed ───────────────────────────────────────────
+ * Everything the OS/browser paints itself — text selection, form-control accents
+ * (checkbox/radio/range ticks, the date & time picker calendars/clocks), autofill
+ * backgrounds — so no default blue/yellow ever leaks through the app's own palette.
+ * color-scheme (set per [data-theme]) already makes native popups render dark/light. */
+
+/* Brand-tinted text selection. */
+::selection {
+  background: rgb(var(--c-brand) / 0.32);
+  color: rgb(var(--c-content));
+}
+
+/* Global control accent — the date/time picker highlight, checkboxes, radios, progress. */
+:root,
+input,
+select,
+textarea,
+button {
+  accent-color: rgb(var(--c-brand));
+}
+
+/* The little calendar/clock/spinner glyphs inside date & time inputs are white by default
+   (invisible on light) — tint them to the muted text color so they read in both themes. */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator,
+input[type='month']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px;
+  filter: invert(48%) sepia(8%) saturate(360%) hue-rotate(190deg);
+  transition: background-color var(--duration-short) var(--ease-standard);
+}
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover,
+input[type='month']::-webkit-calendar-picker-indicator:hover {
+  background: rgb(var(--c-brand) / 0.18);
+}
+
+/* Autofill: Chrome/Safari paint a hard yellow/white box that ignores our theme. There's no
+   real "background" override for autofill — the trick is a huge inset shadow the same color as
+   our field, plus a delayed text-fill-color transition so the text keeps the theme color. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: rgb(var(--c-content));
+  -webkit-box-shadow: 0 0 0 1000px rgb(var(--c-bg-elevated)) inset;
+  box-shadow: 0 0 0 1000px rgb(var(--c-bg-elevated)) inset;
+  caret-color: rgb(var(--c-content));
+  border-radius: inherit;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
+/* ── Ambient aurora — a soft brand wash fixed behind everything, so the glass surfaces above
+ * have real color/motion to refract and blur. Very low opacity; decorative, pointer-none. It
+ * lives on body::before so every route gets it for free. Disabled under reduced-motion below. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20vmax;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 8%, rgb(var(--c-brand) / 0.18), transparent 60%),
+    radial-gradient(32vmax 32vmax at 88% 22%, rgb(var(--c-brand-strong) / 0.13), transparent 62%),
+    radial-gradient(42vmax 42vmax at 78% 96%, rgb(var(--c-tertiary) / 0.08), transparent 60%);
+  background-repeat: no-repeat;
+  filter: blur(8px);
+  animation: aurora-drift 34s var(--ease-standard) infinite alternate;
+}
+
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2vmax, -1.5vmax, 0) scale(1.06); }
+  100% { transform: translate3d(-1.5vmax, 2vmax, 0) scale(1.03); }
+}
 
 /* ── Component layer: reusable primitives ──────────────────────────────────── */
 @layer components {
+  /* Glass card — the app's default surface. A translucent tint over a blurred, saturated
+     backdrop (the ambient aurora shows through), a bright top inset highlight to sell the
+     "pane of glass" curvature, and a soft shadow. backdrop-filter is cheap here (no SVG
+     refraction — that stays reserved for the hero surfaces); this is pure CSS glassmorphism. */
   .card {
+    position: relative;
+    border-radius: theme('borderRadius.2xl');
+    border: 1px solid rgb(var(--c-border) / 0.7);
+    background: linear-gradient(160deg, rgb(var(--c-surface) / 0.72), rgb(var(--c-surface) / 0.58));
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      inset 0 -1px 0 rgb(0 0 0 / 0.06),
+      var(--shadow-elevation-1);
+  }
+  /* Opaque variant for surfaces that sit ON another glass surface (nested), where stacking two
+     translucent layers would muddy legibility. */
+  .card-solid {
     @apply bg-surface border border-border rounded-2xl shadow-card;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* M3 Expressive buttons: fully rounded (shape-full), spring-feel press (scale + emphasized
@@ -236,12 +339,25 @@ body {
   }
 
   .input {
-    @apply w-full rounded-2xl bg-bg-elevated border border-border px-3.5 py-2.5 text-sm
+    @apply w-full rounded-2xl border px-3.5 py-2.5 text-sm
            text-content placeholder:text-faint
            focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand
            disabled:opacity-60;
+    border-color: rgb(var(--c-border) / 0.8);
+    /* Translucent fill (so it reads as glass against a card) but NO backdrop-filter of its own:
+       inputs live inside .card, whose blur(16px) already frosts the backdrop — stacking a second
+       blur here just cost GPU and softened the input text. The tint alone reads correctly. */
+    background: rgb(var(--c-bg-elevated) / 0.78);
     transition: border-color var(--duration-short) var(--ease-standard),
-                box-shadow var(--duration-short) var(--ease-standard);
+                box-shadow var(--duration-short) var(--ease-standard),
+                background-color var(--duration-short) var(--ease-standard);
+  }
+  /* Custom select chevron (the native one is removed via `appearance-none` on the element). */
+  select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23828489' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
   }
   .label {
     @apply block text-xs font-medium text-muted mb-1.5;
@@ -308,6 +424,74 @@ body {
   }
 }
 
+/* ── Flair: opt-in decorative animations & helpers ──────────────────────────── */
+
+/* Gentle vertical bob for hero icons / empty-state art. */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float { animation: float 4s var(--ease-standard) infinite; }
+
+/* Sweeping sheen across a brand element (buttons, badges) — a moving specular band. */
+@keyframes sheen {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  60%, 100% { transform: translateX(320%) skewX(-12deg); }
+}
+.sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.18) 50%, transparent 70%);
+  transform: translateX(-120%) skewX(-12deg);
+  animation: sheen 5.5s var(--ease-standard) infinite;
+  pointer-events: none;
+}
+
+/* Animated gradient text — a slow brand shimmer for hero numbers / titles. */
+@keyframes text-shimmer {
+  to { background-position: 200% center; }
+}
+.text-gradient-brand {
+  /* Default to a solid, always-visible color; only go transparent-with-clipped-gradient where
+     background-clip:text is actually supported, so the text can never render invisible. */
+  color: rgb(var(--c-content));
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .text-gradient-brand {
+    background: linear-gradient(
+      100deg,
+      rgb(var(--c-brand-strong)),
+      rgb(var(--c-content)) 40%,
+      rgb(var(--c-brand-strong)) 80%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: text-shimmer 6s linear infinite;
+  }
+}
+
+/* Soft pulsing brand glow ring — draws the eye to a primary CTA or live status. */
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--c-brand) / 0.0), 0 0 18px rgb(var(--c-brand) / 0.18); }
+  50% { box-shadow: 0 0 0 3px rgb(var(--c-brand) / 0.12), 0 0 30px rgb(var(--c-brand) / 0.3); }
+}
+.animate-glow { animation: glow-breathe 3.2s var(--ease-standard) infinite; }
+
+/* Reusable spring-scale press for any interactive element (matches .btn feel). */
+.press {
+  transition: transform var(--duration-spring) var(--ease-spring);
+}
+.press:active { transform: scale(0.96); }
+
 /*
  * ── Liquid glass material dressing ──────────────────────────────────────────
  * Optics (refraction/blur) come from useLiquidGlass + utils/liquidGlass.js via
@@ -371,5 +555,21 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+  /* Kill the ambient aurora motion entirely (a slow full-viewport transform); keep the static
+     wash. */
+  body::before {
+    animation: none !important;
+  }
+}
+
+/* Backdrop-filter is GPU-costly and can hurt text crispness on low-end devices; if the browser
+   can't do it at all, fall back to a more opaque solid so glass surfaces still read as distinct. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card {
+    background: rgb(var(--c-surface) / 0.96);
+  }
+  .input {
+    background: rgb(var(--c-bg-elevated));
   }
 }

@@ -40,7 +40,7 @@ export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
         icon={Users}
         action={
           !mine && canJoin ? (
-            <Button size="sm" onClick={() => run(() => queueApi.join(null), "You're in the queue.")} loading={busy}>
+            <Button size="sm" className="press" onClick={() => run(() => queueApi.join(null), "You're in the queue.")} loading={busy}>
               Join queue
             </Button>
           ) : null
@@ -53,17 +53,23 @@ export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
         <EmptyState icon={Users} title="The queue is empty" description="Join to be notified the moment a charger frees up." />
       ) : (
         <ol className="space-y-1.5">
-          {entries.map((e) => {
+          {entries.map((e, i) => {
             const isMine = mine && e.id === mine.id;
             return (
               <li
                 key={e.id}
                 className={cn(
-                  'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm',
-                  isMine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated'
+                  'flex animate-slide-up items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
+                  isMine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated hover:bg-surface-2'
                 )}
+                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
               >
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-surface-2 text-xs font-semibold text-muted">
+                <span
+                  className={cn(
+                    'grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold',
+                    isMine ? 'bg-brand/20 text-brand-strong' : 'bg-surface-2 text-muted'
+                  )}
+                >
                   {e.position}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-content">
@@ -97,8 +103,8 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
   return (
     <div
       className={cn(
-        'mb-3 rounded-2xl border p-3',
-        notified ? 'border-success/50 bg-success/10' : claimed ? 'border-info/50 bg-info/10' : 'border-border bg-bg-elevated'
+        'mb-3 animate-scale-in rounded-2xl border p-3',
+        notified ? 'border-success/50 bg-success/10 animate-glow' : claimed ? 'border-info/50 bg-info/10' : 'border-border bg-bg-elevated'
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -114,7 +120,7 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
         </div>
         <div className="flex gap-2">
           {notified && (
-            <Button size="sm" onClick={() => run(() => queueApi.claim(entry.id), 'Claimed! Head to the charger.')} loading={busy}>
+            <Button size="sm" className="press" onClick={() => run(() => queueApi.claim(entry.id), 'Claimed! Head to the charger.')} loading={busy}>
               <Hand className="h-4 w-4" />
               Claim
             </Button>

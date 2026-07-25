@@ -84,12 +84,12 @@ export default function SettingsPage() {
                   onClick={() => setSection(s.key)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
+                    'group press flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
                     'transition-[background-color,color] duration-medium ease-emphasized',
-                    active ? 'bg-brand/15 text-brand-strong' : 'text-muted hover:bg-surface-2 hover:text-content'
+                    active ? 'bg-brand/15 text-brand-strong shadow-elevation-1' : 'text-muted hover:bg-surface-2 hover:text-content'
                   )}
                 >
-                  <SectionIcon className="h-5 w-5 shrink-0" />
+                  <SectionIcon className={cn('h-5 w-5 shrink-0 transition-transform duration-medium ease-spring', active ? 'scale-110' : 'group-hover:scale-110')} />
                   <span className="truncate">{s.label}</span>
                 </button>
               );
@@ -98,7 +98,7 @@ export default function SettingsPage() {
         </nav>
 
         {/* Detail panel — re-keyed so it animates in on section change. */}
-        <div key={section} className="animate-fade-in">
+        <div key={section} className="animate-slide-up [animation-duration:320ms]">
           {section === 'profile' && <ProfileSection user={user} />}
           {section === 'notifications' && <NotificationsSection user={user} />}
           {section === 'appearance' && <AppearanceSection />}
@@ -133,8 +133,8 @@ function ProfileSection({ user }) {
 function StreakChip({ days }) {
   if (!days) return null;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-semibold text-warning">
-      <Flame className="h-3.5 w-3.5" />
+    <span className="animate-pop-in inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-semibold text-warning">
+      <Flame className="h-3.5 w-3.5 animate-float" />
       {days}-day streak
     </span>
   );
@@ -145,16 +145,16 @@ function AchievementsLink() {
   return (
     <Link
       to="/achievements"
-      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-2"
+      className="press group flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-[background-color,border-color,box-shadow] duration-medium ease-standard hover:border-border-strong hover:bg-surface-2 hover:shadow-elevation-1"
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6">
         <Trophy className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-medium text-content">Achievements</p>
         <p className="text-sm text-muted">Badges you've earned around the site.</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-faint" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-faint transition-transform duration-medium ease-emphasized group-hover:translate-x-0.5 group-hover:text-muted" />
     </Link>
   );
 }
@@ -181,7 +181,7 @@ function StatsCard({ stats }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat icon={Zap} label="This week" value={`${s?.weeklySessionsUsed ?? 0}/${s?.weeklySessionsMax ?? 0}`} />
           <Stat icon={Zap} label="Total sessions" value={s?.totalSessions ?? 0} />
-          <Stat icon={Leaf} label="CO₂ saved" value={`${s?.carpool?.co2Kg ?? 0} kg`} />
+          <Stat icon={Leaf} label="CO₂ saved" value={`${s?.carpool?.co2Kg ?? 0} kg`} highlight />
           <Stat icon={Car} label="Carpool trips" value={s?.carpool?.trips ?? 0} />
         </div>
       )}
@@ -189,11 +189,11 @@ function StatsCard({ stats }) {
   );
 }
 
-function Stat({ icon: Icon, label, value }) {
+function Stat({ icon: Icon, label, value, highlight }) {
   return (
-    <div className="rounded-2xl bg-bg-elevated p-3">
-      <Icon className="mb-1 h-4 w-4 text-brand-strong" />
-      <p className="text-lg font-bold text-content tabular-nums">{value}</p>
+    <div className="group rounded-2xl bg-bg-elevated p-3 transition-[transform,box-shadow] duration-medium ease-spring hover:-translate-y-0.5 hover:shadow-elevation-1">
+      <Icon className="mb-1 h-4 w-4 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110" />
+      <p className={cn('text-lg font-bold tabular-nums', highlight ? 'text-gradient-brand' : 'text-content')}>{value}</p>
       <p className="text-xs text-muted">{label}</p>
     </div>
   );
@@ -272,8 +272,12 @@ function NotificationsSection({ user }) {
     <Card>
       <CardHeader title="Notification preferences" subtitle="Choose what you're alerted about" icon={Bell} />
       <ul className="divide-y divide-border">
-        {PREF_TOGGLES.map((t) => (
-          <li key={t.key} className="flex items-center justify-between gap-3 py-3">
+        {PREF_TOGGLES.map((t, i) => (
+          <li
+            key={t.key}
+            className="animate-slide-up [animation-fill-mode:backwards] -mx-2 flex items-center justify-between gap-3 rounded-xl px-2 py-3 transition-colors duration-medium ease-standard hover:bg-surface-2"
+            style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
+          >
             <div className="min-w-0">
               <p className="font-medium text-content">{t.label}</p>
               <p className="text-sm text-muted">{t.hint}</p>
@@ -343,10 +347,12 @@ function AppearanceSection() {
               aria-checked={active}
               onClick={() => setThemePref(opt.key)}
               className={cn(
-                'group relative flex flex-col items-center gap-3 rounded-2xl border p-3 text-center',
-                'transition-[background-color,border-color] duration-medium ease-emphasized',
+                'group press relative flex flex-col items-center gap-3 rounded-2xl border p-3 text-center',
+                'transition-[background-color,border-color,box-shadow,transform] duration-medium ease-emphasized',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
-                active ? 'border-brand bg-brand/10' : 'border-border hover:border-border-strong hover:bg-surface-2'
+                active
+                  ? 'border-brand bg-brand/10 shadow-elevation-1'
+                  : 'border-border hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-2 hover:shadow-elevation-1'
               )}
             >
               <ThemePreview optKey={opt.key} />
@@ -355,7 +361,7 @@ function AppearanceSection() {
                 {opt.label}
               </span>
               {active && (
-                <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-content">
+                <span className="animate-pop-in absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-content shadow-elevation-1">
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
               )}

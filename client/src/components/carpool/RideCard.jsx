@@ -18,10 +18,10 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
   const isActive = ride.status !== RIDE_STATUS.COMPLETED && ride.status !== RIDE_STATUS.CANCELLED;
 
   return (
-    <div className="card rounded-xl-increased flex flex-col gap-3 p-4">
+    <div className="group card rounded-xl-increased flex h-full flex-col gap-3 p-4 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand-strong">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6">
             <Car className="h-5 w-5" />
           </span>
           <div>
@@ -51,14 +51,14 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
           {ride.seatsAvailable} of {ride.seatsTotal} seats
         </div>
         {ride.co2GramsSaved > 0 && (
-          <div className="flex items-center gap-1.5 text-success">
+          <div className="flex items-center gap-1.5 font-medium text-success">
             <Leaf className="h-4 w-4 shrink-0" />
             {Math.round((ride.co2GramsSaved / 1000) * 10) / 10} kg CO₂ saved
           </div>
         )}
       </div>
 
-      {ride.notes && <p className="rounded-xl bg-bg-elevated px-3 py-2 text-sm text-muted">{ride.notes}</p>}
+      {ride.notes && <p className="card-solid rounded-xl px-3 py-2 text-sm text-muted">{ride.notes}</p>}
 
       <div className={cn('mt-auto flex gap-2 pt-1', variant !== 'driving' && 'justify-end')}>
         {variant === 'browse' && (

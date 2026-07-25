@@ -18,16 +18,20 @@ function BadgeTile({ badge, index }) {
   return (
     <div
       className={cn(
-        'relative flex flex-col items-center gap-2 rounded-3xl border p-4 text-center',
-        'animate-slide-up [animation-fill-mode:backwards]',
-        unlocked ? tier.card : 'border-border bg-surface'
+        'group relative flex flex-col items-center gap-2 overflow-hidden rounded-3xl border p-4 text-center',
+        'animate-pop-in [animation-fill-mode:backwards]',
+        'transition-all duration-medium ease-emphasized press hover:-translate-y-0.5 hover:shadow-elevation-2',
+        unlocked ? cn(tier.card, 'shadow-elevation-1') : 'border-border bg-surface opacity-90 hover:opacity-100'
       )}
-      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
     >
+      {unlocked && (
+        <div className={cn('pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl', tier.badge)} aria-hidden />
+      )}
       <span
         className={cn(
-          'grid h-14 w-14 place-items-center rounded-2xl transition-transform',
-          unlocked ? tier.badge : 'bg-surface-2 text-faint'
+          'relative grid h-14 w-14 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-105',
+          unlocked ? cn(tier.badge, 'group-hover:rotate-[6deg]') : 'bg-surface-2 text-faint'
         )}
       >
         <Icon name={badge.icon} className={cn('h-7 w-7', !unlocked && 'opacity-40')} strokeWidth={1.75} />
@@ -85,7 +89,7 @@ export default function AchievementsPage() {
         icon={Trophy}
         action={
           data ? (
-            <span className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-sm font-semibold tabular-nums text-brand-strong">
+            <span className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-sm font-semibold tabular-nums text-brand-strong ring-1 ring-brand/25 animate-scale-in">
               {data.unlockedCount} / {data.total}
             </span>
           ) : null
@@ -101,7 +105,9 @@ export default function AchievementsPage() {
       ) : error ? (
         <ErrorState error={error} onRetry={refetch} title="Could not load your achievements" />
       ) : sorted.length === 0 ? (
-        <EmptyState icon={Trophy} title="No achievements yet" description="Start a session or hop in a carpool to earn your first badge." />
+        <div className="animate-scale-in">
+          <EmptyState icon={Trophy} title="Your trophy case is waiting" description="Start a session or hop in a carpool to earn your first badge." />
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {sorted.map((b, i) => (

@@ -56,7 +56,7 @@ export function NudgeModal({ open, onClose, charger }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit} loading={submitting}>
+          <Button className="press" onClick={submit} loading={submitting}>
             Send nudge
           </Button>
         </div>
@@ -64,15 +64,19 @@ export function NudgeModal({ open, onClose, charger }) {
     >
       <p className="mb-3 text-sm text-muted">Pick a quick message or write your own.</p>
       <div className="mb-3 space-y-2">
-        {(nudgePresets || []).map((preset) => (
+        {(nudgePresets || []).map((preset, i) => (
           <button
             key={preset}
             type="button"
             onClick={() => setMessage(preset)}
             className={cn(
-              'w-full rounded-2xl border p-2.5 text-left text-sm transition-colors',
-              message === preset ? 'border-brand bg-brand/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
+              'press w-full animate-slide-up rounded-2xl border p-2.5 text-left text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
+              message === preset
+                ? 'border-brand bg-brand/10 text-content'
+                : 'border-border bg-bg-elevated text-muted hover:border-border-strong hover:text-content'
             )}
+            style={{ animationDelay: `${i * 45}ms` }}
+            aria-pressed={message === preset}
           >
             {preset}
           </button>

@@ -46,9 +46,9 @@ export function EmergencyBanner() {
   return (
     <div className="mb-4 space-y-2">
       {open.map((r) => (
-        <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl-increased border-danger/40 bg-danger/5">
+        <Card key={r.id} className="flex animate-slide-up flex-wrap items-center justify-between gap-3 rounded-xl-increased border-danger/40 bg-danger/5">
           <div className="flex items-start gap-2.5">
-            <Siren className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
+            <Siren className="mt-0.5 h-5 w-5 shrink-0 animate-pulse text-danger" />
             <div>
               <p className="font-medium text-content">
                 {r.userDisplayName || 'Someone'} needs a charger — {r.reason}
@@ -58,10 +58,10 @@ export function EmergencyBanner() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => respond(r.id, false)}>
+            <Button variant="ghost" size="sm" className="press" onClick={() => respond(r.id, false)}>
               Can't help
             </Button>
-            <Button variant="danger" size="sm" onClick={() => respond(r.id, true)}>
+            <Button variant="danger" size="sm" className="press" onClick={() => respond(r.id, true)}>
               I'll wrap up
             </Button>
           </div>

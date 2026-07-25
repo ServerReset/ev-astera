@@ -57,14 +57,14 @@ export function EmergencyModal({ open, onClose }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={submit} loading={submitting}>
+          <Button variant="danger" className="press" onClick={submit} loading={submitting}>
             Send request
           </Button>
         </div>
       }
     >
-      <div className="mb-3 flex items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
-        <Siren className="h-5 w-5 shrink-0 text-danger" />
+      <div className="mb-3 flex animate-fade-in items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
+        <Siren className="h-5 w-5 shrink-0 animate-pulse text-danger" />
         <span>This alerts everyone currently charging. Please only use it for genuine emergencies — there's a cooldown between requests.</span>
       </div>
       <Select

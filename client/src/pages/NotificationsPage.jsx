@@ -70,12 +70,12 @@ export default function NotificationsPage() {
       />
 
       {/* Push subscription toggle — an elevated tonal card, its own concern above the feed. */}
-      <div className="card mb-5 flex items-center justify-between gap-3 p-4">
+      <div className="card animate-slide-up mb-5 flex items-center justify-between gap-3 p-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
               'grid h-10 w-10 shrink-0 place-items-center rounded-2xl transition-colors duration-medium ease-standard',
-              push.subscribed ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-faint'
+              push.subscribed ? 'animate-glow bg-brand/15 text-brand-strong' : 'bg-surface-2 text-faint'
             )}
           >
             {push.subscribed ? <BellRing className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
@@ -105,7 +105,7 @@ export default function NotificationsPage() {
 
       {/* Filter chips — only meaningful once there's something loaded to filter. */}
       {items.length > 0 && (
-        <div className="mb-4 flex items-center gap-2" role="tablist" aria-label="Filter notifications">
+        <div className="animate-fade-in mb-4 flex items-center gap-2" role="tablist" aria-label="Filter notifications">
           {FILTERS.map((f) => {
             const activeChip = filter === f.key;
             // Count from the LOADED list so the chip agrees with what the filter actually renders
@@ -120,10 +120,10 @@ export default function NotificationsPage() {
                 aria-selected={activeChip}
                 onClick={() => setFilter(f.key)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium',
+                  'press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium',
                   'transition-colors duration-medium ease-standard',
                   activeChip
-                    ? 'bg-brand/15 text-brand-strong'
+                    ? 'bg-brand/15 text-brand-strong shadow-elevation-1'
                     : 'bg-surface-2 text-muted hover:text-content'
                 )}
               >
@@ -148,17 +148,21 @@ export default function NotificationsPage() {
       ) : error && items.length === 0 ? (
         <ErrorState error={error} onRetry={refresh} title="Could not load notifications" />
       ) : items.length === 0 ? (
-        <EmptyState
-          icon={Bell}
-          title="No notifications yet"
-          description="Alerts about your sessions, queue, and carpools will show up here."
-        />
+        <div className="animate-scale-in [&_span:first-child]:animate-float">
+          <EmptyState
+            icon={Bell}
+            title="No notifications yet"
+            description="Alerts about your sessions, queue, and carpools will show up here."
+          />
+        </div>
       ) : shown.length === 0 ? (
-        <EmptyState
-          icon={CheckCheck}
-          title="You’re all caught up"
-          description="No unread alerts right now."
-        />
+        <div className="animate-scale-in [&_span:first-child]:animate-float">
+          <EmptyState
+            icon={CheckCheck}
+            title="You’re all caught up"
+            description="No unread alerts right now."
+          />
+        </div>
       ) : (
         <ul className="space-y-2">
           {shown.map((n, i) => {
@@ -186,16 +190,19 @@ export default function NotificationsPage() {
                     }
                   }}
                   className={cn(
-                    'flex w-full items-start gap-3 rounded-2xl border p-3 text-left',
-                    'transition-[background-color,border-color] duration-medium ease-standard',
-                    isUnread ? 'border-transparent bg-surface-2' : 'border-border bg-surface',
-                    (clickable || isUnread) && 'hover:border-border-strong cursor-pointer',
+                    'group flex w-full items-start gap-3 rounded-2xl border p-3 text-left',
+                    'transition-[background-color,border-color,box-shadow] duration-medium ease-standard',
+                    isUnread
+                      ? 'border-brand/25 bg-brand/[0.06] shadow-elevation-1'
+                      : 'border-border bg-surface',
+                    (clickable || isUnread) && 'hover:border-border-strong hover:shadow-elevation-1 cursor-pointer',
                     !clickable && !isUnread && 'cursor-default'
                   )}
                 >
                   <span
                     className={cn(
                       'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl',
+                      'transition-transform duration-medium ease-spring group-hover:scale-110',
                       TONE_CLASS[meta.tone] || TONE_CLASS.muted
                     )}
                   >
@@ -218,7 +225,12 @@ export default function NotificationsPage() {
                       </div>
                     )}
                   </div>
-                  {isUnread && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}
+                  {isUnread && (
+                    <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
+                    </span>
+                  )}
                 </div>
               </li>
             );

@@ -40,10 +40,13 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
         overtime ? 'border-warning/50' : 'border-brand/40'
       )}
     >
+      {/* Signature flair: a slow specular sheen sweeping the live hero (calm mode only). */}
+      {!overtime && <div className="sheen pointer-events-none absolute inset-0" aria-hidden />}
+
       <div
         className={cn(
           'pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl',
-          overtime ? 'bg-warning/20' : 'bg-brand/25'
+          overtime ? 'bg-warning/20 animate-pulse' : 'bg-brand/25'
         )}
         aria-hidden
       />

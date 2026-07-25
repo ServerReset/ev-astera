@@ -12,6 +12,10 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Single office — Astera Labs HQ (Santa Clara). The multi-office plumbing stays intact (a
+// super-admin can still create more offices at runtime); this just seeds the one real site
+// rather than fabricated ones. Migration 20260725050000 removes the previously-seeded
+// Austin/Bengaluru offices (and their data) from any existing database.
 const OFFICES = [
   {
     id: '11111111-1111-1111-1111-111111111111',
@@ -22,26 +26,6 @@ const OFFICES = [
     site_lng: -121.9552,
     adminId: '22222222-2222-2222-2222-222222222222',
     adminEmail: 'admin-santaclara@asteralabs.com',
-  },
-  {
-    id: '11111111-1111-1111-1111-111111111112',
-    name: 'Astera Labs — Austin',
-    timezone: 'America/Chicago',
-    address: '500 W 2nd St, Austin, TX',
-    site_lat: 30.2648,
-    site_lng: -97.7472,
-    adminId: '22222222-2222-2222-2222-222222222223',
-    adminEmail: 'admin-austin@asteralabs.com',
-  },
-  {
-    id: '11111111-1111-1111-1111-111111111113',
-    name: 'Astera Labs — Bengaluru',
-    timezone: 'Asia/Kolkata',
-    address: 'Bagmane Tech Park, Bengaluru, India',
-    site_lat: 12.9855,
-    site_lng: 77.6910,
-    adminId: '22222222-2222-2222-2222-222222222224',
-    adminEmail: 'admin-bengaluru@asteralabs.com',
   },
 ];
 

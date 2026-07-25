@@ -132,8 +132,10 @@ export default function RegisterPage() {
     return (
       <RedirectIfAuthed>
         <AuthShell title="Can't load offices" subtitle="Try again in a moment">
-          <div className="flex flex-col items-center gap-3 py-2 text-center">
-            <WifiOff className="h-10 w-10 text-danger" />
+          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-danger/10 text-danger animate-pop-in">
+              <WifiOff className="h-7 w-7" />
+            </span>
             <p className="text-sm text-muted">We couldn't reach the server to list offices. Reload the page to try again.</p>
           </div>
         </AuthShell>
@@ -145,8 +147,10 @@ export default function RegisterPage() {
     return (
       <RedirectIfAuthed>
         <AuthShell title="No offices available" subtitle="Signups aren't set up yet">
-          <div className="flex flex-col items-center gap-3 py-2 text-center">
-            <WifiOff className="h-10 w-10 text-muted" />
+          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-surface-2 text-faint animate-float">
+              <WifiOff className="h-7 w-7" />
+            </span>
             <p className="text-sm text-muted">There are no offices open for registration right now. Contact an admin.</p>
           </div>
         </AuthShell>
@@ -170,8 +174,10 @@ export default function RegisterPage() {
     return (
       <RedirectIfAuthed>
         <AuthShell title="Can't check registration status" subtitle="Try again in a moment">
-          <div className="flex flex-col items-center gap-3 py-2 text-center">
-            <WifiOff className="h-10 w-10 text-danger" />
+          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-danger/10 text-danger animate-pop-in">
+              <WifiOff className="h-7 w-7" />
+            </span>
             <p className="text-sm text-muted">
               We couldn't reach the server to check whether signups are open. Reload the page to try again.
             </p>
@@ -196,10 +202,13 @@ export default function RegisterPage() {
             </>
           }
         >
-          <div className="flex flex-col items-center gap-3 py-2 text-center">
-            <Clock3 className="h-10 w-10 text-brand-strong" />
+          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/15 text-brand-strong animate-glow">
+              <Clock3 className="h-7 w-7 animate-float" />
+            </span>
             <p className="text-sm text-muted">
-              Registration opens at {new Date(gateStatus.releaseAt).toLocaleString()}.
+              Registration opens at{' '}
+              <span className="font-semibold text-content">{new Date(gateStatus.releaseAt).toLocaleString()}</span>.
             </p>
           </div>
         </AuthShell>
@@ -225,78 +234,92 @@ export default function RegisterPage() {
           {/* Tell users up front that this office verifies on-site location, so the browser's
               permission prompt on submit isn't a surprise (and they know to be on-site). */}
           {gateStatus.geofenceEnforceable && (
-            <p className="flex items-start gap-2 rounded-2xl bg-info/10 p-3 text-sm text-info">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="flex items-start gap-2 rounded-2xl bg-info/10 p-3 text-sm text-info animate-slide-up [animation-fill-mode:backwards]">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 animate-float" />
               <span>
                 This office verifies that you’re on-site. When you tap Create account, your browser
                 will ask to share your location.
               </span>
             </p>
           )}
-          <Select
-            label="Office"
-            name="locationId"
-            value={values.locationId}
-            onChange={handleChange}
-            error={errors.locationId}
-            options={offices.list.map((o) => ({ value: o.id, label: o.name }))}
-          />
-          <Input
-            label="Full name"
-            name="displayName"
-            autoComplete="name"
-            value={values.displayName}
-            onChange={handleChange}
-            error={errors.displayName}
-            placeholder="Alex Rivera"
-          />
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={values.email}
-            onChange={handleChange}
-            error={errors.email}
-            placeholder="you@asteralabs.com"
-          />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            value={values.password}
-            onChange={handleChange}
-            error={errors.password}
-            hint="8+ chars, upper & lower case, a number, and a symbol"
-          />
-          <Input
-            label="Confirm password"
-            name="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            value={values.confirmPassword}
-            onChange={handleChange}
-            error={errors.confirmPassword}
-          />
-          <Input
-            label="Vehicle"
-            name="vehicleDescription"
-            value={values.vehicleDescription}
-            onChange={handleChange}
-            error={errors.vehicleDescription}
-            placeholder="White Tesla Model 3"
-          />
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:40ms]">
+            <Select
+              label="Office"
+              name="locationId"
+              value={values.locationId}
+              onChange={handleChange}
+              error={errors.locationId}
+              options={offices.list.map((o) => ({ value: o.id, label: o.name }))}
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:90ms]">
+            <Input
+              label="Full name"
+              name="displayName"
+              autoComplete="name"
+              value={values.displayName}
+              onChange={handleChange}
+              error={errors.displayName}
+              placeholder="Alex Rivera"
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:140ms]">
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={values.email}
+              onChange={handleChange}
+              error={errors.email}
+              placeholder="you@asteralabs.com"
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:190ms]">
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              value={values.password}
+              onChange={handleChange}
+              error={errors.password}
+              hint="8+ chars, upper & lower case, a number, and a symbol"
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:240ms]">
+            <Input
+              label="Confirm password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              value={values.confirmPassword}
+              onChange={handleChange}
+              error={errors.confirmPassword}
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:290ms]">
+            <Input
+              label="Vehicle"
+              name="vehicleDescription"
+              value={values.vehicleDescription}
+              onChange={handleChange}
+              error={errors.vehicleDescription}
+              placeholder="White Tesla Model 3"
+            />
+          </div>
           {geoError && (
-            <p className="field-error flex items-start gap-1.5">
+            <p className="field-error flex items-start gap-1.5 animate-pop-in">
               <MapPinOff className="mt-0.5 h-4 w-4 shrink-0" />
               {geoError}
             </p>
           )}
-          {formError && <p className="field-error">{formError}</p>}
-          <Button type="submit" className="w-full" loading={submitting || locating}>
-            {locating ? 'Checking your location…' : 'Create account'}
-          </Button>
+          {formError && <p className="field-error animate-pop-in">{formError}</p>}
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:340ms]">
+            <Button type="submit" className="w-full press sheen" loading={submitting || locating}>
+              {locating ? 'Checking your location…' : 'Create account'}
+            </Button>
+          </div>
         </form>
       </AuthShell>
     </RedirectIfAuthed>

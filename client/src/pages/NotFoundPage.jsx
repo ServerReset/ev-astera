@@ -20,23 +20,30 @@ export default function NotFoundPage() {
         }}
       />
 
-      <div className="relative max-w-sm animate-slide-up">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand/15 text-brand-strong shadow-elevation-1">
-          <Compass className="h-8 w-8" />
-        </span>
-        <p className="mt-6 text-label-sm font-medium uppercase tracking-[0.2em] text-faint">Error 404</p>
-        <h1 className="mt-2 text-headline-md font-bold text-content">Page not found</h1>
-        <p className="mt-2 text-sm text-muted">
+      <div className="relative max-w-sm animate-scale-in">
+        {/* Signature moment: an oversized gradient 404 with a floating compass needle spinning
+            over it — playful without tipping into noise. */}
+        <div className="relative mx-auto w-fit">
+          <span className="block select-none text-[6rem] font-black leading-none tracking-tight text-gradient-brand" aria-hidden="true">
+            404
+          </span>
+          <span className="absolute -right-2 -top-3 grid h-14 w-14 place-items-center rounded-2xl bg-brand/15 text-brand-strong shadow-elevation-2 animate-float">
+            <Compass className="h-7 w-7 animate-spin [animation-duration:9s]" />
+          </span>
+        </div>
+        <p className="mt-6 text-label-sm font-medium uppercase tracking-[0.2em] text-faint animate-slide-up [animation-fill-mode:backwards] [animation-delay:80ms]">Lost your bearings</p>
+        <h1 className="mt-2 text-headline-md font-bold text-content animate-slide-up [animation-fill-mode:backwards] [animation-delay:140ms]">Page not found</h1>
+        <p className="mt-2 text-sm text-muted animate-slide-up [animation-fill-mode:backwards] [animation-delay:200ms]">
           The page you're looking for doesn't exist or has moved. Let's get you back on track.
         </p>
-        <div className="mt-7 flex flex-col items-center justify-center gap-2 sm:flex-row">
-          <Link to="/" className="btn-primary inline-flex w-full justify-center sm:w-auto">
+        <div className="mt-7 flex flex-col items-center justify-center gap-2 sm:flex-row animate-slide-up [animation-fill-mode:backwards] [animation-delay:260ms]">
+          <Link to="/" className="btn-primary press inline-flex w-full justify-center sm:w-auto">
             Back to dashboard
           </Link>
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="btn-ghost inline-flex w-full justify-center sm:w-auto"
+            className="btn-ghost press inline-flex w-full justify-center sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4" />
             Go back

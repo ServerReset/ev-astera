@@ -53,13 +53,13 @@ export default function CarpoolImpactPage() {
         )}
       </section>
 
-      <Link to="/leaderboards" className="block">
-        <Card className="transition-colors hover:bg-surface-2">
+      <Link to="/leaderboards" className="group block animate-slide-up [animation-fill-mode:backwards]" style={{ animationDelay: '120ms' }}>
+        <Card className="transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:bg-surface-2 hover:shadow-elevation-2">
           <CardHeader
             title="Leaderboards"
             subtitle="See best/worst performers across carpool and reliability"
             icon={Trophy}
-            action={<ChevronRight className="h-5 w-5 shrink-0 text-faint" />}
+            action={<ChevronRight className="h-5 w-5 shrink-0 text-faint transition-transform duration-medium ease-emphasized group-hover:translate-x-1 group-hover:text-brand-strong" />}
           />
         </Card>
       </Link>

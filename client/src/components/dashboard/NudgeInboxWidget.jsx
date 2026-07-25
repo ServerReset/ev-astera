@@ -41,10 +41,15 @@ export function NudgeInboxWidget() {
     <Card className="mb-5">
       <CardHeader title="Notifications" icon={Bell} />
       <ul className="space-y-1.5">
-        {visible.map((n) => {
+        {visible.map((n, i) => {
           const meta = NOTIFICATION_META[n.type] || NOTIFICATION_META.system;
+          const isUnread = !n.readAt;
           return (
-            <li key={n.id}>
+            <li
+              key={n.id}
+              className="animate-slide-up [animation-fill-mode:backwards]"
+              style={{ animationDelay: `${Math.min(i, 5) * 45}ms` }}
+            >
               {/* A real nudge row nests NudgeReactionButtons' own <button>s — a <button> wrapper
                   here would be invalid HTML (nested interactive elements break focus/AT
                   semantics), so this is a div with button semantics instead. */}
@@ -54,16 +59,20 @@ export function NudgeInboxWidget() {
                 onClick={() => open(n)}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open(n))}
                 className={cn(
-                  'flex w-full items-start gap-2.5 rounded-2xl p-2 text-left transition-colors hover:bg-surface-2 cursor-pointer',
-                  !n.readAt && 'ring-1 ring-brand/30'
+                  'group flex w-full items-start gap-2.5 rounded-2xl p-2 text-left cursor-pointer',
+                  'transition-[background-color,box-shadow] duration-medium ease-standard hover:bg-surface-2',
+                  isUnread && 'bg-brand/[0.06] ring-1 ring-inset ring-brand/30'
                 )}
               >
-                <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl', TONE_CLASS[meta.tone] || TONE_CLASS.muted)}>
+                <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl transition-transform duration-medium ease-spring group-hover:scale-110', TONE_CLASS[meta.tone] || TONE_CLASS.muted)}>
                   <Icon name={meta.icon} className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className={cn('truncate text-sm font-medium', n.readAt ? 'text-muted' : 'text-content')}>{n.title}</p>
+                    <p className={cn('flex min-w-0 items-center gap-1.5 truncate text-sm', isUnread ? 'font-semibold text-content' : 'font-medium text-muted')}>
+                      {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />}
+                      <span className="truncate">{n.title}</span>
+                    </p>
                     <span className="shrink-0 text-xs text-faint">{relativeTime(n.createdAt)}</span>
                   </div>
                   {!subscribed && n.body && <p className="mt-0.5 truncate text-sm text-muted">{n.body}</p>}

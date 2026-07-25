@@ -63,7 +63,7 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
     >
       <p className="mb-3 text-sm text-muted">Before you go, confirm the charger is ready for the next person.</p>
       <div className="space-y-2">
-        {CHECKLIST.map((item) => {
+        {CHECKLIST.map((item, i) => {
           const on = Boolean(checked[item.key]);
           return (
             <button
@@ -71,11 +71,18 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
               type="button"
               onClick={() => toggle(item.key)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-2xl border p-3 text-left text-sm transition-colors',
-                on ? 'border-success/50 bg-success/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
+                'press flex w-full animate-slide-up items-center gap-3 rounded-2xl border p-3 text-left text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
+                on ? 'border-success/50 bg-success/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content hover:border-border-strong'
               )}
+              style={{ animationDelay: `${i * 50}ms` }}
+              aria-pressed={on}
             >
-              <CheckCircle2 className={cn('h-5 w-5 shrink-0', on ? 'text-success' : 'text-faint')} />
+              <CheckCircle2
+                className={cn(
+                  'h-5 w-5 shrink-0 transition-transform duration-medium ease-spring',
+                  on ? 'scale-110 text-success' : 'text-faint'
+                )}
+              />
               {item.label}
             </button>
           );

@@ -63,9 +63,11 @@ export function BookRideModal({ open, onClose, ride, onBooked }) {
         </div>
       }
     >
-      <div className="mb-4 rounded-2xl bg-bg-elevated p-3 text-sm">
+      <div className="card-solid mb-4 rounded-2xl p-3 text-sm animate-scale-in [animation-fill-mode:backwards]">
         <div className="flex items-center gap-2 font-medium text-content">
-          <Car className="h-4 w-4 text-brand-strong" />
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand/15 text-brand-strong">
+            <Car className="h-4 w-4" />
+          </span>
           {ride.driverName} · {DIRECTION_LABEL[ride.direction]}
         </div>
         <div className="mt-1.5 flex items-center gap-1.5 text-muted">

@@ -1,5 +1,6 @@
 import { Trophy, Medal, Crown } from 'lucide-react';
-import { Card, CardHeader } from '@/components/common/Card.jsx';
+import { CardHeader } from '@/components/common/Card.jsx';
+import { Select } from '@/components/common/Input.jsx';
 import { EmptyState } from '@/components/common/States.jsx';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { cn } from '@/utils/cn.js';
@@ -14,13 +15,13 @@ function PodiumFirst({ row, highlightUserId }) {
     <div
       ref={glassRef}
       className={cn(
-        'lg-hero relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
+        'lg-hero sheen relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
         mine ? 'border-brand/60' : 'border-warning/40'
       )}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/20 blur-3xl" aria-hidden />
       <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning animate-float">
           <Crown className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-title-md text-content">
@@ -44,25 +45,29 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
   const rest = rows.slice(1);
 
   return (
-    <Card>
+    // card-solid (opaque), NOT the glass .card: the rank-#1 podium below uses real SVG refraction
+    // (.lg-hero via useLiquidGlass). Nesting that inside a glass card stacks two backdrop-filters —
+    // muddy render + doubled GPU cost. The opaque wrapper lets the podium's refraction read cleanly.
+    <div className="card-solid p-4">
       <CardHeader
         title="Leaderboard"
         subtitle="Most CO₂ saved by carpooling"
         icon={Trophy}
         action={
-          <select
+          <Select
             value={window}
             onChange={(e) => onWindowChange?.(e.target.value)}
-            className="input h-8 w-auto py-0 text-sm"
-          >
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-            <option value="all">All time</option>
-          </select>
+            className="w-32"
+            options={[
+              { value: 'week', label: 'This week' },
+              { value: 'month', label: 'This month' },
+              { value: 'all', label: 'All time' },
+            ]}
+          />
         }
       />
       {rows.length === 0 ? (
-        <EmptyState icon={Trophy} title="No trips logged yet" description="Complete a carpool to get on the board." />
+        <EmptyState icon={Trophy} title="No trips logged yet" description="Complete a carpool to claim the top spot on the board." />
       ) : (
         <div>
           {first && <PodiumFirst row={first} highlightUserId={highlightUserId} />}
@@ -75,12 +80,17 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
                   <li
                     key={r.userId}
                     className={cn(
-                      'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm',
-                      mine ? 'bg-brand/10 ring-1 ring-brand/40' : rank % 2 ? 'bg-bg-elevated' : ''
+                      'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all duration-medium ease-emphasized hover:-translate-y-px animate-slide-up [animation-fill-mode:backwards]',
+                      mine
+                        ? 'bg-brand/10 ring-1 ring-brand/40'
+                        : rank % 2
+                          ? 'bg-bg-elevated hover:bg-surface-2'
+                          : 'hover:bg-bg-elevated'
                     )}
+                    style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
                   >
                     <span className="w-6 shrink-0 text-center font-semibold">
-                      {rank < 3 ? <Medal className={cn('mx-auto h-4 w-4', RANK_TONE[rank])} /> : <span className="text-faint">{rank + 1}</span>}
+                      {rank < 3 ? <Medal className={cn('mx-auto h-4 w-4 drop-shadow-sm', RANK_TONE[rank])} /> : <span className="text-faint tabular-nums">{rank + 1}</span>}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-content">
                       {r.name}
@@ -95,6 +105,6 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
           )}
         </div>
       )}
-    </Card>
+    </div>
   );
 }

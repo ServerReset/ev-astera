@@ -10,7 +10,12 @@ export function DurationSlider({ label, value, onChange, min = 30, max = 240, st
     <div>
       <div className="flex items-baseline justify-between">
         <span className="label mb-0">{label}</span>
-        <span className="text-sm font-semibold text-brand-strong">{formatDurationMinutes(value)}</span>
+        <span
+          key={value}
+          className="animate-pop-in rounded-full bg-brand/10 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-brand-strong"
+        >
+          {formatDurationMinutes(value)}
+        </span>
       </div>
       <input
         type="range"

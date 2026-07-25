@@ -63,7 +63,8 @@ export function CelebrationOverlay() {
       <div
         className={cn(
           'pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl border p-4 shadow-elevation-3',
-          'animate-pop-in cursor-pointer',
+          'animate-pop-in cursor-pointer sheen',
+          'transition-transform duration-medium ease-spring hover:scale-[1.015] active:scale-[0.99]',
           isAchievement ? tier.card : 'border-brand/40 bg-gradient-to-br from-brand/20 via-surface to-surface'
         )}
         role="button"
@@ -71,6 +72,13 @@ export function CelebrationOverlay() {
         onClick={go}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), go())}
       >
+        <div
+          className={cn(
+            'pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full blur-3xl',
+            isAchievement ? tier.badge : 'bg-brand/25'
+          )}
+          aria-hidden
+        />
         <button
           type="button"
           aria-label="Dismiss"
@@ -83,10 +91,10 @@ export function CelebrationOverlay() {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-4">
+        <div className="relative flex items-center gap-4">
           <span
             className={cn(
-              'grid h-16 w-16 shrink-0 place-items-center rounded-2xl',
+              'grid h-16 w-16 shrink-0 place-items-center rounded-2xl animate-float',
               isAchievement ? tier.badge : 'bg-brand/20 text-brand-strong'
             )}
           >

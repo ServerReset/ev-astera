@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy, Leaf } from 'lucide-react';
+import { Trophy, Leaf, Route } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { ErrorState } from '@/components/common/States.jsx';
@@ -37,9 +37,11 @@ export default function LeaderboardsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <PageHeader title="Leaderboards" description="Best and worst performers across charging and carpooling." icon={Trophy} />
+      <div className="animate-fade-in">
+        <PageHeader title="Leaderboards" description="Best and worst performers across charging and carpooling." icon={Trophy} />
+      </div>
 
-      <Card>
+      <Card className="animate-slide-up [animation-fill-mode:backwards]">
         <CardHeader title="Site-wide savings" subtitle="Carpool-derived CO₂ and trips this window" icon={Leaf} />
         {totals.loading && !totals.data ? (
           <div className="skeleton h-16 rounded-xl" />
@@ -47,14 +49,21 @@ export default function LeaderboardsPage() {
           <ErrorState error={totals.error} onRetry={totals.refetch} title="Could not load savings" />
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-bg-elevated p-3">
-              <p className="text-2xl font-bold text-success tabular-nums">
+            <div className="card-solid relative overflow-hidden rounded-2xl p-3.5">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-success/20 blur-2xl" aria-hidden />
+              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-success/15 text-success">
+                <Leaf className="h-4 w-4" />
+              </span>
+              <p className="text-3xl font-bold tabular-nums text-gradient-brand">
                 <TotalValue value={totals.data?.co2Kg ?? 0} decimals={1} suffix=" kg" />
               </p>
               <p className="text-xs text-muted">CO₂ saved</p>
             </div>
-            <div className="rounded-2xl bg-bg-elevated p-3">
-              <p className="text-2xl font-bold text-content tabular-nums">
+            <div className="card-solid relative overflow-hidden rounded-2xl p-3.5">
+              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-brand/12 text-brand-strong">
+                <Route className="h-4 w-4" />
+              </span>
+              <p className="text-3xl font-bold tabular-nums text-content">
                 <TotalValue value={totals.data?.trips ?? 0} />
               </p>
               <p className="text-xs text-muted">Carpool trips</p>
@@ -63,24 +72,28 @@ export default function LeaderboardsPage() {
         )}
       </Card>
 
-      {carpoolBoard.loading && !carpoolBoard.data ? (
-        <div className="skeleton h-80 rounded-2xl" />
-      ) : carpoolBoard.error ? (
-        <ErrorState error={carpoolBoard.error} onRetry={carpoolBoard.refetch} title="Could not load the carpool leaderboard" />
-      ) : (
-        <Leaderboard rows={carpoolBoard.data || []} highlightUserId={userId} window={window} onWindowChange={setWindow} />
-      )}
+      <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:80ms]">
+        {carpoolBoard.loading && !carpoolBoard.data ? (
+          <div className="skeleton h-80 rounded-2xl" />
+        ) : carpoolBoard.error ? (
+          <ErrorState error={carpoolBoard.error} onRetry={carpoolBoard.refetch} title="Could not load the carpool leaderboard" />
+        ) : (
+          <Leaderboard rows={carpoolBoard.data || []} highlightUserId={userId} window={window} onWindowChange={setWindow} />
+        )}
+      </div>
 
-      {reliabilityBoard.loading && !reliabilityBoard.data ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="skeleton h-64 rounded-2xl" />
-          <div className="skeleton h-64 rounded-2xl" />
-        </div>
-      ) : reliabilityBoard.error ? (
-        <ErrorState error={reliabilityBoard.error} onRetry={reliabilityBoard.refetch} title="Could not load the reliability leaderboard" />
-      ) : (
-        <ReliabilityLeaderboard data={reliabilityBoard.data} highlightUserId={userId} />
-      )}
+      <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:160ms]">
+        {reliabilityBoard.loading && !reliabilityBoard.data ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="skeleton h-64 rounded-2xl" />
+            <div className="skeleton h-64 rounded-2xl" />
+          </div>
+        ) : reliabilityBoard.error ? (
+          <ErrorState error={reliabilityBoard.error} onRetry={reliabilityBoard.refetch} title="Could not load the reliability leaderboard" />
+        ) : (
+          <ReliabilityLeaderboard data={reliabilityBoard.data} highlightUserId={userId} />
+        )}
+      </div>
     </div>
   );
 }

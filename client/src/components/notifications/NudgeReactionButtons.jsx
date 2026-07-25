@@ -50,13 +50,20 @@ export function NudgeReactionButtons({ messageId, initialReaction }) {
             disabled={busy}
             onClick={(e) => react(e, r.value)}
             className={cn(
-              'grid h-8 w-8 place-items-center rounded-full text-base leading-none',
-              'transition-transform duration-spring ease-spring active:scale-90',
+              'press grid h-8 w-8 place-items-center rounded-full text-base leading-none',
+              'transition-[transform,background-color,filter] duration-spring ease-spring active:scale-90',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
-              active ? 'scale-110 bg-brand/15 ring-1 ring-brand/40' : 'grayscale hover:grayscale-0 hover:bg-surface-2'
+              active
+                ? 'scale-110 bg-brand/15 ring-1 ring-brand/40 shadow-elevation-1'
+                : 'grayscale hover:grayscale-0 hover:-translate-y-0.5 hover:scale-105 hover:bg-surface-2'
             )}
           >
-            <span aria-hidden="true">{r.emoji}</span>
+            <span
+              aria-hidden="true"
+              className={cn('block transition-transform', active && 'animate-pop-in')}
+            >
+              {r.emoji}
+            </span>
           </button>
         );
       })}

@@ -67,7 +67,7 @@ export function EtaModal({ open, onClose, session, onUpdated }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit} loading={submitting}>
+          <Button className="press" onClick={submit} loading={submitting}>
             Update
           </Button>
         </div>

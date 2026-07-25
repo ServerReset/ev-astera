@@ -112,12 +112,14 @@ export default function AdminPage() {
                   onClick={() => setSection(s.key)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
-                    'transition-[background-color,color] duration-medium ease-emphasized',
-                    active ? 'bg-brand/15 text-brand-strong' : 'text-muted hover:bg-surface-2 hover:text-content'
+                    'press flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
+                    'transition-all duration-medium ease-emphasized',
+                    active
+                      ? 'bg-brand/15 text-brand-strong shadow-elevation-1'
+                      : 'text-muted hover:bg-surface-2 hover:text-content hover:translate-x-0.5'
                   )}
                 >
-                  <SectionIcon className="h-5 w-5 shrink-0" />
+                  <SectionIcon className={cn('h-5 w-5 shrink-0 transition-transform duration-medium ease-spring', active && 'scale-110')} />
                   <span className="truncate">{s.label}</span>
                 </button>
               );
@@ -165,17 +167,37 @@ function OverviewTab() {
     { label: 'Active users', value: o.activeUsers, icon: UsersIcon, tone: 'info' },
     { label: 'Sessions (24h)', value: o.sessionsLast24h, icon: Activity, tone: 'brand' },
     { label: 'Open carpool rides', value: o.carpoolOpenRides, icon: Car, tone: 'info' },
-    { label: 'CO₂ saved this week', value: `${o.carpoolCo2KgThisWeek ?? 0} kg`, icon: Leaf, tone: 'success' },
+    // Signature tile: the sustainability win gets gradient text + a gently floating leaf.
+    { label: 'CO₂ saved this week', value: `${o.carpoolCo2KgThisWeek ?? 0} kg`, icon: Leaf, tone: 'success', hero: true },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {tiles.map((t, i) => (
-        <Card key={t.label} className={ENTER} style={stagger(i)}>
-          <span className={cn('mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl', TONE_CHIP[t.tone])}>
-            <t.icon className="h-5 w-5" />
+        <Card
+          key={t.label}
+          className={cn(
+            'group relative overflow-hidden transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2',
+            ENTER
+          )}
+          style={stagger(i)}
+        >
+          <span
+            className={cn(
+              'mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110',
+              TONE_CHIP[t.tone]
+            )}
+          >
+            <t.icon className={cn('h-5 w-5', t.hero && 'animate-float')} />
           </span>
-          <p className="text-3xl font-bold text-content tabular-nums">{t.value ?? 0}</p>
+          <p
+            className={cn(
+              'text-3xl font-bold tabular-nums',
+              t.hero ? 'text-gradient-brand' : 'text-content'
+            )}
+          >
+            {t.value ?? 0}
+          </p>
           <p className="mt-0.5 text-sm text-muted">{t.label}</p>
         </Card>
       ))}
@@ -266,13 +288,19 @@ function ChargersTab() {
         </Button>
       </div>
       {list.length === 0 ? (
-        <EmptyState icon={Zap} title="No chargers configured" description="Add chargers to this site to start tracking sessions." />
+        <div className="animate-scale-in">
+          <EmptyState icon={Zap} title="No chargers configured" description="Add chargers to this site to start tracking sessions." />
+        </div>
       ) : (
         <div className="grid gap-3 expanded:grid-cols-2">
           {list.map((c, i) => {
             const meta = CHARGER_STATUS_META[c.status] || CHARGER_STATUS_META.available;
             return (
-              <Card key={c.id} className={ENTER} style={stagger(i)}>
+              <Card
+                key={c.id}
+                className={cn('transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)}
+                style={stagger(i)}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-semibold text-content">
@@ -521,13 +549,13 @@ function CarpoolRidesPanel() {
   if (rides.error) return <ErrorState error={rides.error} onRetry={rides.refetch} title="Could not load rides" />;
 
   const list = rides.data || [];
-  if (list.length === 0) return <EmptyState icon={Car} title="No open rides" description="Rides drivers post will show up here." />;
+  if (list.length === 0) return <div className="animate-scale-in"><EmptyState icon={Car} title="No open rides" description="Rides drivers post will show up here." /></div>;
 
   return (
     <>
       <ul className="space-y-2">
         {list.map((r, i) => (
-          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(i)}>
             <div className="min-w-0">
               <p className="font-medium text-content">
                 {r.driverName || 'A driver'} · {r.direction === 'to_site' ? 'To work' : 'From work'}
@@ -579,13 +607,13 @@ function CarpoolRequestsPanel() {
   if (requests.error) return <ErrorState error={requests.error} onRetry={requests.refetch} title="Could not load ride requests" />;
 
   const list = requests.data || [];
-  if (list.length === 0) return <EmptyState icon={Search} title="No open requests" description="Riders looking for a ride will show up here." />;
+  if (list.length === 0) return <div className="animate-scale-in"><EmptyState icon={Search} title="No open requests" description="Riders looking for a ride will show up here." /></div>;
 
   return (
     <>
       <ul className="space-y-2">
         {list.map((r, i) => (
-          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3', ENTER)} style={stagger(i)}>
+          <Card key={r.id} as="li" className={cn('flex items-start justify-between gap-3 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(i)}>
             <div className="min-w-0">
               <p className="font-medium text-content">
                 {r.riderName || 'A rider'} · {r.direction === 'to_site' ? 'To work' : 'From work'}
@@ -638,7 +666,7 @@ function CarpoolSchedulesPanel() {
   if (schedules.error) return <ErrorState error={schedules.error} onRetry={schedules.refetch} title="Could not load recurring commutes" />;
 
   const list = schedules.data || [];
-  if (list.length === 0) return <EmptyState icon={CalendarClock} title="No recurring commutes" description="Schedules users set up will show up here." />;
+  if (list.length === 0) return <div className="animate-scale-in"><EmptyState icon={CalendarClock} title="No recurring commutes" description="Schedules users set up will show up here." /></div>;
 
   return (
     <>
@@ -696,7 +724,7 @@ function CarpoolGroupsPanel() {
   if (groups.error) return <ErrorState error={groups.error} onRetry={groups.refetch} title="Could not load carpool groups" />;
 
   const list = groups.data || [];
-  if (list.length === 0) return <EmptyState icon={UserSquare2} title="No carpool groups" description="Groups users create will show up here." />;
+  if (list.length === 0) return <div className="animate-scale-in"><EmptyState icon={UserSquare2} title="No carpool groups" description="Groups users create will show up here." /></div>;
 
   return (
     <>
@@ -929,7 +957,7 @@ function SettingsEditor({ groups }) {
           <div className="grid gap-4 sm:grid-cols-2">
             {group.fields.map((f) =>
               f.type === 'bool' ? (
-                <div key={f.key} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-elevated px-3 py-2.5">
+                <div key={f.key} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-elevated px-3 py-2.5 transition-colors duration-medium hover:bg-surface-2">
                   <span className="text-sm text-content">{f.label}</span>
                   <Switch checked={Boolean(values[f.key])} onChange={(v) => setValue(f.key, v)} label={f.label} />
                 </div>
@@ -953,8 +981,11 @@ function SettingsEditor({ groups }) {
       ))}
 
       {/* Sticky action bar: floating chrome, so a subtle translucent surface is fair game. */}
-      <div ref={glassRef} className="lg-panel sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
-        <p className="text-sm text-muted">{draft ? 'You have unsaved changes.' : 'All changes saved.'}</p>
+      <div ref={glassRef} className="lg-panel sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3 shadow-elevation-2">
+        <p className={cn('flex items-center gap-2 text-sm transition-colors duration-medium', draft ? 'text-content' : 'text-muted')}>
+          <span className={cn('inline-block h-2 w-2 rounded-full transition-colors duration-medium', draft ? 'bg-brand animate-glow' : 'bg-success')} />
+          {draft ? 'You have unsaved changes.' : 'All changes saved.'}
+        </p>
         <Button onClick={save} loading={saving} disabled={!draft}>
           Save settings
         </Button>
@@ -1016,7 +1047,7 @@ function NotificationTemplatesEditor({ group }) {
           const titleKey = notifTplSettingKey(t.key, 'title');
           const bodyKey = notifTplSettingKey(t.key, 'body');
           return (
-            <div key={t.key} className="rounded-2xl border border-border p-3">
+            <div key={t.key} className="card-solid rounded-2xl border border-border p-3 transition-shadow duration-medium hover:shadow-elevation-1">
               <p className="mb-2 text-sm font-medium text-content">{t.label}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input label="Title" value={values[titleKey] ?? ''} onChange={(e) => setValue(titleKey, e.target.value)} />
@@ -1157,11 +1188,13 @@ function AnnouncementsTab() {
       ) : list.error ? (
         <ErrorState error={list.error} onRetry={list.refetch} title="Could not load announcements" />
       ) : (list.data || []).length === 0 ? (
-        <EmptyState icon={Megaphone} title="No announcements" description="Post one to notify everyone at the site." />
+        <div className="animate-scale-in">
+          <EmptyState icon={Megaphone} title="No announcements" description="Post one to notify everyone at the site." />
+        </div>
       ) : (
         <ul className="space-y-2">
           {list.data.map((a, i) => (
-            <Card key={a.id} as="li" className={ENTER} style={stagger(i)}>
+            <Card key={a.id} as="li" className={cn('transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(i)}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-content">
@@ -1311,13 +1344,15 @@ function UsersTab() {
       ) : users.error ? (
         <ErrorState error={users.error} onRetry={users.refetch} title="Could not load users" />
       ) : items.length === 0 ? (
-        <EmptyState icon={UsersIcon} title="No users found" />
+        <div className="animate-scale-in">
+          <EmptyState icon={UsersIcon} title="No users found" />
+        </div>
       ) : (
         <>
           {/* Compact / medium: stacked cards. */}
           <ul className="space-y-2 expanded:hidden">
             {items.map((u, i) => (
-              <Card key={u.id} as="li" className={cn('flex items-center justify-between gap-3', ENTER)} style={stagger(i)}>
+              <Card key={u.id} as="li" className={cn('flex items-center justify-between gap-3 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(i)}>
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-content">
                     {u.displayName}
@@ -1358,10 +1393,10 @@ function UsersTab() {
           </ul>
 
           {/* Expanded+: dense data table. */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border expanded:block">
+          <div className="card-solid hidden overflow-hidden rounded-2xl border border-border p-0 expanded:block animate-slide-up [animation-fill-mode:backwards]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-surface-2">
+                <tr className="border-b border-border bg-surface-2/80">
                   <th className={TH}>User</th>
                   <th className={TH}>Email</th>
                   <th className={cn(TH, 'text-right')}>Credits</th>
@@ -1371,7 +1406,7 @@ function UsersTab() {
               </thead>
               <tbody className="divide-y divide-border">
                 {items.map((u, i) => (
-                  <tr key={u.id} className={cn('transition-colors hover:bg-surface-2', ROW_ENTER)} style={stagger(i)}>
+                  <tr key={u.id} className={cn('transition-colors duration-medium ease-emphasized hover:bg-brand/5', ROW_ENTER)} style={stagger(i)}>
                     <td className={TD}>
                       <span className="flex items-center gap-2 font-medium text-content">
                         {u.displayName}
@@ -1465,7 +1500,7 @@ function TempPasswordModal({ user, password, onClose }) {
         <p className="text-sm text-muted">
           Share this with them directly — it won't be shown again. They can change it from Settings after signing in.
         </p>
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-bg-elevated px-3 py-2.5">
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-bg-elevated px-3 py-2.5 animate-scale-in">
           <code className="flex-1 select-all font-mono text-sm text-content">{password}</code>
           <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy password">
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
@@ -1571,7 +1606,7 @@ function AuditTab() {
 
   const items = audit.data?.items || [];
   if (items.length === 0) {
-    return <EmptyState icon={ScrollText} title="No activity yet" description="Admin and system actions will appear here." />;
+    return <div className="animate-scale-in"><EmptyState icon={ScrollText} title="No activity yet" description="Admin and system actions will appear here." /></div>;
   }
 
   const detailText = (a) => (a.details == null ? '' : typeof a.details === 'string' ? a.details : JSON.stringify(a.details));
@@ -1596,10 +1631,10 @@ function AuditTab() {
       </ul>
 
       {/* Expanded+: dense data table. */}
-      <div className="hidden overflow-hidden rounded-2xl border border-border expanded:block">
+      <div className="card-solid hidden overflow-hidden rounded-2xl border border-border p-0 expanded:block animate-slide-up [animation-fill-mode:backwards]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-surface-2">
+            <tr className="border-b border-border bg-surface-2/80">
               <th className={TH}>Action</th>
               <th className={TH}>Details</th>
               <th className={cn(TH, 'text-right')}>When</th>
@@ -1607,7 +1642,7 @@ function AuditTab() {
           </thead>
           <tbody className="divide-y divide-border">
             {items.map((a, i) => (
-              <tr key={a.id} className={cn('transition-colors hover:bg-surface-2', ROW_ENTER)} style={stagger(i)}>
+              <tr key={a.id} className={cn('transition-colors duration-medium ease-emphasized hover:bg-brand/5', ROW_ENTER)} style={stagger(i)}>
                 <td className={cn(TD, 'whitespace-nowrap font-medium text-content')}>{a.action}</td>
                 <td className={cn(TD, 'max-w-0 truncate text-muted')}>{detailText(a)}</td>
                 <td className={cn(TD, 'whitespace-nowrap text-right text-faint')}>{formatDateTime(a.created_at)}</td>

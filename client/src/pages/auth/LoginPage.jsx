@@ -43,27 +43,31 @@ export default function LoginPage() {
         }
       >
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={values.email}
-            onChange={handleChange}
-            error={errors.email}
-            placeholder="you@asteralabs.com"
-          />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={values.password}
-            onChange={handleChange}
-            error={errors.password}
-            placeholder="••••••••"
-          />
-          <div className="flex items-center justify-between">
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:60ms]">
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={values.email}
+              onChange={handleChange}
+              error={errors.email}
+              placeholder="you@asteralabs.com"
+            />
+          </div>
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:120ms]">
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={values.password}
+              onChange={handleChange}
+              error={errors.password}
+              placeholder="••••••••"
+            />
+          </div>
+          <div className="flex items-center justify-between animate-slide-up [animation-fill-mode:backwards] [animation-delay:180ms]">
             <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
@@ -78,10 +82,12 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          {formError && <p className="field-error">{formError}</p>}
-          <Button type="submit" className="w-full" loading={submitting}>
-            Sign in
-          </Button>
+          {formError && <p className="field-error animate-pop-in">{formError}</p>}
+          <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:240ms]">
+            <Button type="submit" className="w-full press sheen" loading={submitting}>
+              Sign in
+            </Button>
+          </div>
         </form>
       </AuthShell>
     </RedirectIfAuthed>

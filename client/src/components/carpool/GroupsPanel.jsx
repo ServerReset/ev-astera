@@ -58,8 +58,12 @@ export function GroupsPanel({ onGroupsChanged }) {
         <EmptyState icon={UsersRound} title="No groups yet" description="Create one to carpool within a smaller circle." />
       ) : (
         <ul className="space-y-2">
-          {groups.data.map((g) => (
-            <li key={g.id} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-elevated p-3">
+          {groups.data.map((g, i) => (
+            <li
+              key={g.id}
+              className="card-solid flex items-center justify-between gap-3 rounded-2xl p-3 animate-slide-up [animation-fill-mode:backwards] transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2"
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+            >
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium text-content">
                   {g.name}

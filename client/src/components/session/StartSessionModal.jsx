@@ -58,7 +58,7 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} loading={submitting}>
+          <Button className="press" onClick={onSubmit} loading={submitting}>
             Start
           </Button>
         </div>
@@ -82,7 +82,7 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           placeholder="White Tesla Model 3"
         />
 
-        <label className="flex items-start gap-2.5 rounded-2xl border border-border bg-bg-elevated p-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-border bg-bg-elevated p-3 text-sm transition-colors duration-medium hover:border-border-strong">
           <input
             type="checkbox"
             name="confirmedConnected"

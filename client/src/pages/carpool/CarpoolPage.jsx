@@ -315,7 +315,7 @@ function RequestsTab({ groups }) {
           {requests.data.map((req, idx) => {
             const m = matchesByReq.get(req.id) || [];
             return (
-              <Card key={req.id} as="li" className={ENTER} style={stagger(idx)}>
+              <Card key={req.id} as="li" className={cn('transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(idx)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-medium text-content">
@@ -338,9 +338,9 @@ function RequestsTab({ groups }) {
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-faint">Suggested drivers</p>
                     <ul className="space-y-1.5">
                       {m.map((ride) => (
-                        <li key={ride.id} className="flex items-center justify-between gap-2 text-sm">
+                        <li key={ride.id} className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-sm transition-colors hover:bg-surface-2">
                           <span className="truncate text-content">{ride.driverName} · {formatDateTime(ride.departAt)}</span>
-                          <span className="shrink-0 text-xs font-medium text-success">{Math.round(ride.matchScore)}% match</span>
+                          <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">{Math.round(ride.matchScore)}% match</span>
                         </li>
                       ))}
                     </ul>
@@ -413,7 +413,7 @@ function SchedulesTab({ groups }) {
       ) : (
         <ul className="space-y-2">
           {schedules.data.map((s, idx) => (
-            <Card key={s.id} as="li" className={cn('flex items-center justify-between gap-3', ENTER)} style={stagger(idx)}>
+            <Card key={s.id} as="li" className={cn('flex items-center justify-between gap-3 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)} style={stagger(idx)}>
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium text-content">
                   {s.role === CARPOOL_ROLE.DRIVER ? 'Driving' : 'Riding'} · {DIRECTION_LABEL[s.direction]}

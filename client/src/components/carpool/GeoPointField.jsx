@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MapPin } from 'lucide-react';
 import { Input } from '@/components/common/Input.jsx';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 
@@ -101,18 +102,22 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
         autoComplete="off"
       />
       {dropdownVisible && (
-        <ul ref={glassRef} className="lg-panel absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-border shadow-elevation-3">
+        <ul ref={glassRef} className="lg-panel absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-border shadow-elevation-3 animate-scale-in [animation-fill-mode:backwards]">
           {loading && suggestions.length === 0 && (
-            <li className="px-3 py-2 text-sm text-faint">Searching…</li>
+            <li className="flex items-center gap-2 px-3 py-2 text-sm text-faint">
+              <MapPin className="h-3.5 w-3.5 animate-pulse" />
+              Searching…
+            </li>
           )}
           {suggestions.map((s) => (
             <li key={s.place_id}>
               <button
                 type="button"
                 onClick={() => pick(s)}
-                className="block w-full truncate px-3 py-2 text-left text-sm text-content hover:bg-surface-2"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-2"
               >
-                {s.display_name}
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-faint" />
+                <span className="truncate">{s.display_name}</span>
               </button>
             </li>
           ))}

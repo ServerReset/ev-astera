@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Zap } from 'lucide-react';
 import { postRideSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -91,7 +92,8 @@ export function RideFormModal({ open, onClose, onCreated, groups = [], linkedSes
     >
       <div className="space-y-4">
         {linkedSessionId && (
-          <p className="rounded-2xl bg-brand/10 px-3 py-2 text-sm text-brand-strong">
+          <p className="flex items-center gap-2 rounded-2xl bg-brand/10 px-3 py-2 text-sm text-brand-strong animate-scale-in [animation-fill-mode:backwards]">
+            <Zap className="h-4 w-4 shrink-0" />
             This ride will be linked to your current charging session.
           </p>
         )}

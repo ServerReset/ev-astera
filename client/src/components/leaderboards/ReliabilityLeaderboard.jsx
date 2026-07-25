@@ -15,13 +15,13 @@ function PodiumFirst({ row, highlightUserId }) {
     <div
       ref={glassRef}
       className={cn(
-        'lg-hero relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
+        'lg-hero sheen relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
         mine ? 'border-brand/60' : 'border-warning/40'
       )}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/20 blur-3xl" aria-hidden />
       <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning animate-float">
           <Crown className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-title-md text-content">
@@ -44,9 +44,9 @@ function PodiumFirst({ row, highlightUserId }) {
 function PodiumRow({ row, rank, highlightUserId }) {
   const mine = row.userId === highlightUserId;
   return (
-    <li className={cn('flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm', mine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated')}>
+    <li className={cn('flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-all duration-medium ease-emphasized hover:-translate-y-px', mine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated hover:bg-surface-2')}>
       <span className="grid h-7 w-7 shrink-0 place-items-center">
-        <Medal className={cn('h-[1.125rem] w-[1.125rem]', RANK_TONE[rank])} />
+        <Medal className={cn('h-[1.125rem] w-[1.125rem] drop-shadow-sm', RANK_TONE[rank])} />
       </span>
       <span className="min-w-0 flex-1 truncate font-medium text-content">
         {row.name}
@@ -92,8 +92,8 @@ function RankedList({ rows, highlightUserId, emptyLabel, podium = false }) {
               <li
                 key={r.userId}
                 className={cn(
-                  'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm',
-                  mine ? 'bg-brand/10 ring-1 ring-brand/40' : rank % 2 ? 'bg-bg-elevated' : ''
+                  'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors duration-medium ease-emphasized',
+                  mine ? 'bg-brand/10 ring-1 ring-brand/40' : rank % 2 ? 'bg-bg-elevated hover:bg-surface-2' : 'hover:bg-bg-elevated'
                 )}
               >
                 <span className="w-6 shrink-0 text-center font-semibold text-faint">{rank + 1}</span>
@@ -137,15 +137,18 @@ export function ReliabilityLeaderboard({ data, highlightUserId }) {
   }
 
   return (
+    // Both panels use card-solid, not glass .card: the "Most reliable" panel nests a .lg-hero
+    // podium (real refraction) which must not sit under a card's backdrop-blur (stacked filters =
+    // muddy + costly). The sibling matches it so the two side-by-side panels read consistently.
     <div className="grid gap-4 sm:grid-cols-2">
-      <Card>
+      <div className="card-solid p-4">
         <CardHeader title="Most reliable" subtitle="Quick unplugs, carpool driving, no overtime" icon={ShieldCheck} />
         <RankedList rows={top} highlightUserId={highlightUserId} emptyLabel="No scores yet." podium />
-      </Card>
-      <Card>
+      </div>
+      <div className="card-solid p-4">
         <CardHeader title="Needs improvement" subtitle="Frequent or long overtime" icon={ShieldCheck} />
         <RankedList rows={bottom} highlightUserId={highlightUserId} emptyLabel="No scores yet." />
-      </Card>
+      </div>
     </div>
   );
 }

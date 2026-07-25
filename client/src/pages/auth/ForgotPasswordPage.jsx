@@ -17,9 +17,11 @@ export default function ForgotPasswordPage() {
         </Link>
       }
     >
-      <div className="flex flex-col items-center gap-3 py-2 text-center">
-        <ShieldQuestion className="h-10 w-10 text-brand-strong" />
-        <p className="text-sm text-muted">
+      <div className="flex flex-col items-center gap-4 py-2 text-center animate-scale-in">
+        <span className="grid h-16 w-16 place-items-center rounded-2xl bg-brand/15 text-brand-strong shadow-elevation-1 animate-glow">
+          <ShieldQuestion className="h-8 w-8 animate-float" />
+        </span>
+        <p className="text-sm text-muted animate-slide-up [animation-fill-mode:backwards] [animation-delay:100ms]">
           This site doesn't send reset emails. Ask an admin at your location to reset your password
           from Admin → Users — they'll set a temporary one and share it with you directly.
         </p>

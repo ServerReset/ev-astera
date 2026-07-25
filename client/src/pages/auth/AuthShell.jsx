@@ -21,9 +21,14 @@ const PILLARS = [
  */
 export function AuthShell({ title, subtitle, children, footer }) {
   return (
-    <div className="min-h-screen bg-bg lg:grid lg:grid-cols-2">
-      {/* Hero pane — lg+ only. Ambient brand aurora + the product pillars. */}
-      <aside className="relative hidden overflow-hidden bg-bg-elevated lg:flex lg:flex-col lg:justify-between lg:p-12">
+    // 100dvh (dynamic viewport height) so mobile browser chrome can't clip the form, and the whole
+    // thing scrolls if a tall form (register) exceeds a short window. min-h-screen is listed first
+    // as a fallback for pre-2022 browsers without dvh support; dvh overrides it where supported.
+    // lg splits into two equal columns, each its own height so neither forces the page taller.
+    <div className="min-h-screen min-h-[100dvh] bg-bg lg:grid lg:grid-cols-2">
+      {/* Hero pane — lg+ only. Ambient brand aurora + the product pillars. Sticky full-height so
+          it never scrolls with a long form beside it. */}
+      <aside className="relative hidden overflow-hidden bg-bg-elevated lg:flex lg:h-screen lg:h-[100dvh] lg:flex-col lg:justify-between lg:p-12 lg:sticky lg:top-0">
         {/* Ambient brand wash: two soft radial glows, tokenized so it adapts light/dark. */}
         <div
           aria-hidden="true"
@@ -56,7 +61,7 @@ export function AuthShell({ title, subtitle, children, footer }) {
         </div>
 
         <div className="relative max-w-md">
-          <h2 className="text-headline-md font-bold text-content">
+          <h2 className="text-headline-md font-bold text-gradient-brand">
             Workplace charging & carpool, sorted.
           </h2>
           <ul className="mt-8 space-y-6">
@@ -80,12 +85,13 @@ export function AuthShell({ title, subtitle, children, footer }) {
 
       </aside>
 
-      {/* Form pane — full width below lg, right half at lg+. */}
-      <div className="grid min-h-screen place-items-center px-4 py-8 lg:min-h-0">
+      {/* Form pane — full width below lg, right half at lg+. Uses dvh + vertical padding so it
+          centers when short and scrolls when tall; never clips. */}
+      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center px-4 py-8">
         <div className="w-full max-w-sm animate-fade-in">
           <div className="mb-6 flex flex-col items-center text-center">
             {/* Brand mark shows above the form on compact; the hero carries it at lg+. */}
-            <div className="rounded-2xl bg-surface-2 p-3 shadow-glow lg:hidden">
+            <div className="rounded-2xl bg-surface-2 p-3 shadow-glow lg:hidden animate-float">
               <AsteraMark size={40} />
             </div>
             <h1 className="mt-4 text-headline-sm text-content lg:mt-0">{title}</h1>

@@ -21,17 +21,29 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
   return (
     <div
       className={cn(
-        'card rounded-xl-increased p-4 flex flex-col gap-3 transition-shadow duration-medium',
-        charger.status === CHARGER_STATUS.OVERTIME && 'border-warning/40',
+        'card group relative flex flex-col overflow-hidden rounded-xl-increased p-4 transition-all duration-medium ease-emphasized',
+        available && 'hover:-translate-y-1 hover:shadow-elevation-2',
+        charger.status === CHARGER_STATUS.OVERTIME && 'border-warning/50',
         isMine && 'ring-2 ring-brand/50'
       )}
     >
+      {/* Overtime urgency: a soft, slowly-breathing warning aura bleeding in from the corner. */}
+      {charger.status === CHARGER_STATUS.OVERTIME && (
+        <div
+          className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 animate-pulse rounded-full bg-warning/25 blur-2xl"
+          aria-hidden
+        />
+      )}
+
+      <div className="relative flex flex-1 flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span
             className={cn(
-              'grid h-11 w-11 place-items-center rounded-2xl',
-              available ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-muted'
+              'grid h-11 w-11 place-items-center rounded-2xl transition-transform duration-medium ease-spring',
+              available
+                ? 'bg-brand/15 text-brand-strong ring-1 ring-brand/20 group-hover:scale-105 group-hover:ring-brand/40'
+                : 'bg-surface-2 text-muted'
             )}
           >
             <Zap className="h-5 w-5" />
@@ -86,21 +98,22 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
       {/* Actions */}
       <div className="mt-auto flex gap-2 pt-1">
         {available && canStart && (
-          <Button size="sm" className="flex-1" onClick={() => onStart?.(charger)}>
+          <Button size="sm" className="press flex-1" onClick={() => onStart?.(charger)}>
             Start charging
           </Button>
         )}
         {s && isMine && (
-          <Button size="sm" variant="secondary" className="flex-1" onClick={() => onEndMine?.(charger)}>
+          <Button size="sm" variant="secondary" className="press flex-1" onClick={() => onEndMine?.(charger)}>
             End session
           </Button>
         )}
         {s && !isMine && (
-          <Button size="sm" variant="ghost" className="flex-1" onClick={() => onNudge?.(charger)}>
+          <Button size="sm" variant="ghost" className="press flex-1" onClick={() => onNudge?.(charger)}>
             <Hand className="h-4 w-4" />
             Nudge
           </Button>
         )}
+      </div>
       </div>
     </div>
   );

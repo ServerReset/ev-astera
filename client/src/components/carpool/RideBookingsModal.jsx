@@ -43,8 +43,12 @@ export function RideBookingsModal({ open, onClose, rideId, onChanged }) {
         <EmptyState icon={UserCheck} title="No requests yet" description="Riders who request a seat will show up here for you to confirm." />
       ) : (
         <ul className="space-y-2">
-          {bookings.map((b) => (
-            <li key={b.id} className="rounded-2xl bg-bg-elevated p-3">
+          {bookings.map((b, i) => (
+            <li
+              key={b.id}
+              className="card-solid rounded-2xl p-3 animate-slide-up [animation-fill-mode:backwards]"
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+            >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium text-content">{b.riderName}</p>

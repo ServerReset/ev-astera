@@ -115,9 +115,22 @@ export default function DashboardPage() {
         {/* Primary pane — chargers */}
         <section aria-label="Chargers">
           {chargers.loading && !list.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 3xl:grid-cols-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="skeleton h-40 rounded-2xl" />
+                <div
+                  key={i}
+                  className="card animate-fade-in rounded-xl-increased p-4 [animation-fill-mode:backwards]"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="skeleton h-11 w-11 rounded-2xl" />
+                    <div className="flex-1 space-y-2">
+                      <div className="skeleton h-4 w-2/3 rounded-full" />
+                      <div className="skeleton h-3 w-1/3 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="skeleton mt-4 h-9 w-full rounded-2xl" />
+                </div>
               ))}
             </div>
           ) : chargers.error ? (

@@ -120,9 +120,12 @@ export function ScheduleFormModal({ open, onClose, onCreated, groups = [] }) {
                   type="button"
                   onClick={() => toggleDay(i)}
                   className={cn(
-                    'h-9 flex-1 rounded-full border text-xs font-medium transition-colors active:scale-95',
-                    on ? 'border-brand bg-brand/15 text-brand-strong' : 'border-border bg-bg-elevated text-muted hover:text-content'
+                    'press h-9 flex-1 rounded-full border text-xs font-medium transition-all duration-medium ease-spring',
+                    on
+                      ? 'border-brand bg-brand/15 text-brand-strong shadow-elevation-1'
+                      : 'border-border bg-bg-elevated text-muted hover:border-brand/40 hover:text-content'
                   )}
+                  aria-pressed={on}
                 >
                   {w}
                 </button>

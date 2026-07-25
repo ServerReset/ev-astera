@@ -18,6 +18,12 @@ import { cn } from '@/utils/cn.js';
  * chrome), and — from `lg` up, where there's room and a pointer — each destination expands into a
  * label + icon pill so a wide screen reads as a proper labeled toolbar instead of a lonely row of
  * glyphs. The active item always shows its label so the current place is named at every size.
+ *
+ * Two-row wrap: instead of scrolling sideways when the pills don't fit (an easy-to-miss, awkward
+ * interaction on a phone), the bar wraps onto a second centered row. `flex-wrap` + the max-width
+ * ceiling makes it break exactly when it would otherwise overflow; the softly-rounded (not fully
+ * circular) shape stays graceful whether it's one row tall or two. AppLayout reserves the matching
+ * bottom clearance so content never tucks under a two-row bar.
  */
 
 /** One destination pill. `label` shows from lg↑ (and always when active) so wide screens read as a
@@ -65,7 +71,7 @@ export function NavFloating() {
       <nav
         ref={glassRef}
         aria-label="Primary"
-        className="lg-panel inline-flex max-w-[calc(100vw-2rem)] items-center gap-1 overflow-x-auto rounded-full border border-border p-2 shadow-elevation-2 lg:gap-1.5 lg:p-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="lg-panel flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-1 rounded-[1.75rem] border border-border p-2 shadow-elevation-2 lg:gap-1.5 lg:rounded-full lg:p-2.5"
       >
         <NavLink to="/" aria-label="EV Hub home" title="EV Hub home" className="group mr-0.5 grid h-11 w-11 shrink-0 place-items-center transition-transform duration-medium ease-spring hover:scale-110 active:scale-90 lg:mr-1">
           <AsteraMark size={26} />

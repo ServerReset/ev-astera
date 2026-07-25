@@ -26,7 +26,13 @@ export function AppLayout() {
       <OnboardingGate />
       <CelebrationOverlay />
 
-      <main className="px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28">
+      {/* Bottom padding clears the floating nav. The extra `pb-36` (over the old pb-28) reserves
+          room for the bar when it wraps to two rows on narrow screens, and env(safe-area-inset-bottom)
+          keeps content above the home indicator on notched phones. */}
+      <main
+        className="px-4 py-4 pb-36 sm:px-6 sm:py-6 sm:pb-36"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 9rem)' }}
+      >
         <div className="mx-auto w-full max-w-6xl animate-fade-in">
           {/* Route-level boundary: a single route's lazy chunk failing (e.g. a stale tab after a
               redeploy) recovers here with a scoped reload instead of white-screening the shell.

@@ -10,7 +10,7 @@ import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
  * from the bottom as a sheet on small screens, centers as a dialog on larger ones.
  */
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
-  const glassRef = useLiquidGlass(open);
+  const glassRef = useLiquidGlass(open, { scale: -34, chroma: 1.5, blur: 4, border: 0.14, mapBlur: 16 });
 
   useEffect(() => {
     if (!open) return undefined;

@@ -25,7 +25,7 @@ function Stat({ icon: Icon, value, label, decimals = 0, suffix = '' }) {
  * liquid glass. A Flame streak chip floats in when the user has an active day-streak.
  */
 export function UsageStatsCard({ stats }) {
-  const glassRef = useLiquidGlass(true, { scale: -70, chroma: 5, blur: 6, saturate: 1.4, mapBlur: 14, border: 0.1 });
+  const glassRef = useLiquidGlass(true, { scale: -50, chroma: 3, blur: 6, saturate: 1.4, mapBlur: 20, border: 0.14 });
   const used = stats?.weeklySessionsUsed ?? 0;
   const max = stats?.weeklySessionsMax ?? 0;
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;

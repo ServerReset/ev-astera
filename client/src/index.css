@@ -349,10 +349,10 @@ select:-webkit-autofill {
     position: relative;
     border-radius: theme('borderRadius.2xl');
     border: 1px solid rgb(var(--c-border) / 0.6);
-    /* More transparent than before (0.72→0.55 top / 0.58→0.4 bottom) so the living aurora reads
-       clearly through every surface; the blur is bumped 16→20px and saturation lifted so text
-       stays crisp and the backdrop stays lively rather than washed-out at the lower opacity. */
-    background: linear-gradient(160deg, rgb(var(--c-surface) / 0.55), rgb(var(--c-surface) / 0.4));
+    /* More transparent than before (0.72→0.48 top / 0.58→0.34 bottom, over two prior steps) so the
+       living aurora reads clearly through every surface; blur held at 20px and saturation lifted so
+       text stays crisp and the backdrop stays lively rather than washed-out at the lower opacity. */
+    background: linear-gradient(160deg, rgb(var(--c-surface) / 0.48), rgb(var(--c-surface) / 0.34));
     backdrop-filter: blur(20px) saturate(1.6);
     -webkit-backdrop-filter: blur(20px) saturate(1.6);
     box-shadow:
@@ -406,7 +406,7 @@ select:-webkit-autofill {
     /* Translucent fill (so it reads as glass against a card) but NO backdrop-filter of its own:
        inputs live inside .card, whose blur(16px) already frosts the backdrop — stacking a second
        blur here just cost GPU and softened the input text. The tint alone reads correctly. */
-    background: rgb(var(--c-bg-elevated) / 0.6);
+    background: rgb(var(--c-bg-elevated) / 0.52);
     transition: border-color var(--duration-short) var(--ease-standard),
                 box-shadow var(--duration-short) var(--ease-standard),
                 background-color var(--duration-short) var(--ease-standard);
@@ -650,8 +650,8 @@ select:-webkit-autofill {
   position: relative;
   background: linear-gradient(
     165deg,
-    rgb(var(--c-surface) / 0.58),
-    rgb(var(--c-surface) / 0.46)
+    rgb(var(--c-surface) / 0.5),
+    rgb(var(--c-surface) / 0.4)
   );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.07),
@@ -679,8 +679,8 @@ select:-webkit-autofill {
   background: linear-gradient(
     165deg,
     rgb(var(--c-brand) / 0.18),
-    rgb(var(--c-surface) / 0.52) 45%,
-    rgb(var(--c-surface) / 0.44)
+    rgb(var(--c-surface) / 0.46) 45%,
+    rgb(var(--c-surface) / 0.38)
   );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.12),

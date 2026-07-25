@@ -18,7 +18,7 @@ export default function CarpoolImpactPage() {
   const impact = useApi(() => carpoolApi.myImpact(), []);
   const co2 = impact.data?.co2Kg || 0;
   const co2Display = useCountUp(co2, { decimals: 1 });
-  const glassRef = useLiquidGlass(Boolean(impact.data), { scale: -80, chroma: 5, blur: 6, saturate: 1.5, mapBlur: 16, border: 0.1 });
+  const glassRef = useLiquidGlass(Boolean(impact.data), { scale: -50, chroma: 3, blur: 6, saturate: 1.5, mapBlur: 20, border: 0.14 });
   const hasImpact = impact.data && impact.data.trips > 0;
   const leafRef = useRef(null);
 

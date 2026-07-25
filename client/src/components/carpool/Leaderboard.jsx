@@ -26,7 +26,7 @@ const GOLD_CONFETTI = ['#f5c542', '#ffd700', '#fff2b3', '#ff8a3d', '#ffffff'];
  * pops gold confetti from the crown.
  */
 function PodiumFirst({ row, isViewer }) {
-  const glassRef = useLiquidGlass(true, { scale: -70, chroma: 5, blur: 6, saturate: 1.5, mapBlur: 16, border: 0.1 });
+  const glassRef = useLiquidGlass(true, { scale: -50, chroma: 3, blur: 6, saturate: 1.5, mapBlur: 20, border: 0.14 });
   const co2 = useCountUp(row.co2Kg, { decimals: 1 });
   const trips = useCountUp(row.trips);
   const crownRef = useRef(null);

@@ -26,8 +26,10 @@ import { cn } from '@/utils/cn.js';
  * bottom clearance so content never tucks under a two-row bar.
  */
 
-/** One destination pill. `label` shows from lg↑ (and always when active) so wide screens read as a
- *  labeled toolbar; phones stay icon-only. `icon` is the lucide-name string or a render node. */
+/** One destination pill. Below `lg` every pill is a uniform 44px icon-only circle (active shown by
+ *  tint alone — never a width change, so the row layout is identical on every route and can't shuffle
+ *  when you navigate). At `lg`↑ pills expand to label + icon so a wide screen reads as a labeled
+ *  toolbar. `icon` is the lucide-name string or a render node. */
 function NavPill({ to, end, label, iconName, iconNode, className }) {
   return (
     <NavLink
@@ -37,23 +39,18 @@ function NavPill({ to, end, label, iconName, iconNode, className }) {
       aria-label={label}
       className={({ isActive }) =>
         cn(
-          'group relative flex h-11 shrink-0 items-center justify-center gap-2 rounded-full',
-          'transition-[background-color,transform,width,padding] duration-medium ease-emphasized active:scale-90',
+          'group relative flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full px-0',
+          'lg:w-auto lg:px-3.5',
+          'transition-[background-color,transform] duration-medium ease-emphasized active:scale-90',
           isActive
-            ? 'w-auto px-3.5 bg-brand/15 text-brand-strong'
-            : 'w-11 px-0 text-faint hover:bg-surface-2 hover:text-content lg:w-auto lg:px-3.5',
+            ? 'bg-brand/15 text-brand-strong'
+            : 'text-faint hover:bg-surface-2 hover:text-content',
           className
         )
       }
     >
-      {({ isActive }) => (
-        <>
-          {iconNode || <Icon name={iconName} className="h-5 w-5 shrink-0" />}
-          <span className={cn('text-label-lg font-medium whitespace-nowrap', isActive ? 'inline' : 'hidden lg:inline')}>
-            {label}
-          </span>
-        </>
-      )}
+      {iconNode || <Icon name={iconName} className="h-5 w-5 shrink-0" />}
+      <span className="hidden text-label-lg font-medium whitespace-nowrap lg:inline">{label}</span>
     </NavLink>
   );
 }
@@ -61,7 +58,17 @@ function NavPill({ to, end, label, iconName, iconNode, className }) {
 export function NavFloating() {
   const role = useAuthStore((s) => s.user?.role) || 'user';
   const nav = navForRole(role).slice(0, 5);
-  const glassRef = useLiquidGlass(true, { scale: -45, chroma: 2, blur: 6 });
+  const glassRef = useLiquidGlass(true, { scale: -30, chroma: 1.5, blur: 6, border: 0.14, mapBlur: 16 });
+
+  // Below `lg` all cells are uniform 44px icons with a 4px gap inside 8px padding. Cap the bar's
+  // width to exactly ceil(n/2) cells so, when it can't fit one row, it wraps into two EVEN rows
+  // (e.g. 7 cells → 4 + 3) instead of a lopsided greedy split. At lg the cap is dropped for the
+  // labeled single-row toolbar. n = home + nav items + settings.
+  // box-sizing is border-box, so the cap must include padding (8px×2) AND border (1px×2); +2px
+  // safety absorbs sub-pixel rounding that would otherwise bump the last cell to a new row.
+  const cells = 1 + nav.length + 1;
+  const perRow = Math.ceil(cells / 2);
+  const capPx = perRow * 44 + (perRow - 1) * 4 + 20; // cells + inner gaps + padding + border + fudge
 
   return (
     <div
@@ -71,9 +78,10 @@ export function NavFloating() {
       <nav
         ref={glassRef}
         aria-label="Primary"
-        className="lg-panel flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-1 rounded-[1.75rem] border border-border p-2 shadow-elevation-2 lg:gap-1.5 lg:rounded-full lg:p-2.5"
+        style={{ '--nav-cap': `${capPx}px` }}
+        className="lg-panel flex max-w-[var(--nav-cap)] flex-wrap items-center justify-center gap-1 rounded-[1.75rem] border border-border p-2 shadow-elevation-2 lg:max-w-[calc(100vw-2rem)] lg:gap-1.5 lg:rounded-full lg:p-2.5"
       >
-        <NavLink to="/" aria-label="EV Hub home" title="EV Hub home" className="group mr-0.5 grid h-11 w-11 shrink-0 place-items-center transition-transform duration-medium ease-spring hover:scale-110 active:scale-90 lg:mr-1">
+        <NavLink to="/" aria-label="EV Hub home" title="EV Hub home" className="group grid h-11 w-11 shrink-0 place-items-center rounded-full transition-transform duration-medium ease-spring hover:scale-110 active:scale-90">
           <AsteraMark size={26} />
         </NavLink>
 
@@ -83,7 +91,7 @@ export function NavFloating() {
 
         <span className="mx-0.5 hidden h-6 w-px shrink-0 bg-border/70 lg:block" aria-hidden />
 
-        <NavPill to="/settings" label="Settings" className="ml-0.5 lg:ml-0" iconNode={<User className="h-5 w-5 shrink-0" />} />
+        <NavPill to="/settings" label="Settings" iconNode={<User className="h-5 w-5 shrink-0" />} />
       </nav>
     </div>
   );

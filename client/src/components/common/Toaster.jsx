@@ -28,7 +28,7 @@ export function Toaster() {
 }
 
 function Toast({ toast: t, onDismiss }) {
-  const glassRef = useLiquidGlass(true, { scale: -45, chroma: 2, blur: 5, border: 0.12 });
+  const glassRef = useLiquidGlass(true, { scale: -30, chroma: 1.5, blur: 5, border: 0.16, mapBlur: 16 });
   const Icon = ICONS[t.tone] || Info;
 
   return (

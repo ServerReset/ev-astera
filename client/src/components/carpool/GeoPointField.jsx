@@ -32,7 +32,7 @@ export function GeoPointField({ label, error, value, onChange, placeholder = 'Se
   const abortRef = useRef(null);
   // The dropdown <ul> is both the liquid-glass surface and the click-outside anchor, so this one
   // ref serves both purposes.
-  const listRef = useLiquidGlass(open && results.length > 0);
+  const listRef = useLiquidGlass(open && results.length > 0, { scale: -30, chroma: 1.5, blur: 4, border: 0.16, mapBlur: 16 });
 
   // Debounced Nominatim query whenever the typed label changes.
   useEffect(() => {

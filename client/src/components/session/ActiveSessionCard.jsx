@@ -14,7 +14,7 @@ import { cn } from '@/utils/cn.js';
  */
 export function ActiveSessionCard({ session, onExtend, onEnd }) {
   const overtime = session.status === SESSION_STATUS.OVERTIME;
-  const glassRef = useLiquidGlass(true, { scale: -80, chroma: 5, blur: 6, saturate: 1.5, mapBlur: 16, border: 0.1 });
+  const glassRef = useLiquidGlass(true, { scale: -50, chroma: 3, blur: 6, saturate: 1.5, mapBlur: 20, border: 0.14 });
   const ripple = useRipple();
   const { label: countdownLabel, done } = useCountdown(session.etaAt);
 

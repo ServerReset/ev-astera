@@ -3,7 +3,17 @@ import { Link } from 'react-router-dom';
 import { PlugZap, Home } from 'lucide-react';
 import { Aurora } from '@/components/common/Aurora.jsx';
 import { burstConfetti } from '@/utils/confetti.js';
+import { useCountUp } from '@/hooks/useCountUp.js';
 import { cn } from '@/utils/cn.js';
+
+// Escalating reward copy for the plug-tap easter egg — the more you poke it, the cheekier it gets.
+const TAP_LINES = [
+  'The page you’re after isn’t here — but the lot’s still humming.',
+  'Nice tap. Still not a charger, though.',
+  'Okay, you found the easter egg. 🎉',
+  'Persistent. I respect that.',
+  'This plug leads nowhere. The hub, however, does.',
+];
 
 /**
  * 404 — a playful "unplugged" page. The big plug icon wiggles on hover and, after a few taps,
@@ -11,6 +21,7 @@ import { cn } from '@/utils/cn.js';
  */
 export default function NotFoundPage() {
   const [taps, setTaps] = useState(0);
+  const shown = useCountUp(404, { duration: 1100 });
 
   const tap = (e) => {
     const next = taps + 1;
@@ -33,10 +44,10 @@ export default function NotFoundPage() {
         >
           <PlugZap className="h-12 w-12" strokeWidth={1.5} />
         </button>
-        <p className="mt-6 text-5xl font-black tabular-nums text-gradient-brand">404</p>
+        <p className="mt-6 text-5xl font-black tabular-nums text-gradient-brand">{shown}</p>
         <h1 className="mt-2 text-title-lg font-bold text-content">This charger’s unplugged</h1>
         <p className="mx-auto mt-1.5 max-w-xs text-sm text-muted">
-          {taps >= 3 ? 'Okay, you found the easter egg. 🎉' : 'The page you’re after isn’t here — but the lot’s still humming.'}
+          {TAP_LINES[Math.min(taps, TAP_LINES.length - 1)]}
         </p>
         <Link to="/" className={cn('btn-primary press mt-6 inline-flex')}>
           <Home className="h-4 w-4" /> Back to the hub

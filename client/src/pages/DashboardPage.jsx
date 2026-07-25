@@ -64,11 +64,20 @@ export default function DashboardPage() {
   const sortedQueue = useMemo(() => queue.data || [], [queue.data]);
   const availableCount = list.filter((c) => c.status === CHARGER_STATUS.AVAILABLE && !c.reserved).length;
 
+  // Warm, state-aware subtitle — celebrates when everything's free, nudges toward the queue when it's not.
+  const headerDescription = !list.length
+    ? 'Live status of every charger at your site.'
+    : availableCount === 0
+      ? "Every charger's busy — hop in the queue and we'll ping you the moment one frees up."
+      : availableCount === list.length
+        ? (list.length === 1 ? 'Your charger is free and waiting.' : `All ${list.length} chargers are free — take your pick.`)
+        : `${availableCount} of ${list.length} free right now — grab one before they're gone.`;
+
   return (
     <div>
       <PageHeader
         title="Chargers"
-        description={list.length ? `${availableCount} of ${list.length} available right now.` : 'Live status of every charger at your site.'}
+        description={headerDescription}
         icon={Zap}
         action={
           <div className="flex gap-2">

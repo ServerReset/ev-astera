@@ -48,7 +48,7 @@ export function NudgeModal({ open, onClose, charger }) {
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} loading={submitting} className="press"><Hand className="h-4 w-4" /> Send nudge</Button>
+          <Button onClick={submit} loading={submitting} className="press group"><Hand className="h-4 w-4 transition-transform duration-medium ease-spring group-hover:-rotate-12" /> Send nudge</Button>
         </div>
       }
     >

@@ -31,7 +31,7 @@ function ProfileForm() {
         vehicleDescription: data.vehicleDescription || '',
       });
       patchUser(updated);
-      toast.success('Profile updated');
+      toast.success('Looking good. Profile saved.');
     } catch (err) {
       const e = normalizeError(err);
       if (e.details) form.setServerErrors(e.details);
@@ -97,17 +97,17 @@ export function ProfileSection() {
       <Card
         as="button"
         onClick={() => navigate('/achievements')}
-        className="card-interactive hover-sheen ripple flex w-full items-center gap-3 text-left"
+        className="card-interactive hover-sheen ripple group flex w-full items-center gap-3 text-left"
         onPointerDown={ripple}
       >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning transition-transform duration-medium ease-spring group-hover:-rotate-12 group-hover:scale-110">
           <Trophy className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-content">Achievements</p>
           <p className="text-sm text-muted">Badges you've unlocked and what's next.</p>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-faint" />
+        <ChevronRight className="h-5 w-5 shrink-0 text-faint transition-transform duration-medium ease-spring group-hover:translate-x-1 group-hover:text-brand-strong" />
       </Card>
 
       <ProfileForm />

@@ -12,6 +12,7 @@ import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useRipple } from '@/hooks/useInteractions.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { NOTIFICATION_META, NOTIFICATION_TYPES } from '@/utils/constants.js';
 import { relativeTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
@@ -48,8 +49,16 @@ function NotificationRow({ n, onOpen }) {
     ? {
         role: 'button',
         tabIndex: 0,
-        onClick: () => onOpen(n),
+        onClick: (e) => {
+          // Ignore clicks bubbling up from nested controls (the nudge reaction buttons) so
+          // reacting doesn't also open/mark-read the row.
+          if (e.target !== e.currentTarget && e.currentTarget.contains(e.target) && e.target.closest('button')) return;
+          onOpen(n);
+        },
         onKeyDown: (e) => {
+          // Only handle keys that originate on the row itself — a bubbled Enter/Space from a nested
+          // reaction <button> must reach that button (not get preventDefault'd + trigger nav here).
+          if (e.target !== e.currentTarget) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             onOpen(n);
@@ -74,13 +83,11 @@ function NotificationRow({ n, onOpen }) {
 
         <span className={cn('relative mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-2xl', TONE_CLASS[meta.tone] || TONE_CLASS.muted)}>
           <Icon name={meta.icon} className="h-5 w-5" />
-          {/* Unread ping dot: a soft continuous pulse (Tailwind animate-ping loops) — kept to a
-              single 2.5px dot so it draws the eye without the noise of per-row glow rings. */}
+          {/* Unread marker: a single solid dot — no infinite ping. Across a list of many unread
+              rows, N looping ping animations compete for attention; the brand row wash + left seam
+              + this static dot already read as "unread" without per-row motion. */}
           {unread && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5" aria-hidden>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand/70" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
-            </span>
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-brand ring-2 ring-surface" aria-hidden />
           )}
         </span>
 
@@ -203,6 +210,13 @@ export default function NotificationsPage() {
     if (n.actionUrl) navigate(n.actionUrl);
   };
 
+  // Inbox-zero reward: clear everything, then a small confetti puff from the button.
+  const clearAll = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    markAllRead();
+    burstConfetti({ x: r.left + r.width / 2, y: r.top + r.height / 2, count: 48 });
+  };
+
   const showInitialSpinner = loading && items.length === 0;
 
   return (
@@ -213,7 +227,7 @@ export default function NotificationsPage() {
         icon={Bell}
         action={
           unread > 0 ? (
-            <Button variant="ghost" size="sm" onClick={markAllRead} className="press">
+            <Button variant="ghost" size="sm" onClick={clearAll} className="press">
               <CheckCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Mark all read</span>
             </Button>

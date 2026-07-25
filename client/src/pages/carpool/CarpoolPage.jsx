@@ -244,7 +244,7 @@ export default function CarpoolPage() {
                   </Button>
                 </div>
                 {driving.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">You're not driving any rides. Offer one above.</p>
+                  <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">No rides in your name yet — offer one above and be someone's easy commute.</p>
                 ) : (
                   <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {driving.map((ride) => (
@@ -267,7 +267,7 @@ export default function CarpoolPage() {
                   {riding.length > 0 && <Badge tone="brand">{riding.length}</Badge>}
                 </h2>
                 {riding.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">You haven't booked any rides. Find one in the first tab.</p>
+                  <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">No seats booked yet — hop into the first tab and let someone else do the driving.</p>
                 ) : (
                   <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {riding.map((ride) => (

@@ -57,7 +57,16 @@ export function EndSessionModal({ open, session, onClose, onEnded }) {
         </div>
       }
     >
-      <p className="mb-3 text-sm text-muted">A quick courtesy check before you free the charger.</p>
+      <p className={cn('mb-3 flex items-center gap-1.5 text-sm transition-colors duration-medium ease-emphasized', allChecked ? 'font-medium text-success' : 'text-muted')}>
+        {allChecked ? (
+          <>
+            <Check className="h-4 w-4 animate-scale-in" strokeWidth={3} />
+            All tidy — the next driver thanks you.
+          </>
+        ) : (
+          'A quick courtesy check before you free the charger.'
+        )}
+      </p>
       <div className="stagger space-y-2">
         {CHECKS.map((c) => {
           const on = !!state[c.key];

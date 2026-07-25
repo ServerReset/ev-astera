@@ -7,6 +7,7 @@ import { toast } from '@/stores/toastStore.js';
 import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useCountdown } from '@/hooks/useCountdown.js';
+import { burstConfetti } from '@/utils/confetti.js';
 
 /**
  * Live banner for active "I need a charger" emergencies at this office. Anyone currently charging
@@ -33,11 +34,18 @@ function EmergencyRow({ req, canRespond, onChanged }) {
   const { label, done } = useCountdown(req.expiresAt);
   if (done) return null;
 
-  const respond = async (accept) => {
+  const respond = async (accept, e) => {
     setBusy(true);
     try {
       await messageApi.respondEmergency({ requestId: req.id, accept });
-      toast.success(accept ? 'Thanks — they’ve been told you’re wrapping up.' : 'Response sent.');
+      if (accept) {
+        // A small thank-you flourish for the good deed — burst from the button pressed.
+        const r = e?.currentTarget?.getBoundingClientRect();
+        burstConfetti(r ? { x: r.left + r.width / 2, y: r.top, count: 60, colors: ['#4ade80', '#5a96d6', '#f5c542', '#ffffff'] } : { count: 60 });
+        toast.success('You’re a lifesaver — they’ve been told you’re wrapping up.');
+      } else {
+        toast.success('No worries — response sent.');
+      }
       onChanged?.();
     } catch (err) {
       toast.error(normalizeError(err).message);
@@ -62,10 +70,10 @@ function EmergencyRow({ req, canRespond, onChanged }) {
       </div>
       {canRespond && (
         <div className="mt-2.5 flex gap-2">
-          <Button size="sm" className="press flex-1" loading={busy} onClick={() => respond(true)}>
+          <Button size="sm" className="press flex-1" loading={busy} onClick={(e) => respond(true, e)}>
             <Check className="h-4 w-4" /> I'll wrap up
           </Button>
-          <Button size="sm" variant="ghost" className="press" loading={busy} onClick={() => respond(false)}>
+          <Button size="sm" variant="ghost" className="press" loading={busy} onClick={(e) => respond(false, e)}>
             <X className="h-4 w-4" /> Can't now
           </Button>
         </div>

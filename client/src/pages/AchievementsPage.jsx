@@ -7,7 +7,10 @@ import { BadgeTile } from '@/components/achievements/BadgeTile.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useCountUp } from '@/hooks/useCountUp.js';
 import { achievementApi } from '@/services/endpoints.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { cn } from '@/utils/cn.js';
+
+const GOLD_CONFETTI = ['#f5c542', '#ffd700', '#fff2b3', '#ff8a3d', '#ffffff'];
 
 /**
  * Rank each badge for display. Unlocked come first (most-recent unlock first), then in-progress
@@ -29,23 +32,49 @@ function rankBadges(items) {
   });
 }
 
-/** The counter chip that lives in the PageHeader action slot — a live "earned / total" tally. */
+/** The counter chip that lives in the PageHeader action slot — a live "earned / total" tally. Once
+ * every badge is earned it becomes a glowing, tappable trophy that showers gold confetti. */
 function CounterChip({ unlockedCount, total }) {
   const shown = useCountUp(unlockedCount);
   const complete = total > 0 && unlockedCount >= total;
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-title-md tabular-nums transition-colors duration-medium',
-        complete
-          ? 'animate-glow border-warning/50 bg-warning/15 text-warning'
-          : 'border-border bg-surface text-content'
-      )}
-      aria-label={`${unlockedCount} of ${total} badges earned`}
-    >
+
+  const showerGold = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    burstConfetti({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: GOLD_CONFETTI, count: 120 });
+  };
+
+  const chipClass = cn(
+    'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-title-md tabular-nums transition-colors duration-medium',
+    complete
+      ? 'animate-glow border-warning/50 bg-warning/15 text-warning'
+      : 'border-border bg-surface text-content'
+  );
+
+  const contents = (
+    <>
       {complete ? <Trophy className="h-4 w-4" /> : <Sparkles className="h-4 w-4 text-brand-strong" />}
       <span>{shown}</span>
       <span className="text-muted">/ {total}</span>
+    </>
+  );
+
+  if (complete) {
+    return (
+      <button
+        type="button"
+        onClick={showerGold}
+        title="Full house — take a bow"
+        aria-label={`All ${total} badges earned — celebrate`}
+        className={cn(chipClass, 'press hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80')}
+      >
+        {contents}
+      </button>
+    );
+  }
+
+  return (
+    <span className={chipClass} aria-label={`${unlockedCount} of ${total} badges earned`}>
+      {contents}
     </span>
   );
 }

@@ -33,9 +33,11 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
         isMine && 'ring-2 ring-brand/50'
       )}
     >
-      {/* Overtime urgency: a soft breathing warning aura from the corner. */}
+      {/* Overtime urgency: a static warning bloom from the corner. Not animated — several chargers
+          can be overtime at once, and multiple large blurred elements pulsing in the grid at rest is
+          distracting; the border-warning ring + warning-tinted ETA text already signal urgency. */}
       {charger.status === CHARGER_STATUS.OVERTIME && (
-        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 animate-pulse rounded-full bg-warning/25 blur-2xl" aria-hidden />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/25 blur-2xl" aria-hidden />
       )}
 
       <div className="relative flex flex-1 flex-col gap-3">
@@ -49,7 +51,8 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
                   : 'bg-surface-2 text-muted'
               )}
             >
-              <Zap className="h-5 w-5" />
+              {/* The bolt tilts to attention when you hover an open charger — a tiny "spark of life". */}
+              <Zap className={cn('h-5 w-5 transition-transform duration-medium ease-spring', available && 'group-hover:-rotate-12')} />
             </span>
             <div>
               <p className="text-title-md text-content">{charger.name}</p>

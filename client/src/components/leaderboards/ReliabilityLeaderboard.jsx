@@ -78,13 +78,13 @@ function RankedRow({ row, rank, isViewer, side }) {
   return (
     <li
       className={cn(
-        'flex items-center gap-3 rounded-2xl bg-bg-elevated p-3 transition-colors',
+        'group flex items-center gap-3 rounded-2xl bg-bg-elevated p-3 transition-colors',
         isViewer && 'bg-brand/10 ring-1 ring-brand/30'
       )}
     >
       <span
         className={cn(
-          'grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold ring-1',
+          'grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold ring-1 transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6',
           side === 'bottom' ? 'bg-warning/12 text-warning ring-warning/25' : 'bg-surface-2 text-muted ring-border'
         )}
       >

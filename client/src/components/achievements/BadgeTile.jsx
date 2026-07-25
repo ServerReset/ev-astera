@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { Lock } from 'lucide-react';
 import { Icon } from '@/components/common/Icon.jsx';
 import { TIER_META } from '@/utils/achievements.js';
 import { formatDate } from '@/utils/time.js';
 import { useTilt } from '@/hooks/useInteractions.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { cn } from '@/utils/cn.js';
 
 /**
@@ -14,10 +16,23 @@ import { cn } from '@/utils/cn.js';
 export function BadgeTile({ badge, index = 0 }) {
   const tier = TIER_META[badge.tier] || TIER_META.bronze;
   const tiltRef = useTilt(8);
+  const medalRef = useRef(null);
   const progress = badge.progress;
   const pct = progress && progress.target > 0
     ? Math.min(100, Math.round((progress.current / progress.target) * 100))
     : 0;
+
+  // Easter egg: tap an earned medallion to relive the moment — a tier-colored confetti burst
+  // from the medallion itself. Discoverable via the medallion's own focusable button + tooltip.
+  const relive = () => {
+    const r = medalRef.current?.getBoundingClientRect();
+    burstConfetti({
+      x: r ? r.left + r.width / 2 : undefined,
+      y: r ? r.top + r.height / 2 : undefined,
+      colors: tier.confetti,
+      count: 64,
+    });
+  };
 
   const inner = (
     <div
@@ -40,21 +55,29 @@ export function BadgeTile({ badge, index = 0 }) {
         />
       )}
 
-      {/* Medallion */}
-      <span
-        className={cn(
-          'relative grid h-16 w-16 place-items-center rounded-2xl ring-1 transition-transform duration-medium ease-spring',
-          badge.unlocked
-            ? cn(tier.badge, 'ring-white/10 group-hover:scale-110 group-hover:-rotate-6')
-            : 'bg-surface-2 text-faint ring-border'
-        )}
-      >
-        {badge.unlocked ? (
+      {/* Medallion — earned ones are a tap-to-celebrate button (fires tier confetti); locked ones
+          stay a plain span with the Lock glyph. */}
+      {badge.unlocked ? (
+        <button
+          type="button"
+          ref={medalRef}
+          onClick={relive}
+          title="Relive it"
+          aria-label={`Celebrate ${badge.label}`}
+          className={cn(
+            'relative grid h-16 w-16 place-items-center rounded-2xl ring-1 ring-white/10 transition-transform duration-medium ease-spring',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
+            'group-hover:scale-110 group-hover:-rotate-6 active:scale-95',
+            tier.badge
+          )}
+        >
           <Icon name={badge.icon} className="h-8 w-8" strokeWidth={1.75} />
-        ) : (
+        </button>
+      ) : (
+        <span className="relative grid h-16 w-16 place-items-center rounded-2xl bg-surface-2 text-faint ring-1 ring-border transition-transform duration-medium ease-spring">
           <Lock className="h-7 w-7" strokeWidth={1.75} />
-        )}
-      </span>
+        </span>
+      )}
 
       {/* Tier chip (unlocked only) */}
       {badge.unlocked && (
@@ -76,9 +99,11 @@ export function BadgeTile({ badge, index = 0 }) {
           </p>
         ) : progress ? (
           <div>
-            <div className="flex items-center justify-between text-label-sm text-muted">
-              <span>Progress</span>
-              <span className="tabular-nums">{progress.current} / {progress.target}</span>
+            <div className="flex items-center justify-between text-label-sm">
+              <span className={cn(pct >= 80 ? 'font-semibold text-brand-strong' : 'text-muted')}>
+                {pct >= 80 ? 'So close!' : 'Progress'}
+              </span>
+              <span className="tabular-nums text-muted">{progress.current} / {progress.target}</span>
             </div>
             <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
               <div

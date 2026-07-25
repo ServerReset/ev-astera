@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { KeyRound, ShieldCheck, Check } from 'lucide-react';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -8,6 +8,7 @@ import { useRipple } from '@/hooks/useInteractions.js';
 import { userApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { changePasswordSchema } from '@shared/validation.js';
 import { cn } from '@/utils/cn.js';
 
@@ -33,11 +34,28 @@ export function SecuritySection() {
     return RULES.map((r) => ({ ...r, ok: r.test(v) }));
   }, [form.values.newPassword]);
 
+  const allOk = checks.every((c) => c.ok);
+  const listRef = useRef(null);
+  const wasAllOk = useRef(false);
+
+  // Tiny win moment: the instant every rule turns green, a small burst from the checklist.
+  // Guarded so it fires once on the false→true edge, never on every keystroke afterwards.
+  useEffect(() => {
+    if (allOk && !wasAllOk.current) {
+      const el = listRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        burstConfetti({ x: r.left + r.width / 2, y: r.top + r.height / 2, count: 32 });
+      }
+    }
+    wasAllOk.current = allOk;
+  }, [allOk]);
+
   const onSubmit = form.handleSubmit(async (data) => {
     try {
       await userApi.changePassword(data);
       form.setValues({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      toast.success('Password changed');
+      toast.success('New password locked in. Nicely done.');
     } catch (err) {
       const e = normalizeError(err);
       if (e.details) form.setServerErrors(e.details);
@@ -70,7 +88,13 @@ export function SecuritySection() {
 
         {/* Live strength checklist */}
         {form.values.newPassword?.length > 0 && (
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-2xl bg-surface-2/60 p-3">
+          <ul
+            ref={listRef}
+            className={cn(
+              'grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-2xl p-3 transition-colors duration-medium',
+              allOk ? 'bg-success/10 ring-1 ring-success/30' : 'bg-surface-2/60'
+            )}
+          >
             {checks.map((c) => (
               <li
                 key={c.label}

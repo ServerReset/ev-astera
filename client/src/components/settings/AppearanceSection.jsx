@@ -12,9 +12,9 @@ const LIGHT = { bg: '#f6f7f9', surface: '#ffffff', bar: '#e6e8ec', brand: '#3c79
 const DARK = { bg: '#0e1013', surface: '#1a1d22', bar: '#2a2e35', brand: '#5b9bd8', text: '#e8eaed' };
 
 const OPTIONS = [
-  { key: 'device', label: 'System', icon: Monitor, desc: 'Match your OS' },
-  { key: 'light', label: 'Light', icon: Sun, desc: 'Always light' },
-  { key: 'dark', label: 'Dark', icon: Moon, desc: 'Always dark' },
+  { key: 'device', label: 'System', icon: Monitor, desc: 'Follows your device' },
+  { key: 'light', label: 'Light', icon: Sun, desc: 'Bright and breezy' },
+  { key: 'dark', label: 'Dark', icon: Moon, desc: 'Easy on the eyes' },
 ];
 
 /** A tiny fake "app window" rendered in the given fixed palette. */
@@ -69,7 +69,7 @@ export function AppearanceSection() {
               onClick={() => setPref(key)}
               onPointerDown={ripple}
               className={cn(
-                'card-solid press ripple relative flex flex-col gap-2.5 rounded-2xl border p-3 text-left transition-all duration-medium ease-emphasized',
+                'card-solid press ripple group relative flex flex-col gap-2.5 rounded-2xl border p-3 text-left transition-all duration-medium ease-emphasized',
                 active
                   ? 'border-brand ring-2 ring-brand/40 shadow-elevation-2'
                   : 'border-border hover:border-brand/40 hover:shadow-elevation-1'
@@ -77,7 +77,7 @@ export function AppearanceSection() {
             >
               <Preview palette={key === 'dark' ? DARK : LIGHT} split={key === 'device'} />
               <div className="flex items-center gap-1.5">
-                <Icon className="h-4 w-4 text-muted" />
+                <Icon className="h-4 w-4 text-muted transition-transform duration-medium ease-spring group-hover:rotate-[20deg] group-hover:scale-110" />
                 <span className="font-medium text-content">{label}</span>
                 {active && (
                   <span className="ml-auto grid h-5 w-5 place-items-center rounded-full bg-brand text-white animate-pop-in">

@@ -19,9 +19,9 @@ const WINDOW_OPTIONS = [
 function SavingsTile({ icon: Icon, value, decimals = 0, unit, label, tone }) {
   const display = useCountUp(value, { decimals });
   return (
-    <div className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-bg-elevated p-4">
-      <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${tone.glow}`} aria-hidden />
-      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tone.chip}`}>
+    <div className="group relative flex items-center gap-4 overflow-hidden rounded-2xl bg-bg-elevated p-4">
+      <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl transition-opacity duration-medium group-hover:opacity-80 ${tone.glow}`} aria-hidden />
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6 ${tone.chip}`}>
         <Icon className="h-6 w-6" />
       </span>
       <div className="min-w-0">

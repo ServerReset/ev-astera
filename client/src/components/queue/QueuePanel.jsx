@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ListOrdered, Hourglass, PartyPopper, LogOut, Plus } from 'lucide-react';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { Button } from '@/components/common/Button.jsx';
-import { EmptyState } from '@/components/common/States.jsx';
 import { queueApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -42,12 +41,19 @@ export function QueuePanel({ entries = [], mine, canJoin, onChanged }) {
       {myTurn && <MyTurnBanner mine={mine} busy={busy} onClaim={() => run(() => queueApi.claim(mine.id), null)} />}
 
       {entries.length === 0 && !mine ? (
-        <EmptyState
-          icon={Hourglass}
-          title="The queue is empty"
-          description="Join to be notified the moment a charger frees up."
-          action={canJoin ? <Button size="sm" onClick={() => run(() => queueApi.join(), 'Joined the queue.')} loading={busy}><Plus className="h-4 w-4" /> Join queue</Button> : null}
-        />
+        // Compact inline empty — the header already says "No one waiting", so this doesn't repeat
+        // it; it just offers the one action (join) with a light, non-bulky treatment.
+        <div className="group flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/70 bg-bg-elevated px-5 py-6 text-center transition-colors duration-medium ease-emphasized hover:border-brand/40">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-surface-2 text-faint transition-colors duration-medium ease-emphasized group-hover:bg-brand/10 group-hover:text-brand-strong">
+            <Hourglass className="h-5 w-5" />
+          </span>
+          <p className="text-sm text-muted">Be first in line — get pinged the moment a charger frees up.</p>
+          {canJoin && (
+            <Button size="sm" className="press ripple" onClick={() => run(() => queueApi.join(), 'Joined the queue.')} loading={busy}>
+              <Plus className="h-4 w-4" /> Join queue
+            </Button>
+          )}
+        </div>
       ) : (
         <>
           <ol className="stagger space-y-1.5">
@@ -106,7 +112,12 @@ function MyTurnBanner({ mine, busy, onClaim }) {
         size="sm"
         className="press ripple mt-2 w-full"
         loading={busy}
-        onClick={() => { burstConfetti(); onClaim(); }}
+        onClick={(e) => {
+          // Burst from the button you actually pressed, in warm "you won the wait" colors.
+          const r = e.currentTarget.getBoundingClientRect();
+          burstConfetti({ x: r.left + r.width / 2, y: r.top, colors: ['#3c79bc', '#5a96d6', '#4ade80', '#f5c542', '#ffffff'] });
+          onClaim();
+        }}
       >
         Claim my charger
       </Button>

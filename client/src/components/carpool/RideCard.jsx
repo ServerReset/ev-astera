@@ -50,7 +50,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancelSeat, onMan
                   : 'bg-surface-2 text-muted'
               )}
             >
-              <Car className="h-5 w-5" />
+              <Car className={cn('h-5 w-5 transition-transform duration-medium ease-spring', interactive && 'group-hover:translate-x-0.5')} />
             </span>
             <div className="min-w-0">
               <p className="truncate text-title-md text-content">{ride.driverName || 'Driver'}</p>
@@ -92,6 +92,11 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancelSeat, onMan
             <span className="font-semibold tabular-nums">{ride.seatsAvailable}</span>
             <span className="text-muted">/ {ride.seatsTotal} seats</span>
           </span>
+          {interactive && ride.seatsAvailable === 1 && (
+            <span className="flex items-center gap-1 rounded-full bg-warning/20 px-2.5 py-1 text-xs font-semibold text-warning">
+              Last seat — grab it
+            </span>
+          )}
           {co2Kg > 0 && (
             <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs text-success">
               <Sprout className="h-3.5 w-3.5" />

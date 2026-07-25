@@ -50,11 +50,11 @@ export function NotificationsSection() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader title="What you hear about" subtitle="Choose which alerts reach you. On by default." icon={BellRing} />
+        <CardHeader title="What you hear about" subtitle="Pick your pings. Everything's on until you say otherwise." icon={BellRing} />
         <ul className="stagger flex flex-col divide-y divide-border/60">
           {PREF_ROWS.map(({ key, icon: Icon, label, desc }) => (
-            <li key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
+            <li key={key} className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:-rotate-12 group-hover:scale-110">
                 <Icon className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">

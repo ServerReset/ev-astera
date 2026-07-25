@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Sprout, ArrowLeft, Trophy, Leaf } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
@@ -6,6 +7,7 @@ import { ImpactStats } from '@/components/carpool/ImpactStats.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useCountUp } from '@/hooks/useCountUp.js';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { carpoolApi } from '@/services/endpoints.js';
 
 /**
@@ -18,6 +20,19 @@ export default function CarpoolImpactPage() {
   const co2Display = useCountUp(co2, { decimals: 1 });
   const glassRef = useLiquidGlass(Boolean(impact.data), { scale: -80, chroma: 5, blur: 6, saturate: 1.5, mapBlur: 16, border: 0.1 });
   const hasImpact = impact.data && impact.data.trips > 0;
+  const leafRef = useRef(null);
+
+  // Easter egg: tap the leaf to send up a puff of leaf-green confetti. A quiet little "thank you"
+  // for anyone who bothers to poke the hero — no-op (reduced-motion safe) via burstConfetti.
+  const cheerLeaf = () => {
+    const r = leafRef.current?.getBoundingClientRect();
+    burstConfetti({
+      x: r ? r.left + r.width / 2 : undefined,
+      y: r ? r.top + r.height / 2 : undefined,
+      colors: ['#4ade80', '#22c55e', '#a3e635', '#bbf7d0', '#ffffff'],
+      count: hasImpact ? 90 : 40,
+    });
+  };
 
   return (
     <div>
@@ -48,16 +63,23 @@ export default function CarpoolImpactPage() {
             <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-success/25 blur-3xl" aria-hidden />
 
             <div className="relative flex flex-col items-center text-center">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-success/15 text-success animate-float">
+              <button
+                ref={leafRef}
+                type="button"
+                onClick={cheerLeaf}
+                aria-label="Celebrate your carbon savings"
+                title="Give it a tap 🍃"
+                className="grid h-14 w-14 place-items-center rounded-2xl bg-success/15 text-success animate-float transition-transform duration-medium ease-spring hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80"
+              >
                 <Leaf className="h-7 w-7" />
-              </span>
+              </button>
               <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">CO₂ saved so far</p>
               <p className="text-gradient-brand text-6xl font-black tabular-nums sm:text-7xl">
                 {co2Display}
                 <span className="ml-2 text-2xl font-bold text-muted sm:text-3xl">kg</span>
               </p>
               <p className="mt-2 max-w-md text-sm text-muted">
-                That's roughly {impact.data?.treesEquivalentPerMonth ?? 0} trees' worth of carbon absorbed every month.
+                That's roughly {impact.data?.treesEquivalentPerMonth ?? 0} trees' worth of carbon breathed back in every month. Keep it up.
               </p>
             </div>
           </div>

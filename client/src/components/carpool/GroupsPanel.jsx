@@ -10,6 +10,7 @@ import { useRipple } from '@/hooks/useInteractions.js';
 import { carpoolApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { createGroupSchema } from '@shared/validation.js';
 import { cn } from '@/utils/cn.js';
 
@@ -23,7 +24,9 @@ export function GroupsPanel() {
   const [busyId, setBusyId] = useState(null);
   const ripple = useRipple();
 
-  const toggle = async (g) => {
+  const toggle = async (g, e) => {
+    // Capture where the tap happened before the async gap so a join can celebrate from the button.
+    const r = e?.currentTarget?.getBoundingClientRect?.();
     setBusyId(g.id);
     try {
       if (g.isMember) {
@@ -31,7 +34,13 @@ export function GroupsPanel() {
         toast.info(`Left ${g.name}`);
       } else {
         await carpoolApi.joinGroup(g.id);
-        toast.success(`Joined ${g.name} 🎉`);
+        burstConfetti({
+          x: r ? r.left + r.width / 2 : undefined,
+          y: r ? r.top + r.height / 2 : undefined,
+          colors: ['#3c79bc', '#4ade80', '#5a96d6', '#ffffff'],
+          count: 60,
+        });
+        toast.success(`You're in — welcome to ${g.name} 🎉`);
       }
       groups.refetch();
     } catch (err) {
@@ -79,7 +88,7 @@ export function GroupsPanel() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-105">
                     <Users className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
@@ -97,7 +106,7 @@ export function GroupsPanel() {
                   className="press ripple w-full"
                   onPointerDown={ripple}
                   loading={busyId === g.id}
-                  onClick={() => toggle(g)}
+                  onClick={(e) => toggle(g, e)}
                 >
                   {g.isMember ? <><LogOut className="h-4 w-4" /> Leave</> : <><LogIn className="h-4 w-4" /> Join</>}
                 </Button>

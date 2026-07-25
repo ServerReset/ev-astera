@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore.js';
 import { userApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
+import { burstConfetti } from '@/utils/confetti.js';
 
 const APP_VERSION = '1.0.0';
 
@@ -16,6 +17,19 @@ export function AboutSection() {
   const patchUser = useAuthStore((s) => s.patchUser);
   const [confirm, confirmDialog] = useConfirm();
   const [replaying, setReplaying] = useState(false);
+  const [vtaps, setVtaps] = useState(0);
+
+  // Hidden delight: tap the version number 5 times to pop a little confetti + a warm thank-you.
+  const tapVersion = (e) => {
+    const next = vtaps + 1;
+    setVtaps(next);
+    if (next === 5) {
+      const r = e.currentTarget.getBoundingClientRect();
+      burstConfetti({ x: r.left + r.width / 2, y: r.top + r.height / 2, count: 44 });
+      toast.success('You found the build. Thanks for charging with us. ⚡');
+      setVtaps(0);
+    }
+  };
 
   const replay = async () => {
     const ok = await confirm({
@@ -70,7 +84,16 @@ export function AboutSection() {
           </div>
           <div className="flex items-center justify-between py-2.5">
             <dt className="text-muted">Version</dt>
-            <dd className="font-mono tabular-nums text-content">v{APP_VERSION}</dd>
+            <dd>
+              <button
+                type="button"
+                onClick={tapVersion}
+                title="Tap a few times…"
+                className="press rounded-lg px-1.5 font-mono tabular-nums text-content transition-transform duration-medium ease-spring hover:scale-105 hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/80"
+              >
+                v{APP_VERSION}
+              </button>
+            </dd>
           </div>
           <div className="flex items-center justify-between py-2.5 last:pb-0">
             <dt className="flex items-center gap-2 text-muted">

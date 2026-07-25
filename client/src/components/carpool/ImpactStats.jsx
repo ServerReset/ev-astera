@@ -14,10 +14,10 @@ function StatTile({ icon: Icon, label, value, decimals = 0, suffix, tone = 'bran
 
   return (
     <div
-      className="card card-interactive hover-sheen flex flex-col gap-2 rounded-xl-increased p-4 animate-slide-up [animation-fill-mode:backwards]"
+      className="card card-interactive hover-sheen group flex flex-col gap-2 rounded-xl-increased p-4 animate-slide-up [animation-fill-mode:backwards]"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <span className={cn('grid h-10 w-10 place-items-center rounded-2xl', toneClass)}>
+      <span className={cn('grid h-10 w-10 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110', toneClass)}>
         <Icon className="h-5 w-5" />
       </span>
       <p className="mt-1 text-3xl font-black tabular-nums text-content">

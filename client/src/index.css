@@ -78,8 +78,11 @@
 
   --c-content: 26 27 30;       /* primary text             */
   --c-muted: 84 87 94;         /* secondary text           */
-  /* Darkened from #82858c — the original failed AA (3.7:1) as body text on white; this hits ~5:1+. */
-  --c-faint: 100 103 110;      /* #64676e */
+  /* Darkened from #82858c (which failed AA at 3.7:1 on white) to #64676e (~5:1), then a further
+     notch to #5a5d64 — because the glass surfaces are now more transparent (index.css .card 0.55/0.4
+     etc.), faint text sits over the boosted, blurred aurora rather than solid white, so it needs the
+     extra headroom to keep clearing AA 4.5:1 in bright brand/tertiary aurora regions. */
+  --c-faint: 90 93 100;        /* #5a5d64 */
 
   --c-brand: 60 121 188;       /* Astera Labs blue          #3c79bc */
   --c-brand-strong: 42 96 153; /* darker, for hover/active on white #2a6099 */
@@ -345,12 +348,15 @@ select:-webkit-autofill {
   .card {
     position: relative;
     border-radius: theme('borderRadius.2xl');
-    border: 1px solid rgb(var(--c-border) / 0.7);
-    background: linear-gradient(160deg, rgb(var(--c-surface) / 0.72), rgb(var(--c-surface) / 0.58));
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgb(var(--c-border) / 0.6);
+    /* More transparent than before (0.72→0.55 top / 0.58→0.4 bottom) so the living aurora reads
+       clearly through every surface; the blur is bumped 16→20px and saturation lifted so text
+       stays crisp and the backdrop stays lively rather than washed-out at the lower opacity. */
+    background: linear-gradient(160deg, rgb(var(--c-surface) / 0.55), rgb(var(--c-surface) / 0.4));
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
       inset 0 -1px 0 rgb(0 0 0 / 0.06),
       var(--shadow-elevation-1);
   }
@@ -400,7 +406,7 @@ select:-webkit-autofill {
     /* Translucent fill (so it reads as glass against a card) but NO backdrop-filter of its own:
        inputs live inside .card, whose blur(16px) already frosts the backdrop — stacking a second
        blur here just cost GPU and softened the input text. The tint alone reads correctly. */
-    background: rgb(var(--c-bg-elevated) / 0.78);
+    background: rgb(var(--c-bg-elevated) / 0.6);
     transition: border-color var(--duration-short) var(--ease-standard),
                 box-shadow var(--duration-short) var(--ease-standard),
                 background-color var(--duration-short) var(--ease-standard);
@@ -644,11 +650,11 @@ select:-webkit-autofill {
   position: relative;
   background: linear-gradient(
     165deg,
-    rgb(var(--c-surface) / 0.74),
-    rgb(var(--c-surface) / 0.62)
+    rgb(var(--c-surface) / 0.58),
+    rgb(var(--c-surface) / 0.46)
   );
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
     inset 0 -1px 0 rgb(0 0 0 / 0.08),
     var(--shadow-elevation-2);
 }
@@ -672,9 +678,9 @@ select:-webkit-autofill {
   position: relative;
   background: linear-gradient(
     165deg,
-    rgb(var(--c-brand) / 0.16),
-    rgb(var(--c-surface) / 0.68) 45%,
-    rgb(var(--c-surface) / 0.6)
+    rgb(var(--c-brand) / 0.18),
+    rgb(var(--c-surface) / 0.52) 45%,
+    rgb(var(--c-surface) / 0.44)
   );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.12),

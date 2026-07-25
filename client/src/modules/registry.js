@@ -5,15 +5,12 @@
  * add one import line here. NavFloating renders from `nav`; App.jsx renders `routes`.
  */
 import { ADMIN_ROLES } from '@shared/constants.js';
-import dashboard from './dashboard/index.js';
-import carpool from './carpool/index.js';
-import leaderboards from './leaderboards/index.js';
-import notifications from './notifications/index.js';
-import profile from './profile/index.js';
-import achievements from './achievements/index.js';
-import admin from './admin/index.js';
 
-export const clientModules = [dashboard, carpool, leaderboards, notifications, profile, achievements, admin];
+// Feature modules removed — the app UI has been stripped down to the floating nav bar + aurora
+// shell. Re-registering a feature is one import + one array entry here (see git history for the
+// prior manifests). With no modules, allRoutes is [] and navForRole returns [], so App.jsx renders
+// the authenticated shell with no page content and NavFloating shows just the logo + account.
+export const clientModules = [];
 
 /** All routes flattened, in declaration order. */
 export const allRoutes = clientModules.flatMap((m) => m.routes || []);

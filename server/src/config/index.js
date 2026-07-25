@@ -41,9 +41,17 @@ export const env = {
   defaultLocationId: process.env.DEFAULT_LOCATION_ID,
 };
 
-/** Called at boot; throws if a hard-required value is missing in production. */
+/** Called at boot; throws if a hard-required value is missing in production.
+ *
+ * `postgresUrlDirect` is deliberately NOT in this list: it maps to the schema's `directUrl`, which
+ * Prisma uses ONLY for migrations/introspection (run from the deploy step or CLI), never by the
+ * serverless query engine — that uses `postgresUrl` (the pooled `url`). Requiring it at runtime
+ * meant a migration-only variable being absent on the host crashed EVERY request at cold start
+ * (FUNCTION_INVOCATION_FAILED). Migrations that need the direct URL fail loudly on their own with a
+ * clear Prisma error; the running API does not depend on it. It's still warned about in required()
+ * above, and should be set wherever `prisma migrate` runs. */
 export function assertConfig() {
-  const hard = ['postgresUrl', 'postgresUrlDirect', 'jwtSecret', 'cronSecret'];
+  const hard = ['postgresUrl', 'jwtSecret', 'cronSecret'];
   const missing = hard.filter((k) => !env[k]);
   if (missing.length) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);

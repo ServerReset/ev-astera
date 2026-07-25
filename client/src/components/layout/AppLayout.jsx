@@ -23,15 +23,18 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-bg">
       <Aurora />
+
+      {/*
+        UI intentionally blanked to the floating bar only (per request). The page content —
+        <main> with the routed <Outlet> — is commented out below, NOT deleted: every page file and
+        route still exists on disk, so restoring the full UI is just uncommenting this block (and
+        re-adding OnboardingGate/CelebrationOverlay if desired). Only the aurora + NavFloating render.
+
       <OnboardingGate />
       <CelebrationOverlay />
 
       <main className="px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28">
         <div className="mx-auto w-full max-w-6xl animate-fade-in">
-          {/* Route-level boundary: a single route's lazy chunk failing (common after a redeploy
-              invalidates hashed chunk names for a stale tab) recovers here with a scoped reload
-              instead of unwinding to the root boundary and white-screening the whole shell. Keyed
-              on pathname so navigating away clears a prior route's error. */}
           <ErrorBoundary scoped resetKey={pathname}>
             <Suspense fallback={<Spinner label="Loading…" />}>
               <Outlet />
@@ -39,6 +42,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </div>
       </main>
+      */}
 
       <NavFloating />
     </div>

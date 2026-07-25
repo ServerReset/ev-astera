@@ -298,13 +298,31 @@ export const carpoolService = {
     const ride = b.carpool_rides;
     if (!ride || ride.driver_id !== driverId) throw new AuthorizationError('Not your ride');
     if (b.status !== BOOKING_STATUS.REQUESTED) throw new BusinessRuleError('Booking is not pending.');
+    // Guard against confirming into a ride that's no longer accepting bookings. Without this, a
+    // leftover REQUESTED booking on a COMPLETED ride could be confirmed, which rewrites the ride's
+    // status back to OPEN/FULL below — un-completing it and letting completeRide run a second time,
+    // paying out credits + trip logs twice for the same ride.
+    if (![RIDE_STATUS.OPEN, RIDE_STATUS.FULL].includes(ride.status)) {
+      throw new BusinessRuleError('This ride is no longer accepting bookings.');
+    }
     if (ride.seats_available < b.seats) throw new BusinessRuleError('Not enough seats left to confirm.');
 
+    // Atomic seat claim: decrement only if enough seats remain RIGHT NOW (conditional updateMany),
+    // rather than writing an absolute value computed from the earlier read. Two drivers confirming
+    // two riders concurrently both read seats_available=2 and, with an absolute write, both wrote 1
+    // — overbooking the car. The guarded decrement lets exactly one win; the loser's count is 0.
+    const claim = await prisma.carpool_rides.updateMany({
+      where: { id: ride.id, seats_available: { gte: b.seats } },
+      data: { seats_available: { decrement: b.seats } },
+    });
+    if (claim.count === 0) throw new BusinessRuleError('Not enough seats left to confirm.');
+
     await prisma.carpool_bookings.update({ where: { id: bookingId }, data: { status: BOOKING_STATUS.CONFIRMED } });
-    const remaining = ride.seats_available - b.seats;
+    // Re-read the now-authoritative seat count to set OPEN/FULL correctly.
+    const after = await prisma.carpool_rides.findUnique({ where: { id: ride.id }, select: { seats_available: true } });
     await prisma.carpool_rides.update({
       where: { id: ride.id },
-      data: { seats_available: remaining, status: remaining > 0 ? RIDE_STATUS.OPEN : RIDE_STATUS.FULL },
+      data: { status: after.seats_available > 0 ? RIDE_STATUS.OPEN : RIDE_STATUS.FULL },
     });
 
     await emit(EVENTS.CARPOOL_BOOKING_CONFIRMED, {
@@ -385,7 +403,16 @@ export const carpoolService = {
   async listRequests(locationId, riderId) {
     await ensureMaterialized(locationId);
     const data = await prisma.carpool_requests.findMany({
-      where: { location_id: locationId, rider_id: riderId, status: RIDE_REQUEST_STATUS.OPEN, window_end: { gte: now() } },
+      // Include MATCHED, not just OPEN: once the matcher cron flips a request to MATCHED it must
+      // stay visible so the rider can follow through on the ride the system just found for them —
+      // filtering to OPEN made matched requests (and their notification's destination) silently
+      // vanish from the Requests tab, stranding the rider.
+      where: {
+        location_id: locationId,
+        rider_id: riderId,
+        status: { in: [RIDE_REQUEST_STATUS.OPEN, RIDE_REQUEST_STATUS.MATCHED] },
+        window_end: { gte: now() },
+      },
       include: { rider: { select: { display_name: true } } },
       orderBy: { window_start: 'asc' },
     });
@@ -398,6 +425,8 @@ export const carpoolService = {
       windowStart: r.window_start,
       windowEnd: r.window_end,
       groupId: r.group_id,
+      status: r.status,
+      matchedRideId: r.matched_ride_id,
     }));
   },
 
@@ -561,9 +590,16 @@ export const carpoolService = {
 
   // ── Feature 4: matches, leaderboard, impact ────────────────────────────────────
   async myMatches(locationId, userId) {
-    // My open requests → rank open rides for each.
+    // My still-actionable requests → rank open rides for each. Include MATCHED (not only OPEN) so
+    // a request the matcher already paired still shows its suggested rides — otherwise a matched
+    // request disappears from both the Requests tab and its match suggestions, leaving the rider
+    // unable to act on the ride they were notified about.
     const requests = await prisma.carpool_requests.findMany({
-      where: { location_id: locationId, rider_id: userId, status: RIDE_REQUEST_STATUS.OPEN },
+      where: {
+        location_id: locationId,
+        rider_id: userId,
+        status: { in: [RIDE_REQUEST_STATUS.OPEN, RIDE_REQUEST_STATUS.MATCHED] },
+      },
     });
     if (!requests.length) return [];
 
@@ -639,8 +675,12 @@ export const carpoolService = {
    */
   async leaderboardTotals(locationId, { window = 'week' } = {}) {
     const since = window === 'all' ? null : window === 'month' ? addMinutes(now(), -43200) : addMinutes(now(), -10080);
+    // Count each ride's CO2 exactly ONCE. completeRideImpact stores the FULL ride savings on the
+    // driver's trip log AND each rider's share on their own row, so the driver rows alone already
+    // sum to the true total — filtering to driver rows avoids the 2x double-count that summing
+    // every row produced. `trips` = number of distinct completed rides (one driver row each).
     const agg = await prisma.carpool_trip_logs.aggregate({
-      where: { location_id: locationId, ...(since ? { created_at: { gte: since } } : {}) },
+      where: { location_id: locationId, role: CARPOOL_ROLE.DRIVER, ...(since ? { created_at: { gte: since } } : {}) },
       _sum: { co2_grams_saved: true },
       _count: { _all: true },
     });

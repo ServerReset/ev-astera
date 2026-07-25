@@ -14,7 +14,9 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
   const meta = CHARGER_STATUS_META[charger.status] || CHARGER_STATUS_META.available;
   const s = charger.session;
   const offline = charger.status === CHARGER_STATUS.OFFLINE;
-  const available = charger.status === CHARGER_STATUS.AVAILABLE;
+  // A reserved charger is free but spoken-for by a queue turn in progress — don't offer Start to
+  // others (the server rejects it anyway; this keeps the UI honest). See charger.service reserved.
+  const available = charger.status === CHARGER_STATUS.AVAILABLE && !charger.reserved;
 
   return (
     <div
@@ -73,6 +75,13 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
       )}
 
       {offline && charger.offlineReason && <p className="text-xs text-faint">{charger.offlineReason}</p>}
+
+      {charger.reserved && !s && (
+        <p className="flex items-center gap-1.5 text-xs text-muted">
+          <Users className="h-3.5 w-3.5" />
+          Reserved for the next person in the queue
+        </p>
+      )}
 
       {/* Actions */}
       <div className="mt-auto flex gap-2 pt-1">

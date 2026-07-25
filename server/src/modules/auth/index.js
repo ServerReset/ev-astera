@@ -2,9 +2,9 @@
 import { defineModule } from '../_kit/defineModule.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
-import { authenticate } from '../../middleware/authenticate.js';
 import { authLimiter } from '../../middleware/rateLimiter.js';
 import { ok, created } from '../../utils/respond.js';
+import { prisma } from '../../db/prisma.js';
 import { registerSchema, loginSchema, signupStatusQuerySchema } from '../../../../shared/validation.js';
 import { configService } from '../../services/config.service.js';
 import { SETTING_KEYS } from '../../../../shared/constants.js';
@@ -25,7 +25,12 @@ export default defineModule({
         const loc = req.query.locationId;
         const releaseAt = await configService.get(SETTING_KEYS.SIGNUP_RELEASE_AT, loc);
         const geofenceEnabled = await configService.getBool(SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, loc);
-        ok(res, { releaseAt: releaseAt || null, geofenceEnabled });
+        // The geofence can only be enforced when the office actually has coordinates. Report the
+        // effective (enforceable) state so the client only prompts for location when it matters —
+        // a geofence-on office with no coords should not make users grant location for nothing.
+        const office = await prisma.locations.findUnique({ where: { id: loc }, select: { site_lat: true, site_lng: true } });
+        const geofenceEnforceable = geofenceEnabled && office?.site_lat != null && office?.site_lng != null;
+        ok(res, { releaseAt: releaseAt || null, geofenceEnabled, geofenceEnforceable });
       })
     );
 
@@ -60,12 +65,14 @@ export default defineModule({
       })
     );
 
+    // Deliberately NOT behind `authenticate`: logout must succeed even when the access token has
+    // expired. We revoke the server-side session by the refresh-token cookie and always clear it,
+    // so "sign out" truly ends the session regardless of access-token state.
     router.post(
       '/logout',
-      authenticate,
       asyncHandler(async (req, res) => {
         const token = req.cookies?.[refreshCookieName];
-        await authService.logout(req.user.userId, token);
+        await authService.logoutByRefreshToken(token);
         clearRefreshCookie(res);
         ok(res, { success: true });
       })

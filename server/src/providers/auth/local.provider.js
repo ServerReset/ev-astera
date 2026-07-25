@@ -93,16 +93,16 @@ export const localProvider = {
     }
 
     const geoEnabled = await configService.getBool(SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, loc);
-    if (geoEnabled) {
+    // Geofence can only actually enforce anything when the office has coordinates. An office
+    // created without a geocodable address has geofence enabled-by-default but null coords — that
+    // combination can't verify anyone's location, so rather than 500-ing and permanently blocking
+    // EVERY employee there (a silent, undiagnosable dead-end), we skip the check and let signup
+    // proceed. This is the ONE place we intentionally fail open, and only for this specific admin
+    // misconfiguration; a properly-configured office still enforces the radius below.
+    const officeHasCoords = office.site_lat != null && office.site_lng != null;
+    if (geoEnabled && officeHasCoords) {
       if (lat == null || lng == null) {
         throw new BusinessRuleError('Location is required to sign up — enable location access and try again.');
-      }
-      if (office.site_lat == null || office.site_lng == null) {
-        throw new AppError(
-          'Signups are misconfigured (office location not set) — contact an admin.',
-          500,
-          'SIGNUP_GEOFENCE_MISCONFIGURED'
-        );
       }
       const radiusMeters = await configService.getNumber(SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS, loc);
       if (Number.isNaN(radiusMeters)) {
@@ -203,6 +203,11 @@ export const localProvider = {
     }
     const userRow = await prisma.users.findUnique({ where: { id: row.user_id }, include: WITH_OFFICE });
     if (!userRow || !userRow.active) throw new AuthenticationError('Session expired');
+    // Mirror login()'s office-active gate: if the user's office was deactivated while they were
+    // signed in, stop minting fresh tokens. Otherwise the SPA silently refreshes forever and the
+    // user is stuck in a broken app where every location-scoped route 404s, with no explanation —
+    // failing refresh here bounces them to login, which surfaces the deactivated-office message.
+    if (!userRow.locations?.active) throw new AuthenticationError('Session expired');
     return { accessToken: signAccessToken(userRow), user: toPublicUser(userRow) };
   },
 
@@ -225,5 +230,18 @@ export const localProvider = {
         data: { revoked: true },
       });
     }
+  },
+
+  // Revoke by the refresh-token hash alone — no valid access token required. Logout must work
+  // even after the access token has expired (the common "walk away for an hour, come back and
+  // sign out" case); gating logout on a live access token left the session revocable-only while
+  // fresh, so an expired-token logout silently left the refresh cookie valid and the next visit
+  // (or the next person on a shared machine) got logged straight back in.
+  async logoutByRefreshToken(refreshToken) {
+    if (!refreshToken) return;
+    await prisma.refresh_tokens.updateMany({
+      where: { token_hash: hashToken(refreshToken) },
+      data: { revoked: true },
+    });
   },
 };

@@ -59,7 +59,13 @@ export const queueService = {
     });
 
     await transitionExpiredQueueEntries(locationId, entries);
-    const active = entries.filter((e) => ACTIVE_QUEUE.includes(e.status));
+    // Re-sort after the transition: a requeued replacement row is push()'d to the end of the
+    // in-memory array regardless of its carried-over priority, so a boosted user could briefly
+    // show at the bottom. Re-applying the DB ordering (priority desc, joined_at asc) makes the
+    // displayed position match the real advancement order.
+    const active = entries
+      .filter((e) => ACTIVE_QUEUE.includes(e.status))
+      .sort((a, b) => (b.priority - a.priority) || (new Date(a.joined_at) - new Date(b.joined_at)));
 
     return active.map((e, i) => ({
       id: e.id,

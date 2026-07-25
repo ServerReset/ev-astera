@@ -105,9 +105,12 @@ export const userService = {
   /** Weekly usage: sessions started this week vs. the configured max. */
   async getStats(userId, locationId, tz) {
     const weekStart = startOfWeek(now(), tz);
+    // Per-office count (matches the per-office max, and assertWeeklyLimit): a user with sessions
+    // across offices must not have this week's tile show a globally-summed figure for one office.
     const weekly = await prisma.sessions.count({
       where: {
         user_id: userId,
+        location_id: locationId,
         started_at: { gte: weekStart },
         status: { in: [SESSION_STATUS.COMPLETED, SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME, SESSION_STATUS.FORCE_ENDED] },
       },

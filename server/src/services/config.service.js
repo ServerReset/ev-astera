@@ -4,7 +4,8 @@
  * Everything business-rule-ish flows through here — never hardcode a threshold.
  */
 import { prisma } from '../db/prisma.js';
-import { SETTING_DEFAULTS } from '../../../shared/constants.js';
+import { SETTING_DEFAULTS, SETTING_BOUNDS } from '../../../shared/constants.js';
+import { ValidationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 const TTL_MS = 60_000;
@@ -47,8 +48,23 @@ export async function getAll(locationId) {
   return out;
 }
 
+/** Reject numeric settings outside their server-authoritative bounds (SETTING_BOUNDS). The client
+ * SettingsEditor also enforces `min`, but that's bypassable via the API — this is the real floor,
+ * so an out-of-range value (e.g. max_session_hours=0) can never persist and brick a core flow. */
+function assertWithinBounds(patch) {
+  for (const [key, value] of Object.entries(patch)) {
+    const bounds = SETTING_BOUNDS[key];
+    if (!bounds) continue;
+    const n = Number(value);
+    if (Number.isNaN(n)) throw new ValidationError(`"${key}" must be a number.`);
+    if (bounds.min != null && n < bounds.min) throw new ValidationError(`"${key}" must be at least ${bounds.min}.`);
+    if (bounds.max != null && n > bounds.max) throw new ValidationError(`"${key}" must be at most ${bounds.max}.`);
+  }
+}
+
 /** Update settings (admin). Upserts each key and invalidates its cache entry. */
 export async function update(locationId, patch) {
+  assertWithinBounds(patch);
   try {
     await prisma.$transaction(
       Object.entries(patch).map(([key, value]) =>

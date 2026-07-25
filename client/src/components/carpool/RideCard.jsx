@@ -1,7 +1,7 @@
 import { Car, MapPin, Users, Clock, Leaf } from 'lucide-react';
 import { Badge } from '@/components/common/Badge.jsx';
 import { Button } from '@/components/common/Button.jsx';
-import { RIDE_STATUS_META, DIRECTION_LABEL } from '@/utils/constants.js';
+import { RIDE_STATUS, RIDE_STATUS_META, DIRECTION_LABEL } from '@/utils/constants.js';
 import { formatDateTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
 
@@ -12,6 +12,10 @@ import { cn } from '@/utils/cn.js';
 export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplete, onManageBookings, onCancelSeat, busy }) {
   const meta = RIDE_STATUS_META[ride.status] || RIDE_STATUS_META.open;
   const score = ride.matchScore;
+  // A completed/cancelled ride still shows in "my rides" for history, but its manage/cancel
+  // actions no longer apply — hiding them avoids a dead "Cancel seat" that errors with
+  // "Your booking could not be found" (the booking is no longer in the ride's active bookings).
+  const isActive = ride.status !== RIDE_STATUS.COMPLETED && ride.status !== RIDE_STATUS.CANCELLED;
 
   return (
     <div className="card rounded-xl-increased flex flex-col gap-3 p-4">
@@ -62,12 +66,12 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
             Request a seat
           </Button>
         )}
-        {variant === 'riding' && onCancelSeat && (
+        {variant === 'riding' && onCancelSeat && isActive && (
           <Button size="sm" variant="ghost" className="text-danger" onClick={() => onCancelSeat(ride)} loading={busy}>
             Cancel seat
           </Button>
         )}
-        {variant === 'driving' && (
+        {variant === 'driving' && isActive && (
           <>
             {onManageBookings && (
               <Button size="sm" variant="secondary" onClick={() => onManageBookings(ride)}>

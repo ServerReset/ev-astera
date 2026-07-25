@@ -60,4 +60,13 @@ export const useNotificationStore = create((set, get) => ({
       get().refresh();
     }
   },
+
+  // Clear all notification state on auth transitions. This is a module-level singleton whose
+  // items/unread persist across an SPA logout→login (no page reload), so without this the prior
+  // user's notifications and unread count would briefly render under the next user's session.
+  // Bump callId so any refresh() already in flight can't repopulate stale data after the reset.
+  reset: () => {
+    callId += 1;
+    set({ items: [], unread: 0, loading: false, error: null });
+  },
 }));

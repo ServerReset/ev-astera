@@ -46,6 +46,11 @@ export const authService = {
     return authProvider.logout(userId, refreshToken);
   },
 
+  /** Revoke a session by its refresh-token cookie alone — tolerates an expired/absent access token. */
+  async logoutByRefreshToken(refreshToken) {
+    return authProvider.logoutByRefreshToken(refreshToken);
+  },
+
   async changePassword(userId, currentPassword, newPassword) {
     return authProvider.changePassword(userId, currentPassword, newPassword);
   },

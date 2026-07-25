@@ -18,4 +18,9 @@ export const useOfficeStore = create((set, get) => ({
   selectOffice: (officeId) => set({ selectedOfficeId: officeId }),
   clearSelection: () => set({ selectedOfficeId: null }),
   tzFor: (officeId) => get().allOffices.find((o) => o.id === officeId)?.timezone,
+  // Full reset on auth transitions: this is a module-level singleton, so without clearing it on
+  // logout/login a super-admin's selected office (and the roster) would leak into the NEXT user's
+  // session on the same tab — routing every scoped call to /locations/<other-office>/... and 403ing
+  // the whole app for a regular user. Called from authStore on logout and before each login.
+  reset: () => set({ allOffices: [], loaded: false, selectedOfficeId: null }),
 }));

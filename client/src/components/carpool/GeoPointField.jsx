@@ -22,6 +22,10 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
   const containerRef = useRef(null);
+  // Set when we programmatically fill the field from a picked suggestion, so the debounce effect
+  // (keyed on v.label) skips the one search cycle that selection would otherwise trigger — which
+  // used to re-fetch and re-open the dropdown the user just dismissed.
+  const skipNextSearchRef = useRef(false);
   // Drive the glass hook off the SAME condition that mounts the <ul> below (not just `open`
   // alone) — the debounce effect can clear suggestions/loading without touching `open` (e.g.
   // backspacing below MIN_QUERY_LENGTH), which used to desync the two: the <ul> would unmount
@@ -33,6 +37,14 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
   useEffect(() => {
     const query = v.label.trim();
     clearTimeout(debounceRef.current);
+
+    // A selection just filled the field — consume the flag and don't search/reopen for it.
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
 
     if (query.length < MIN_QUERY_LENGTH) {
       setSuggestions([]);
@@ -71,6 +83,7 @@ export function GeoPointField({ label = 'Location', value, onChange, error }) {
   }, []);
 
   const pick = (s) => {
+    skipNextSearchRef.current = true; // suppress the search the label change would otherwise fire
     patch({ label: s.display_name });
     setSuggestions([]);
     setOpen(false);

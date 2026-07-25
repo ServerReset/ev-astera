@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock3, MapPinOff, WifiOff } from 'lucide-react';
+import { Clock3, MapPin, MapPinOff, WifiOff } from 'lucide-react';
 import { registerSchema } from '@shared/validation.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { useZodForm } from '@/hooks/useZodForm.js';
@@ -10,9 +10,16 @@ import { Input, Select } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { authApi, officeApi } from '@/services/endpoints.js';
 
-/** Wraps navigator.geolocation in a promise with the three real-world failure modes named. */
+/** Wraps navigator.geolocation in a promise with the real-world failure modes named. */
 function getLocation() {
   return new Promise((resolve, reject) => {
+    // Geolocation only works in a secure context (HTTPS, or localhost). Over plain http on a LAN
+    // IP the API exists but getCurrentPosition fails with an opaque error — detect it up front so
+    // we can tell the user the real reason instead of a generic "couldn't determine your location".
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      reject({ code: 'insecure' });
+      return;
+    }
     if (!navigator.geolocation) {
       reject({ code: 'unsupported' });
       return;
@@ -20,16 +27,17 @@ function getLocation() {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       (err) => reject({ code: err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'error' }),
-      { timeout: 10_000 }
+      { timeout: 10_000, enableHighAccuracy: true }
     );
   });
 }
 
 const GEO_ERROR_COPY = {
-  denied: "Location access is required to register from this device. Enable location permissions in your browser and try again.",
-  timeout: 'Location request timed out. Try again.',
-  unsupported: 'Registration requires a browser that supports location access.',
-  error: "Couldn't determine your location. Try again.",
+  denied: 'Location access is required to register, and this office verifies you’re on-site. Allow location for this site in your browser, then tap Try again.',
+  timeout: 'Location request timed out — this can happen indoors. Tap Try again.',
+  unsupported: 'This browser can’t share your location, which is required to register here. Try a different browser or device while on-site.',
+  insecure: 'Your location can’t be read over an insecure connection. Open this site over https:// (or contact an admin) and try again.',
+  error: 'We couldn’t determine your location. Make sure location is on, then tap Try again.',
 };
 
 export default function RegisterPage() {
@@ -70,15 +78,26 @@ export default function RegisterPage() {
   // `geofenceEnabled`) — a failed status check should never quietly render as "signups are
   // open," which is what defaulting releaseAt to null used to do even though geofenceEnabled
   // defaulted to the safe `true`. Fail closed consistently for both gates instead.
-  const [gateStatus, setGateStatus] = useState({ loading: true, statusError: false, releaseAt: null, geofenceEnabled: true });
+  // `geofenceEnforceable` reflects whether the office can ACTUALLY enforce location (geofence on
+  // AND the office has coordinates). We prompt for the browser location only when it's enforceable
+  // — an office with geofence on but no coords shouldn't make people grant location for nothing.
+  const [gateStatus, setGateStatus] = useState({ loading: true, statusError: false, releaseAt: null, geofenceEnforceable: false });
 
   useEffect(() => {
     if (!values.locationId) return;
     setGateStatus((s) => ({ ...s, loading: true }));
     authApi
       .signupStatus(values.locationId)
-      .then((s) => setGateStatus({ loading: false, statusError: false, releaseAt: s.releaseAt, geofenceEnabled: s.geofenceEnabled }))
-      .catch(() => setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnabled: true }));
+      .then((s) =>
+        setGateStatus({
+          loading: false,
+          statusError: false,
+          releaseAt: s.releaseAt,
+          // Fall back to geofenceEnabled if an older server doesn't send geofenceEnforceable.
+          geofenceEnforceable: s.geofenceEnforceable ?? s.geofenceEnabled ?? false,
+        })
+      )
+      .catch(() => setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnforceable: false }));
   }, [values.locationId]);
 
   const locked = gateStatus.releaseAt && new Date() < new Date(gateStatus.releaseAt);
@@ -88,7 +107,7 @@ export default function RegisterPage() {
     setGeoError(null);
 
     let coords = {};
-    if (gateStatus.geofenceEnabled) {
+    if (gateStatus.geofenceEnforceable) {
       setLocating(true);
       try {
         coords = await getLocation();
@@ -178,6 +197,17 @@ export default function RegisterPage() {
         }
       >
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {/* Tell users up front that this office verifies on-site location, so the browser's
+              permission prompt on submit isn't a surprise (and they know to be on-site). */}
+          {gateStatus.geofenceEnforceable && (
+            <p className="flex items-start gap-2 rounded-2xl bg-info/10 p-3 text-sm text-info">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                This office verifies that you’re on-site. When you tap Create account, your browser
+                will ask to share your location.
+              </span>
+            </p>
+          )}
           <Select
             label="Office"
             name="locationId"

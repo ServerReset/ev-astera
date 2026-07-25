@@ -144,7 +144,14 @@ export const announcementSchema = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
   active: z.boolean().optional().default(true),
 });
-export const updateSettingsSchema = z.record(z.string(), z.union([z.number(), z.boolean(), z.string()]));
+// Value union MUST include string arrays: NUDGE_PRESETS and EMERGENCY_REASONS are stored as
+// jsonb string-arrays (shared/constants.js), and the admin Settings save() always sends the full
+// field set for the mounted tab — so a bare number|boolean|string union rejected EVERY save on the
+// Chargers tab (which carries those two list fields), not just edits to the lists themselves.
+export const updateSettingsSchema = z.record(
+  z.string(),
+  z.union([z.number(), z.boolean(), z.string(), z.array(z.string())])
+);
 export const setOfflineSchema = z.object({ reason: z.string().trim().max(200).optional() });
 export const chargerNameSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export const adminUpdateUserSchema = z.object({

@@ -68,6 +68,14 @@ export const chargerService = {
 
     const bySession = new Map(sessions.map((s) => [s.charger_id, s]));
     const anyQueueCount = queue.filter((q) => q.charger_id === null).length;
+    // Chargers with an in-flight turn (someone's grace/claim window running) are reserved for
+    // that person even with no active session — surfaced so the board can suppress "Start" for
+    // everyone else, mirroring the server-side guard in session.service.start().
+    const reservedChargerIds = new Set(
+      queue
+        .filter((q) => (q.status === QUEUE_STATUS.NOTIFIED || q.status === QUEUE_STATUS.CLAIMED) && q.charger_id)
+        .map((q) => q.charger_id)
+    );
 
     return chargers.map((c) => {
       const s = bySession.get(c.id);
@@ -84,6 +92,8 @@ export const chargerService = {
         name: c.name,
         position: c.position,
         status,
+        // A free charger that's spoken-for by a queue turn in progress.
+        reserved: status === CHARGER_STATUS.AVAILABLE && reservedChargerIds.has(c.id),
         offlineReason: c.offline_reason,
         session: sessionDto(s, s?.users),
         queueCount,

@@ -12,19 +12,28 @@
 import { prisma } from '../../db/prisma.js';
 import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
+import { logger } from '../../utils/logger.js';
 import { ACHIEVEMENTS, ACHIEVEMENTS_BY_KEY, COUNT_METRICS, isCountMetric } from '../../../../shared/achievements.js';
 import { reliabilityService } from '../reliability/reliability.service.js';
 
 /**
  * Grant one badge to a user. No-op (returns false) if they already have it. On a genuine new
- * unlock, emits ACHIEVEMENT_UNLOCKED so the notification listener can celebrate it.
+ * unlock, emits ACHIEVEMENT_UNLOCKED so the notification listener can celebrate it. Swallows a
+ * missing-table/model error (returns false) so a not-yet-migrated deploy can't turn an ordinary
+ * domain event (session start, trip complete) into a listener error storm.
  */
 async function unlock(locationId, userId, key, metadata = {}) {
   if (!ACHIEVEMENTS_BY_KEY[key]) return false; // guard against a typo'd key
-  const { count } = await prisma.user_achievements.createMany({
-    data: [{ location_id: locationId, user_id: userId, achievement_key: key, metadata }],
-    skipDuplicates: true,
-  });
+  let count = 0;
+  try {
+    ({ count } = await prisma.user_achievements.createMany({
+      data: [{ location_id: locationId, user_id: userId, achievement_key: key, metadata }],
+      skipDuplicates: true,
+    }));
+  } catch (err) {
+    logger.error('achievement unlock: user_achievements unavailable', { key, message: err.message });
+    return false;
+  }
   if (count === 0) return false; // already had it
   await emit(EVENTS.ACHIEVEMENT_UNLOCKED, { locationId, userId, key });
   return true;
@@ -88,13 +97,21 @@ export const achievementService = {
    * the UI can show greyed silhouettes with "3 / 10" hints.
    */
   async listForUser(userId, locationId) {
-    const [rows, values] = await Promise.all([
-      prisma.user_achievements.findMany({
-        where: { user_id: userId },
-        select: { achievement_key: true, created_at: true },
-      }),
-      computeCountMetrics(userId, locationId),
-    ]);
+    // Degrade gracefully if the user_achievements table/model isn't available yet (e.g. the
+    // Prisma client hasn't been regenerated after adding the model, or the migration hasn't been
+    // applied): show the catalog with nothing unlocked rather than 500-ing the whole page.
+    const fetchRows = async () => {
+      try {
+        return await prisma.user_achievements.findMany({
+          where: { user_id: userId },
+          select: { achievement_key: true, created_at: true },
+        });
+      } catch (err) {
+        logger.error('achievement listForUser: user_achievements unavailable', { message: err.message });
+        return [];
+      }
+    };
+    const [rows, values] = await Promise.all([fetchRows(), computeCountMetrics(userId, locationId)]);
     const unlockedAt = new Map(rows.map((r) => [r.achievement_key, r.created_at]));
 
     const items = ACHIEVEMENTS.map((a) => {

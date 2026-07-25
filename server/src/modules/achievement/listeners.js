@@ -39,9 +39,10 @@ export const achievementListeners = [
   {
     event: EVENTS.SESSION_ENDED,
     handler: async (p) => {
-      // Perfect finish: ended on or before ETA (no overtime). etaAt/endedAt are always present
-      // on a self-ended session; a force-end omits neither (session.service re-emits with both).
-      if (p.etaAt && p.endedAt && diffMinutes(p.etaAt, p.endedAt) <= 0) {
+      // Perfect finish: the user ended their OWN session on or before ETA (no overtime). Skip
+      // admin force-ends (p.forced) — being terminated early by an admin isn't finishing on time,
+      // so it must not earn the badge (its whole meaning is "you wrapped up when you said you would").
+      if (!p.forced && p.etaAt && p.endedAt && diffMinutes(p.etaAt, p.endedAt) <= 0) {
         await achievementService.grant(p.locationId, p.userId, 'perfect_finish');
       }
       // Reliability may have just changed (fast-unplug bonus fires on this same event); re-check.

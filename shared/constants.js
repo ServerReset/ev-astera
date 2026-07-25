@@ -186,6 +186,42 @@ export function notifTplSettingKey(templateKey, field) {
   return `notif_tpl_${templateKey}_${field}`;
 }
 
+// Server-authoritative numeric bounds for settings. Enforced in config.service.update() so an
+// admin can't persist a value that bricks a core flow (e.g. max_session_hours=0 makes every start
+// impossible; max_weekly_sessions=0 treats everyone as over-cap). The client SettingsEditor also
+// carries `min` hints for UX, but those are bypassable via the API — this map is the real floor.
+// { min?, max? } per key; keys absent here are unbounded (booleans, strings, arrays, free counts).
+export const SETTING_BOUNDS = Object.freeze({
+  [SETTING_KEYS.MAX_SESSION_HOURS]: { min: 0.5, max: 24 },
+  [SETTING_KEYS.MAX_WEEKLY_SESSIONS]: { min: 1, max: 100 },
+  [SETTING_KEYS.GRACE_PERIOD_MINUTES]: { min: 1, max: 120 },
+  [SETTING_KEYS.CLAIM_WINDOW_MINUTES]: { min: 1, max: 120 },
+  [SETTING_KEYS.NUDGE_RATE_LIMIT_MINUTES]: { min: 0, max: 120 },
+  [SETTING_KEYS.MAX_NUDGES_PER_SESSION]: { min: 1, max: 50 },
+  [SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS]: { min: 0, max: 168 },
+  [SETTING_KEYS.EMERGENCY_RESPONSE_WINDOW_MINUTES]: { min: 1, max: 240 },
+  [SETTING_KEYS.OVERTIME_FIRST_NUDGE_MINUTES]: { min: 0, max: 240 },
+  [SETTING_KEYS.OVERTIME_ADMIN_ALERT_MINUTES]: { min: 1, max: 600 },
+  [SETTING_KEYS.DAILY_RESET_HOUR]: { min: 0, max: 23 },
+  [SETTING_KEYS.WEEKLY_RESET_DAY]: { min: 0, max: 6 },
+  [SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES]: { min: 0, max: 10 },
+  [SETTING_KEYS.CARPOOL_MIN_LEAD_MINUTES]: { min: 0, max: 1440 },
+  [SETTING_KEYS.CARPOOL_DEFAULT_TRIP_MILES]: { min: 0, max: 500 },
+  [SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE]: { min: 0, max: 100 },
+  [SETTING_KEYS.CARPOOL_MATERIALIZE_DAYS]: { min: 1, max: 30 },
+  [SETTING_KEYS.CARPOOL_REMINDER_LEAD_MINUTES]: { min: 0, max: 1440 },
+  [SETTING_KEYS.CARPOOL_PRIORITY_WEIGHT]: { min: 0, max: 1000 },
+  [SETTING_KEYS.CARPOOL_CO2_GRAMS_PER_MILE]: { min: 0, max: 2000 },
+  [SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP]: { min: 0, max: 1000 },
+  [SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER]: { min: 0, max: 1000 },
+  [SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS]: { min: 10, max: 100000 },
+  [SETTING_KEYS.RELIABILITY_BASELINE]: { min: 0, max: 200 },
+  [SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD]: { min: 0, max: 200 },
+  [SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS]: { min: 0, max: 720 },
+  [SETTING_KEYS.RELIABILITY_DECAY_PER_DAY]: { min: 0, max: 100 },
+  [SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT]: { min: 0, max: 10 },
+});
+
 // Fallback defaults used if a setting row is somehow missing. The DB seed is authoritative.
 export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.MAX_SESSION_HOURS]: 4,

@@ -6,7 +6,17 @@
 import { create } from 'zustand';
 import { authApi, userApi } from '@/services/endpoints.js';
 import { api, setAccessToken, setAuthClearedHandler, normalizeError } from '@/services/api.js';
+import { useOfficeStore } from '@/stores/officeStore.js';
+import { useNotificationStore } from '@/stores/notificationStore.js';
 import { ADMIN_ROLES, ROLES } from '@/utils/constants.js';
+
+// Clear every store scoped to a single user's session. Called on logout and before each login/
+// register so a module-level singleton (office selection, notifications) can never carry from one
+// user to the next on the same tab — this is an SPA, so logout/login don't reload the page.
+function resetSessionScopedStores() {
+  useOfficeStore.getState().reset();
+  useNotificationStore.getState().reset();
+}
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -40,6 +50,7 @@ export const useAuthStore = create((set, get) => ({
     set({ error: null });
     try {
       const { user, accessToken } = await authApi.login(credentials);
+      resetSessionScopedStores(); // drop any prior user's office/notification state
       setAccessToken(accessToken);
       set({ user, status: 'authenticated' });
       return { ok: true };
@@ -54,6 +65,7 @@ export const useAuthStore = create((set, get) => ({
     set({ error: null });
     try {
       const { user, accessToken } = await authApi.register(payload);
+      resetSessionScopedStores();
       setAccessToken(accessToken);
       set({ user, status: 'authenticated' });
       return { ok: true };
@@ -71,6 +83,7 @@ export const useAuthStore = create((set, get) => ({
       /* best-effort */
     }
     setAccessToken(null);
+    resetSessionScopedStores();
     set({ user: null, status: 'unauthenticated' });
   },
 
@@ -81,5 +94,6 @@ export const useAuthStore = create((set, get) => ({
 
 // When a token refresh fails mid-session, force the store back to unauthenticated.
 setAuthClearedHandler(() => {
+  resetSessionScopedStores();
   useAuthStore.setState({ user: null, status: 'unauthenticated' });
 });

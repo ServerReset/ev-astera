@@ -108,7 +108,10 @@ export default function NotificationsPage() {
         <div className="mb-4 flex items-center gap-2" role="tablist" aria-label="Filter notifications">
           {FILTERS.map((f) => {
             const activeChip = filter === f.key;
-            const count = f.key === 'unread' ? unread : items.length;
+            // Count from the LOADED list so the chip agrees with what the filter actually renders
+            // (the list is page-1-only; the store's global `unread` could exceed the loaded rows,
+            // making the chip read "15" atop 3 visible rows).
+            const count = f.key === 'unread' ? items.filter((n) => !n.readAt).length : items.length;
             return (
               <button
                 key={f.key}

@@ -42,8 +42,17 @@ async function applyDecay(user, locationId) {
   if (drift === 0) return user;
 
   const newScore = user.reliability_score + drift;
-  await prisma.users.update({ where: { id: user.id }, data: { reliability_score: newScore } });
-  return { ...user, reliability_score: newScore };
+  // Advance the decay clock to now. Without this, every read recomputes drift from the SAME
+  // original timestamp against the already-decayed score, so decay compounds with read frequency
+  // (reading N times drifts ~N× the configured rate) — opening the leaderboard repeatedly would
+  // yank everyone toward baseline far faster than decayPerDay. Stamping it here makes passive
+  // decay idempotent and measured from the last time it was actually applied.
+  const stampedAt = now();
+  await prisma.users.update({
+    where: { id: user.id },
+    data: { reliability_score: newScore, last_reliability_event_at: stampedAt },
+  });
+  return { ...user, reliability_score: newScore, last_reliability_event_at: stampedAt };
 }
 
 export const reliabilityService = {
@@ -147,12 +156,19 @@ export const reliabilityService = {
     });
     const decayed = await Promise.all(users.map((u) => applyDecay(u, locationId)));
     const rows = decayed
-      .map((u) => ({
-        userId: u.id,
-        name: u.display_name,
-        score: Math.round(u.reliability_score * 10) / 10,
-        lockedOut: Boolean(u.reliability_locked_until && new Date(u.reliability_locked_until) > now()),
-      }))
+      .map((u) => {
+        const lockedOut = Boolean(u.reliability_locked_until && new Date(u.reliability_locked_until) > now());
+        return {
+          userId: u.id,
+          name: u.display_name,
+          score: Math.round(u.reliability_score * 10) / 10,
+          lockedOut,
+          // The client's ReliabilityLeaderboard gates its "Locked" badge on `lockedUntil` (the
+          // same field getScore returns), so include it here too — returning only the boolean
+          // `lockedOut` left the badge permanently dead for every leaderboard row.
+          lockedUntil: lockedOut ? u.reliability_locked_until : null,
+        };
+      })
       .sort((a, b) => b.score - a.score);
 
     // Keep top/bottom strictly disjoint: with a small user base (< 2*limit), a naive

@@ -26,10 +26,13 @@ export const locationScope = asyncHandler(async (req, _res, next) => {
   }
 
   const meta = await getLocationMeta(locationId);
-  // A deactivated office is fully inert to every scoped route, not just newly-hidden from
-  // signup — treating it as 404 (not 403) matches how it already looks to anyone who doesn't
-  // already know it exists.
-  if (!meta || !meta.active) throw new NotFoundError('Location not found');
+  if (!meta) throw new NotFoundError('Location not found');
+  // A deactivated office is fully inert to every scoped route for regular users/site-admins, not
+  // just newly-hidden from signup — treating it as 404 (not 403) matches how it looks to anyone
+  // who doesn't already know it exists. EXCEPT super-admins: the office switcher lists inactive
+  // offices, and a super-admin needs to review/fix a deactivated office (settings, users) before
+  // reactivating it — 404ing them out left it selectable but completely unmanageable.
+  if (!meta.active && !isSuperAdmin) throw new NotFoundError('Location not found');
 
   req.locationId = locationId;
   req.locationTz = meta.tz;

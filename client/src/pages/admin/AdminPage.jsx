@@ -21,9 +21,13 @@ import { useRealtime } from '@/hooks/useRealtime.js';
 import { adminApi, chargerApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
+import { useAuthStore } from '@/stores/authStore.js';
+import { useOfficeStore } from '@/stores/officeStore.js';
 import { formatDateTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
-import { ENV, CHARGER_STATUS_META, SETTING_KEYS } from '@/utils/constants.js';
+import { CHARGER_STATUS_META, SETTING_KEYS, ROLES, NOTIFICATION_TEMPLATES, notifTplSettingKey } from '@/utils/constants.js';
+
+const ROLE_LABEL = { user: 'User', site_admin: 'Site admin', super_admin: 'Super admin' };
 
 // Admin is a console: a segmented section switcher on compact/medium collapses to a persistent
 // section rail at xl, matching the app's own nav-changes-by-breakpoint pattern (bottom bar →
@@ -34,7 +38,7 @@ const SECTIONS = [
   { key: 'overview', label: 'Overview', icon: Activity },
   { key: 'chargers', label: 'Chargers', icon: Zap },
   { key: 'carpool', label: 'Carpool', icon: Car },
-  { key: 'settings', label: 'Settings', icon: SettingsIcon },
+  { key: 'general', label: 'General', icon: SettingsIcon },
   { key: 'announce', label: 'Announcements', icon: Megaphone },
   { key: 'users', label: 'Users', icon: UsersIcon },
   { key: 'audit', label: 'Activity', icon: ScrollText },
@@ -60,10 +64,34 @@ const TD = 'px-4 py-3 align-middle';
 
 export default function AdminPage() {
   const [section, setSection] = useState('overview');
+  const viewerRole = useAuthStore((s) => s.user?.role);
+  const isSuperAdmin = viewerRole === ROLES.SUPER_ADMIN;
+
+  const allOffices = useOfficeStore((s) => s.allOffices);
+  const loaded = useOfficeStore((s) => s.loaded);
+  const selectedOfficeId = useOfficeStore((s) => s.selectedOfficeId);
+  const loadOffices = useOfficeStore((s) => s.loadOffices);
+  const selectOffice = useOfficeStore((s) => s.selectOffice);
+  const clearSelection = useOfficeStore((s) => s.clearSelection);
+
+  useEffect(() => {
+    if (isSuperAdmin && !loaded) loadOffices().catch(() => {});
+  }, [isSuperAdmin, loaded, loadOffices]);
 
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title="Admin" description="Operational controls and configuration for your site." icon={ShieldCheck} />
+
+      {isSuperAdmin && allOffices.length > 0 && (
+        <div className="mb-5 max-w-xs">
+          <Select
+            label="Viewing office"
+            value={selectedOfficeId || ''}
+            onChange={(e) => (e.target.value ? selectOffice(e.target.value) : clearSelection())}
+            options={[{ value: '', label: 'My office' }, ...allOffices.map((o) => ({ value: o.id, label: o.name }))]}
+          />
+        </div>
+      )}
 
       {/* Compact / medium: segmented section switcher. Hidden once the rail takes over at xl. */}
       <div className="xl:hidden">
@@ -97,12 +125,14 @@ export default function AdminPage() {
           </div>
         </nav>
 
-        {/* Detail panel — re-keyed so it animates in on section change. */}
-        <div key={section} className="animate-fade-in">
+        {/* Detail panel — re-keyed on section AND selected office so switching either one
+            remounts the subtree, which makes every child's mount-time fetch naturally re-run
+            against whichever office loc() now resolves to. */}
+        <div key={`${section}:${selectedOfficeId || 'home'}`} className="animate-fade-in">
           {section === 'overview' && <OverviewTab />}
           {section === 'chargers' && <ChargersTab />}
           {section === 'carpool' && <CarpoolTab />}
-          {section === 'settings' && <SettingsTab />}
+          {section === 'general' && <GeneralTab />}
           {section === 'announce' && <AnnouncementsTab />}
           {section === 'users' && <UsersTab />}
           {section === 'audit' && <AuditTab />}
@@ -115,9 +145,7 @@ export default function AdminPage() {
 // ── Overview ─────────────────────────────────────────────────────────────────────
 function OverviewTab() {
   const overview = useApi(() => adminApi.overview(), []);
-  useRealtime('admin-overview', ['sessions', 'queue_entries', 'carpool_rides'], overview.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('admin-overview', ['sessions', 'queue_entries', 'carpool_rides'], overview.refetch);
 
   if (overview.loading && !overview.data) {
     return (
@@ -144,7 +172,7 @@ function OverviewTab() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {tiles.map((t, i) => (
         <Card key={t.label} className={ENTER} style={stagger(i)}>
-          <span className={cn('mb-3 inline-grid h-10 w-10 place-items-center rounded-xl', TONE_CHIP[t.tone])}>
+          <span className={cn('mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl', TONE_CHIP[t.tone])}>
             <t.icon className="h-5 w-5" />
           </span>
           <p className="text-3xl font-bold text-content tabular-nums">{t.value ?? 0}</p>
@@ -167,9 +195,7 @@ function ChargersTab() {
   const [addOpen, setAddOpen] = useState(false);
   const [confirm, confirmDialog] = useConfirm();
 
-  useRealtime('admin-chargers', ['chargers', 'sessions'], chargers.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('admin-chargers', ['chargers', 'sessions'], chargers.refetch);
 
   const online = async (c) => {
     setBusyId(c.id);
@@ -337,6 +363,11 @@ function ChargersTab() {
         successMessage={(name) => `Renamed to ${name}.`}
       />
       {confirmDialog}
+
+      <div className="mt-6 space-y-5">
+        <SettingsEditor groups={CHARGER_SETTING_GROUPS} />
+        <NotificationTemplatesEditor group="chargers" />
+      </div>
     </>
   );
 }
@@ -433,6 +464,7 @@ const CARPOOL_SECTIONS = [
   { key: 'requests', label: 'Requests', icon: Search },
   { key: 'schedules', label: 'Schedules', icon: CalendarClock },
   { key: 'groups', label: 'Groups', icon: UserSquare2 },
+  { key: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 function CarpoolTab() {
@@ -444,6 +476,12 @@ function CarpoolTab() {
       {section === 'requests' && <CarpoolRequestsPanel />}
       {section === 'schedules' && <CarpoolSchedulesPanel />}
       {section === 'groups' && <CarpoolGroupsPanel />}
+      {section === 'settings' && (
+        <div className="space-y-5">
+          <SettingsEditor groups={CARPOOL_SETTING_GROUPS} />
+          <NotificationTemplatesEditor group="carpool" />
+        </div>
+      )}
     </div>
   );
 }
@@ -452,9 +490,7 @@ function CarpoolRidesPanel() {
   const rides = useApi(() => adminApi.listCarpoolRides(), []);
   const [confirm, confirmDialog] = useConfirm();
   const [busyId, setBusyId] = useState(null);
-  useRealtime('admin-carpool-rides', ['carpool_rides', 'carpool_bookings'], rides.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('admin-carpool-rides', ['carpool_rides', 'carpool_bookings'], rides.refetch);
 
   const cancel = async (r) => {
     if (!(await confirm({
@@ -517,9 +553,7 @@ function CarpoolRequestsPanel() {
   const requests = useApi(() => adminApi.listCarpoolRequests(), []);
   const [confirm, confirmDialog] = useConfirm();
   const [busyId, setBusyId] = useState(null);
-  useRealtime('admin-carpool-requests', ['carpool_requests'], requests.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('admin-carpool-requests', ['carpool_requests'], requests.refetch);
 
   const cancel = async (r) => {
     if (!(await confirm({ title: 'Cancel this request?', message: `Cancel ${r.riderName || 'this rider'}'s ride request?`, danger: true, confirmLabel: 'Cancel request' }))) return;
@@ -687,12 +721,18 @@ function CarpoolGroupsPanel() {
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────────
-// Human labels + input types for each business-rule setting. Grouped for the form.
-const SETTING_GROUPS = [
+// Human labels + input types for each business-rule setting, grouped for the form and split
+// by which admin tab they actually govern — Chargers/Carpool/General — instead of one flat
+// "Settings" section. Reliability's queue-priority/lockout settings live with Chargers (that's
+// their primary effect); the carpool driver bonus lives with Carpool.
+const CHARGER_SETTING_GROUPS = [
   {
     title: 'Sessions & queue',
     fields: [
-      { key: SETTING_KEYS.MAX_SESSION_HOURS, label: 'Max session length (hours)', type: 'number' },
+      // min: 0.5 matches durationMinutesSchema's hardcoded 30-minute floor (shared/validation.js)
+      // — below that, StartSessionModal/EtaModal's slider has no valid duration to offer and
+      // starting a session becomes impossible office-wide until an admin raises it back up.
+      { key: SETTING_KEYS.MAX_SESSION_HOURS, label: 'Max session length (hours)', type: 'number', min: 0.5 },
       { key: SETTING_KEYS.MAX_WEEKLY_SESSIONS, label: 'Max sessions per week', type: 'number' },
       { key: SETTING_KEYS.GRACE_PERIOD_MINUTES, label: 'Queue grace period (min)', type: 'number' },
       { key: SETTING_KEYS.CLAIM_WINDOW_MINUTES, label: 'Claim window (min)', type: 'number' },
@@ -705,6 +745,7 @@ const SETTING_GROUPS = [
       { key: SETTING_KEYS.OVERTIME_ADMIN_ALERT_MINUTES, label: 'Admin alert after (min)', type: 'number' },
       { key: SETTING_KEYS.NUDGE_RATE_LIMIT_MINUTES, label: 'Nudge rate limit (min)', type: 'number' },
       { key: SETTING_KEYS.MAX_NUDGES_PER_SESSION, label: 'Max nudges per session', type: 'number' },
+      { key: SETTING_KEYS.NUDGE_PRESETS, label: 'Quick-pick nudge messages', type: 'list' },
     ],
   },
   {
@@ -712,8 +753,28 @@ const SETTING_GROUPS = [
     fields: [
       { key: SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS, label: 'Emergency cooldown (hours)', type: 'number' },
       { key: SETTING_KEYS.EMERGENCY_RESPONSE_WINDOW_MINUTES, label: 'Emergency response window (min)', type: 'number' },
+      { key: SETTING_KEYS.EMERGENCY_REASONS, label: 'Emergency reasons', type: 'list' },
     ],
   },
+  {
+    title: 'Reliability score',
+    fields: [
+      { key: SETTING_KEYS.RELIABILITY_ENABLED, label: 'Enable reliability scoring', type: 'bool' },
+      { key: SETTING_KEYS.RELIABILITY_BASELINE, label: 'Baseline score', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_GRACE_MINUTES, label: 'Overtime grace period (min)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_PENALTY_PER_MINUTE, label: 'Overtime penalty per minute', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_OVERTIME_ESCALATION_FACTOR, label: 'Overtime penalty escalation factor', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_FAST_UNPLUG_BONUS, label: 'Fast unplug bonus', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_DECAY_PER_DAY, label: 'Passive decay toward baseline (points/day)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD, label: 'Lockout threshold score', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS, label: 'Lockout duration (hours)', type: 'number' },
+      { key: SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT, label: 'Queue priority weight', type: 'number' },
+      { key: SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES, label: 'Max automatic queue re-joins after a missed turn', type: 'number' },
+    ],
+  },
+];
+
+const CARPOOL_SETTING_GROUPS = [
   {
     title: 'Carpool',
     fields: [
@@ -726,31 +787,18 @@ const SETTING_GROUPS = [
       { key: SETTING_KEYS.CARPOOL_CREDIT_PER_TRIP, label: 'Credits per trip (driver)', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER, label: 'Credits per rider', type: 'number' },
       { key: SETTING_KEYS.CARPOOL_HQ_ADDRESS, label: 'Astera HQ address (auto-fills "From work" rides)', type: 'text' },
+      { key: SETTING_KEYS.RELIABILITY_CARPOOL_DRIVER_BONUS, label: 'Carpool driver reliability bonus (per trip)', type: 'number' },
     ],
   },
+];
+
+const GENERAL_SETTING_GROUPS = [
   {
     title: 'Registration',
     fields: [
       { key: SETTING_KEYS.SIGNUP_RELEASE_AT, label: 'Signups open at (ISO date/time, blank = open now)', type: 'text' },
       { key: SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, label: 'Require on-site location to sign up', type: 'bool' },
       { key: SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS, label: 'Signup geofence radius (meters)', type: 'number' },
-    ],
-  },
-  {
-    title: 'Reliability score',
-    fields: [
-      { key: SETTING_KEYS.RELIABILITY_ENABLED, label: 'Enable reliability scoring', type: 'bool' },
-      { key: SETTING_KEYS.RELIABILITY_BASELINE, label: 'Baseline score', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_OVERTIME_GRACE_MINUTES, label: 'Overtime grace period (min)', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_OVERTIME_PENALTY_PER_MINUTE, label: 'Overtime penalty per minute', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_OVERTIME_ESCALATION_FACTOR, label: 'Overtime penalty escalation factor', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_FAST_UNPLUG_BONUS, label: 'Fast unplug bonus', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_CARPOOL_DRIVER_BONUS, label: 'Carpool driver bonus (per trip)', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_DECAY_PER_DAY, label: 'Passive decay toward baseline (points/day)', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD, label: 'Lockout threshold score', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS, label: 'Lockout duration (hours)', type: 'number' },
-      { key: SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT, label: 'Queue priority weight', type: 'number' },
-      { key: SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES, label: 'Max automatic queue re-joins after a missed turn', type: 'number' },
     ],
   },
 ];
@@ -763,7 +811,7 @@ function SettingsSkeleton() {
           <div className="skeleton mb-4 h-5 w-44 rounded" />
           <div className="grid gap-4 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, j) => (
-              <div key={j} className="skeleton h-[52px] rounded-xl" />
+              <div key={j} className="skeleton h-[52px] rounded-2xl" />
             ))}
           </div>
         </div>
@@ -772,7 +820,40 @@ function SettingsSkeleton() {
   );
 }
 
-function SettingsTab() {
+/** Reusable settings fetch/draft/validate/save editor, parameterized by which groups to render
+ * — each admin tab mounts its own instance for just the settings it governs. Every mount does
+ * its own independent fetch/save; concurrent saves from different tabs can't clobber each
+ * other since configService.update() upserts per-key, not as one big blob. */
+/** Array-of-strings editor for `type: 'list'` settings (e.g. nudge presets, emergency
+ * reasons) — add/edit/remove rows freely, no fixed count. Blank rows are dropped on save
+ * (SettingsEditor.save), not here, so a mid-edit blank row doesn't yank focus away. */
+function ListSettingEditor({ label, value, onChange }) {
+  const setItem = (i, v) => onChange(value.map((item, idx) => (idx === i ? v : item)));
+  const removeItem = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const addItem = () => onChange([...value, '']);
+
+  return (
+    <div>
+      <span className="label">{label}</span>
+      <div className="space-y-2">
+        {value.map((item, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Input className="flex-1" value={item} onChange={(e) => setItem(i, e.target.value)} />
+            <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(i)} aria-label="Remove">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={addItem}>
+        <Plus className="h-4 w-4" />
+        Add
+      </Button>
+    </div>
+  );
+}
+
+function SettingsEditor({ groups }) {
   const settings = useApi(() => adminApi.getSettings(), []);
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -780,19 +861,35 @@ function SettingsTab() {
   // Initialize the editable draft from the fetched settings once.
   const values = draft ?? settings.data ?? {};
   const setValue = (key, v) => setDraft({ ...(draft ?? settings.data ?? {}), [key]: v });
-  const glassRef = useLiquidGlass(true, { scale: -35, chroma: 2, blur: 8 });
+  // Gated on data having loaded (not a bare `true`) — the component early-returns a skeleton
+  // below while settings.data is still null, so the ref never attaches to a real element during
+  // that render; a hardcoded-true active flag would fire the hook's mount effect against that
+  // null ref and then never fire again once the real content (and its ref) actually mounts.
+  const glassRef = useLiquidGlass(Boolean(settings.data), { scale: -35, chroma: 2, blur: 8 });
 
   const save = async () => {
     // Validate number fields before coercing — Number('') is 0, not NaN, so a field the admin
     // cleared out would otherwise silently persist as a real 0 (e.g. degenerating the overtime
     // escalation factor to a flat per-minute penalty) instead of surfacing as a mistake.
-    for (const group of SETTING_GROUPS) {
+    for (const group of groups) {
       for (const f of group.fields) {
-        if (f.type !== 'number') continue;
-        const raw = values[f.key];
-        if (raw === '' || raw == null || Number.isNaN(Number(raw))) {
-          toast.error(`"${f.label}" needs a number.`);
-          return;
+        if (f.type === 'number') {
+          const raw = values[f.key];
+          if (raw === '' || raw == null || Number.isNaN(Number(raw))) {
+            toast.error(`"${f.label}" needs a number.`);
+            return;
+          }
+          if (f.min != null && Number(raw) < f.min) {
+            toast.error(`"${f.label}" must be at least ${f.min}.`);
+            return;
+          }
+        }
+        if (f.type === 'list') {
+          const cleaned = (values[f.key] || []).map((s) => s.trim()).filter(Boolean);
+          if (cleaned.length === 0) {
+            toast.error(`"${f.label}" needs at least one item.`);
+            return;
+          }
         }
       }
     }
@@ -800,10 +897,14 @@ function SettingsTab() {
     try {
       // Only send the keys we manage, coerced to their types.
       const patch = {};
-      for (const group of SETTING_GROUPS) {
+      for (const group of groups) {
         for (const f of group.fields) {
           const raw = values[f.key];
-          patch[f.key] = f.type === 'bool' ? Boolean(raw) : f.type === 'text' ? String(raw ?? '') : Number(raw);
+          patch[f.key] =
+            f.type === 'bool' ? Boolean(raw)
+            : f.type === 'text' ? String(raw ?? '')
+            : f.type === 'list' ? (raw || []).map((s) => s.trim()).filter(Boolean)
+            : Number(raw);
         }
       }
       const updated = await adminApi.updateSettings(patch);
@@ -822,21 +923,26 @@ function SettingsTab() {
 
   return (
     <div className="space-y-5">
-      {SETTING_GROUPS.map((group, i) => (
+      {groups.map((group, i) => (
         <Card key={group.title} className={ENTER} style={stagger(i)}>
           <CardHeader title={group.title} />
           <div className="grid gap-4 sm:grid-cols-2">
             {group.fields.map((f) =>
               f.type === 'bool' ? (
-                <div key={f.key} className="flex items-center justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
+                <div key={f.key} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-elevated px-3 py-2.5">
                   <span className="text-sm text-content">{f.label}</span>
                   <Switch checked={Boolean(values[f.key])} onChange={(v) => setValue(f.key, v)} label={f.label} />
+                </div>
+              ) : f.type === 'list' ? (
+                <div key={f.key} className="sm:col-span-2">
+                  <ListSettingEditor label={f.label} value={values[f.key] || []} onChange={(v) => setValue(f.key, v)} />
                 </div>
               ) : (
                 <Input
                   key={f.key}
                   label={f.label}
                   type={f.type === 'text' ? 'text' : 'number'}
+                  min={f.type === 'number' ? f.min : undefined}
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValue(f.key, e.target.value)}
                 />
@@ -854,6 +960,165 @@ function SettingsTab() {
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Editable title/body for every notification template in one `group` (chargers/carpool) —
+ * same settings-table + adminApi.updateSettings() plumbing as SettingsEditor, just rendering
+ * NOTIFICATION_TEMPLATES entries instead of number/bool/list fields. `{{var}}` placeholders are
+ * shown as a hint under each field so an admin knows what's available without guessing.
+ */
+function NotificationTemplatesEditor({ group }) {
+  const templates = NOTIFICATION_TEMPLATES.filter((t) => t.group === group);
+  const settings = useApi(() => adminApi.getSettings(), []);
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const values = draft ?? settings.data ?? {};
+  const setValue = (key, v) => setDraft({ ...(draft ?? settings.data ?? {}), [key]: v });
+
+  const save = async () => {
+    const patch = {};
+    for (const t of templates) {
+      const titleKey = notifTplSettingKey(t.key, 'title');
+      const bodyKey = notifTplSettingKey(t.key, 'body');
+      const title = String(values[titleKey] ?? '').trim();
+      const body = String(values[bodyKey] ?? '').trim();
+      if (!title || !body) {
+        toast.error(`"${t.label}" needs both a title and a body.`);
+        return;
+      }
+      patch[titleKey] = title;
+      patch[bodyKey] = body;
+    }
+    setSaving(true);
+    try {
+      const updated = await adminApi.updateSettings(patch);
+      settings.setData(updated);
+      setDraft(null);
+      toast.success('Notification templates saved.');
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (settings.loading && !settings.data) return <div className="skeleton h-64 rounded-2xl" />;
+  if (settings.error) return <ErrorState error={settings.error} onRetry={settings.refetch} title="Could not load notification templates" />;
+
+  return (
+    <Card>
+      <CardHeader title="Notification templates" subtitle="Edit the wording sent for each event — {{placeholders}} are filled in automatically" />
+      <div className="space-y-5">
+        {templates.map((t) => {
+          const titleKey = notifTplSettingKey(t.key, 'title');
+          const bodyKey = notifTplSettingKey(t.key, 'body');
+          return (
+            <div key={t.key} className="rounded-2xl border border-border p-3">
+              <p className="mb-2 text-sm font-medium text-content">{t.label}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Title" value={values[titleKey] ?? ''} onChange={(e) => setValue(titleKey, e.target.value)} />
+                <Input label="Body" value={values[bodyKey] ?? ''} onChange={(e) => setValue(bodyKey, e.target.value)} />
+              </div>
+              {t.vars.length > 0 && (
+                <p className="mt-1.5 text-xs text-faint">
+                  Available: {t.vars.map((v) => `{{${v}}}`).join(', ')}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={save} loading={saving} disabled={!draft}>
+          Save templates
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+// ── General ──────────────────────────────────────────────────────────────────────
+// Office identity (name/address/timezone) + registration/signup settings. Office identity uses
+// a different endpoint than SettingsEditor's settings-key patch, since these fields are columns
+// on the locations row itself, not jsonb `settings` rows.
+function GeneralTab() {
+  return (
+    <div className="space-y-5">
+      <OfficeIdentityCard />
+      <SettingsEditor groups={GENERAL_SETTING_GROUPS} />
+    </div>
+  );
+}
+
+const IANA_ZONES = (() => {
+  try {
+    return Intl.supportedValuesOf('timeZone').sort();
+  } catch {
+    return [];
+  }
+})();
+
+function OfficeIdentityCard() {
+  const office = useApi(() => adminApi.getOffice(), []);
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const values = draft ?? office.data ?? {};
+  const setValue = (key, v) => setDraft({ ...(draft ?? office.data ?? {}), [key]: v });
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const updated = await adminApi.updateOffice({
+        name: values.name,
+        address: values.address || '',
+        timezone: values.timezone,
+      });
+      office.setData(updated);
+      setDraft(null);
+      toast.success('Office updated.');
+    } catch (err) {
+      toast.error(normalizeError(err).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (office.loading && !office.data) return <div className="skeleton h-64 rounded-2xl" />;
+  if (office.error) return <ErrorState error={office.error} onRetry={office.refetch} title="Could not load office" />;
+
+  return (
+    <Card>
+      <CardHeader title="Office" subtitle="Name, address, and timezone for this office" icon={SettingsIcon} />
+      <div className="space-y-4">
+        <Input label="Name" value={values.name || ''} onChange={(e) => setValue('name', e.target.value)} />
+        <Input
+          label="Address"
+          value={values.address || ''}
+          onChange={(e) => setValue('address', e.target.value)}
+          hint="We'll look up coordinates automatically when you save — used for the signup geofence check."
+          placeholder="123 Main St, City, State"
+        />
+        {IANA_ZONES.length > 0 ? (
+          <Select
+            label="Timezone"
+            value={values.timezone || ''}
+            onChange={(e) => setValue('timezone', e.target.value)}
+            options={IANA_ZONES.map((z) => ({ value: z, label: z }))}
+          />
+        ) : (
+          <Input label="Timezone" value={values.timezone || ''} onChange={(e) => setValue('timezone', e.target.value)} placeholder="America/Los_Angeles" />
+        )}
+        <div className="flex justify-end">
+          <Button onClick={save} loading={saving} disabled={!draft}>
+            Save office
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -972,6 +1237,8 @@ function AnnouncementModal({ open, onClose, onCreated }) {
 // ── Users ───────────────────────────────────────────────────────────────────────
 // Cards on compact, a dense data table on expanded (name, email, credits, joined, actions).
 function UsersTab() {
+  const viewerRole = useAuthStore((s) => s.user?.role);
+  const isSuperAdmin = viewerRole === ROLES.SUPER_ADMIN;
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const users = useApi(() => adminApi.listUsers(1, query), [query]);
@@ -1054,21 +1321,24 @@ function UsersTab() {
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-content">
                     {u.displayName}
-                    {u.role === 'admin' && <Badge tone="brand">Admin</Badge>}
+                    {u.role !== 'user' && <Badge tone="brand">{ROLE_LABEL[u.role]}</Badge>}
                     {!u.active && <Badge tone="danger">Disabled</Badge>}
                   </p>
                   <p className="truncate text-sm text-muted">{u.email}</p>
                   <p className="text-xs text-faint">{u.carpoolCredits} credits</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={busyId === u.id}
-                    onClick={() => act(u.id, { role: u.role === 'admin' ? 'user' : 'admin' })}
-                  >
-                    {u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
-                  </Button>
+                  <Select
+                    aria-label="Role"
+                    value={u.role}
+                    disabled={busyId === u.id}
+                    onChange={(e) => act(u.id, { role: e.target.value })}
+                    options={[
+                      { value: 'user', label: 'User' },
+                      { value: 'site_admin', label: 'Site admin' },
+                      ...(isSuperAdmin ? [{ value: 'super_admin', label: 'Super admin' }] : []),
+                    ]}
+                  />
                   <Button size="sm" variant="ghost" loading={busyId === u.id} onClick={() => resetPassword(u)}>
                     <KeyRound className="h-4 w-4" />
                     Reset password
@@ -1105,7 +1375,7 @@ function UsersTab() {
                     <td className={TD}>
                       <span className="flex items-center gap-2 font-medium text-content">
                         {u.displayName}
-                        {u.role === 'admin' && <Badge tone="brand">Admin</Badge>}
+                        {u.role !== 'user' && <Badge tone="brand">{ROLE_LABEL[u.role]}</Badge>}
                         {!u.active && <Badge tone="danger">Disabled</Badge>}
                       </span>
                     </td>
@@ -1114,14 +1384,17 @@ function UsersTab() {
                     <td className={cn(TD, 'whitespace-nowrap text-faint')}>{u.createdAt ? formatDateTime(u.createdAt) : '—'}</td>
                     <td className={TD}>
                       <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          loading={busyId === u.id}
-                          onClick={() => act(u.id, { role: u.role === 'admin' ? 'user' : 'admin' })}
-                        >
-                          {u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
-                        </Button>
+                        <Select
+                          aria-label="Role"
+                          value={u.role}
+                          disabled={busyId === u.id}
+                          onChange={(e) => act(u.id, { role: e.target.value })}
+                          options={[
+                            { value: 'user', label: 'User' },
+                            { value: 'site_admin', label: 'Site admin' },
+                            ...(isSuperAdmin ? [{ value: 'super_admin', label: 'Super admin' }] : []),
+                          ]}
+                        />
                         <Button size="sm" variant="ghost" loading={busyId === u.id} onClick={() => resetPassword(u)}>
                           <KeyRound className="h-4 w-4" />
                           Reset password
@@ -1144,7 +1417,12 @@ function UsersTab() {
           </div>
         </>
       )}
-      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); users.refetch(); }} />
+      <CreateUserModal
+        open={createOpen}
+        isSuperAdmin={isSuperAdmin}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => { setCreateOpen(false); users.refetch(); }}
+      />
       <TempPasswordModal
         user={resetFor}
         password={tempPassword}
@@ -1187,7 +1465,7 @@ function TempPasswordModal({ user, password, onClose }) {
         <p className="text-sm text-muted">
           Share this with them directly — it won't be shown again. They can change it from Settings after signing in.
         </p>
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3 py-2.5">
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-bg-elevated px-3 py-2.5">
           <code className="flex-1 select-all font-mono text-sm text-content">{password}</code>
           <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy password">
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
@@ -1198,7 +1476,7 @@ function TempPasswordModal({ user, password, onClose }) {
   );
 }
 
-function CreateUserModal({ open, onClose, onCreated }) {
+function CreateUserModal({ open, isSuperAdmin, onClose, onCreated }) {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
@@ -1264,7 +1542,11 @@ function CreateUserModal({ open, onClose, onCreated }) {
           value={role}
           onChange={(e) => setRole(e.target.value)}
           error={errors.role}
-          options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]}
+          options={[
+            { value: 'user', label: 'User' },
+            { value: 'site_admin', label: 'Site admin' },
+            ...(isSuperAdmin ? [{ value: 'super_admin', label: 'Super admin' }] : []),
+          ]}
         />
       </div>
     </Modal>
@@ -1280,7 +1562,7 @@ function AuditTab() {
     return (
       <ul className="space-y-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
-          <li key={i} className="skeleton h-12 rounded-xl" />
+          <li key={i} className="skeleton h-12 rounded-2xl" />
         ))}
       </ul>
     );
@@ -1301,7 +1583,7 @@ function AuditTab() {
         {items.map((a, i) => (
           <li
             key={a.id}
-            className={cn('flex items-start justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2 text-sm', ROW_ENTER)}
+            className={cn('flex items-start justify-between gap-3 rounded-2xl bg-bg-elevated px-3 py-2 text-sm', ROW_ENTER)}
             style={stagger(i)}
           >
             <div className="min-w-0">

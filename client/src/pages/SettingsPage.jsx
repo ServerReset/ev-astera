@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   UserCircle, Car, KeyRound, Zap, Leaf, LogOut, Settings as SettingsIcon,
   SlidersHorizontal, RotateCcw, Smartphone, Sun, Moon, Bell, Palette, Check, Info, ShieldCheck,
+  Flame, Trophy, ChevronRight,
 } from 'lucide-react';
 import { updateProfileSchema, changePasswordSchema } from '@shared/validation.js';
 import { PageHeader } from '@/components/layout/PageHeader.jsx';
@@ -17,7 +19,6 @@ import { userApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { NOTIFICATION_TYPES } from '@/utils/constants.js';
-import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow.jsx';
 import { Switch } from '@/components/common/Switch.jsx';
 import { cn } from '@/utils/cn.js';
 
@@ -118,6 +119,7 @@ function ProfileSection({ user }) {
   return (
     <div className="space-y-5">
       <StatsCard stats={stats} />
+      <AchievementsLink />
       <ProfileCard user={user} onSaved={patchUser} />
       <Button variant="ghost" className="w-full text-danger" onClick={logout}>
         <LogOut className="h-4 w-4" />
@@ -127,11 +129,46 @@ function ProfileSection({ user }) {
   );
 }
 
+/** A small flame chip showing the consecutive-day charging streak. Hidden when the streak is 0. */
+function StreakChip({ days }) {
+  if (!days) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-xs font-semibold text-warning">
+      <Flame className="h-3.5 w-3.5" />
+      {days}-day streak
+    </span>
+  );
+}
+
+/** Row linking to the full achievements wall. */
+function AchievementsLink() {
+  return (
+    <Link
+      to="/achievements"
+      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-2"
+    >
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
+        <Trophy className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-content">Achievements</p>
+        <p className="text-sm text-muted">Badges you've earned around the site.</p>
+      </div>
+      <ChevronRight className="h-5 w-5 shrink-0 text-faint" />
+    </Link>
+  );
+}
+
 function StatsCard({ stats }) {
   const s = stats.data;
   return (
     <Card>
-      <CardHeader title="Your usage" subtitle="Sessions this week and carpool impact" icon={Zap} />
+      <CardHeader
+        title="Your usage"
+        subtitle="Sessions this week and carpool impact"
+        icon={Zap}
+        action={<StreakChip days={s?.streakDays} />}
+      />
       {stats.loading && !stats.data ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -154,7 +191,7 @@ function StatsCard({ stats }) {
 
 function Stat({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl bg-bg-elevated p-3">
+    <div className="rounded-2xl bg-bg-elevated p-3">
       <Icon className="mb-1 h-4 w-4 text-brand-strong" />
       <p className="text-lg font-bold text-content tabular-nums">{value}</p>
       <p className="text-xs text-muted">{label}</p>
@@ -261,7 +298,7 @@ function ThemePreview({ optKey }) {
   const p = optKey === 'dark' ? PALETTE.dark : PALETTE.light;
   return (
     <span
-      className="relative block h-14 w-full overflow-hidden rounded-xl border border-border"
+      className="relative block h-14 w-full overflow-hidden rounded-2xl border border-border"
       style={
         isDevice
           ? { background: `linear-gradient(120deg, ${PALETTE.light.bg} 0 52%, ${PALETTE.dark.bg} 52% 100%)` }
@@ -382,9 +419,12 @@ function SecuritySection() {
 }
 
 // ── About & help ─────────────────────────────────────────────────────────────────
+// Replaying just resets onboardedAt to null and lets OnboardingGate (mounted globally in
+// AppLayout, gated on that same flag) render the full-screen walkthrough — this section used
+// to also render its own <OnboardingFlow> locally, which meant clicking Replay produced two
+// stacked full-screen walkthroughs at once (the gate's copy + this one).
 function AboutSection() {
   const patchUser = useAuthStore((s) => s.patchUser);
-  const [replaying, setReplaying] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const replay = async () => {
@@ -392,21 +432,10 @@ function AboutSection() {
     try {
       const updated = await userApi.resetOnboarding();
       patchUser(updated);
-      setReplaying(true);
     } catch (err) {
       toast.error(normalizeError(err).message);
     } finally {
       setResetting(false);
-    }
-  };
-
-  const finishReplay = async () => {
-    setReplaying(false);
-    try {
-      const updated = await userApi.completeOnboarding();
-      patchUser(updated);
-    } catch (err) {
-      toast.error(normalizeError(err).message);
     }
   };
 
@@ -438,8 +467,6 @@ function AboutSection() {
           </div>
         </dl>
       </Card>
-
-      {replaying && <OnboardingFlow onFinish={finishReplay} />}
     </div>
   );
 }

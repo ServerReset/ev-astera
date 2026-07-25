@@ -1,13 +1,13 @@
-// EV Charger Hub + Carpool — Prisma schema.
-// Model/field names are kept identical (snake_case) to the original schema.sql columns —
-// see docs/ARCHITECTURE.md for why: the entire service layer and client already consume
-// raw snake_case row shapes end-to-end, so this avoids touching that contract.
+// EV Charger Hub + Carpool — Prisma schema. This file is the single source of truth for the
+// database schema — there is no separate hand-maintained SQL file anywhere in the repo.
+// Model/field names use snake_case (not Prisma's usual camelCase) because the entire service
+// layer and client already consume raw snake_case row shapes end-to-end — see docs/ARCHITECTURE.md.
 //
-// Two things schema.sql had that Prisma's DSL cannot express are NOT here — they're added
-// via a hand-authored raw-SQL migration instead (see prisma/migrations, "partial_indexes"):
-//   - unique partial index on sessions(charger_id) where status in ('active','overtime')
-//   - partial ordering index on queue_entries(charger_id, priority desc, joined_at asc)
-//     where status = 'waiting'
+// Two indexes Prisma's DSL can't express (a partial unique index, a partial ordering index) live
+// as a hand-edited addition inside prisma/migrations/ rather than in this file — see that
+// migration's own comment for what they do and why. Everything else is authored here and applied
+// via `prisma migrate dev`/`migrate deploy`. Never hand-write ALTER TABLE against a live database
+// and never introduce a second file that duplicates any part of this schema.
 
 generator client {
   provider      = "prisma-client-js"
@@ -15,8 +15,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_URL")
+  provider  = "postgresql"
+  url       = env("POSTGRES_URL")
+  directUrl = env("POSTGRES_URL_DIRECT")
 }
 
 model locations {
@@ -26,6 +27,10 @@ model locations {
   address    String?
   site_lat   Float?
   site_lng   Float?
+  // A deactivated office is fully inert: locationScope 404s every request under its
+  // :locationId, and it drops out of the public /api/offices signup list. Existing rows
+  // (users, chargers, history) are kept, not deleted — this is a soft, reversible disable.
+  active     Boolean  @default(true)
   created_at DateTime @default(now())
 
   users                  users[]
@@ -45,6 +50,7 @@ model locations {
   carpool_requests       carpool_requests[]
   carpool_trip_logs      carpool_trip_logs[]
   carpool_credits_ledger carpool_credits_ledger[]
+  user_achievements      user_achievements[]
 }
 
 model users {
@@ -88,6 +94,7 @@ model users {
   carpool_trip_logs                   carpool_trip_logs[]
   carpool_credits_ledger               carpool_credits_ledger[]
   reliability_events                    reliability_events[]
+  user_achievements                     user_achievements[]
 
   @@index([location_id])
   @@index([email])
@@ -487,5 +494,22 @@ model reliability_events {
 
   users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id, created_at(sort: Desc)])
+}
+
+model user_achievements {
+  id              String   @id @default(uuid())
+  location_id     String
+  user_id         String
+  achievement_key String
+  metadata        Json     @default("{}")
+  created_at      DateTime @default(now())
+
+  locations locations @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // One row per (user, achievement) — the unlock upsert relies on this to be idempotent, so a
+  // re-fired event (double-tap, listener retry, replayed session-end) can never grant twice.
+  @@unique([user_id, achievement_key])
   @@index([user_id, created_at(sort: Desc)])
 }

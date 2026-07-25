@@ -33,9 +33,10 @@ export default async function handler(req, res) {
 
   const results = [];
   results.push(await run('dailyReset', dailyReset));
-  if (new Date().getDay() === 1) {
-    results.push(await run('weeklyReset', weeklyReset));
-  }
+  // No outer day-of-week gate here — weeklyReset() checks each office's OWN local Monday
+  // internally (see its own comment), since a single server-wall-clock check can't be right
+  // for every office once they span timezones.
+  results.push(await run('weeklyReset', weeklyReset));
   results.push(await run('cleanup', cleanup));
   results.push(await run('carpoolMaterialize', carpoolMaterialize));
   results.push(await run('carpoolMatch', carpoolMatch));

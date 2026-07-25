@@ -1,51 +1,69 @@
 /**
- * Time/format helpers. The app's canonical timezone is the site's (America/Los_Angeles);
- * we display wall-clock times in that zone so everyone at the site sees the same clock
- * regardless of their device timezone.
+ * Time/format helpers. Every function resolves its timezone via resolveTz() rather than a
+ * hardcoded constant, so wall-clock times always read in the RELEVANT office's local time —
+ * the super-admin's currently-selected office when viewing one (AdminPage's switcher), otherwise
+ * the logged-in user's own home office — regardless of the viewing device's own timezone.
  */
 import { formatInTimeZone } from 'date-fns-tz';
 import { TIMEZONE } from '@shared/constants.js';
+import { useAuthStore } from '@/stores/authStore.js';
+import { useOfficeStore } from '@/stores/officeStore.js';
 
 const toDate = (v) => (v instanceof Date ? v : new Date(v));
 
+/** Resolution order: explicit `tz` arg (rare — cross-office comparisons) > super-admin's
+ * selected office > the viewer's own office > the hardcoded fallback (pre-login safety net). */
+function resolveTz(explicitTz) {
+  if (explicitTz) return explicitTz;
+  const { selectedOfficeId, tzFor } = useOfficeStore.getState();
+  if (selectedOfficeId) {
+    const tz = tzFor(selectedOfficeId);
+    if (tz) return tz;
+  }
+  return useAuthStore.getState().user?.office?.timezone || TIMEZONE;
+}
+
 /** e.g. "2:45 PM" */
-export function formatTime(value) {
+export function formatTime(value, tz) {
   if (!value) return '';
-  return formatInTimeZone(toDate(value), TIMEZONE, 'h:mm a');
+  return formatInTimeZone(toDate(value), resolveTz(tz), 'h:mm a');
 }
 
 /** e.g. "Mon, Jul 22 · 2:45 PM" */
-export function formatDateTime(value) {
+export function formatDateTime(value, tz) {
   if (!value) return '';
-  return formatInTimeZone(toDate(value), TIMEZONE, "EEE, MMM d · h:mm a");
+  return formatInTimeZone(toDate(value), resolveTz(tz), "EEE, MMM d · h:mm a");
 }
 
 /** e.g. "Jul 22" */
-export function formatDate(value) {
+export function formatDate(value, tz) {
   if (!value) return '';
-  return formatInTimeZone(toDate(value), TIMEZONE, 'MMM d');
+  return formatInTimeZone(toDate(value), resolveTz(tz), 'MMM d');
 }
 
-/** Value for a datetime-local input, expressed in the site timezone. */
-export function toLocalInputValue(value) {
+/** Value for a datetime-local input, expressed in the resolved office's timezone. */
+export function toLocalInputValue(value, tz) {
   const d = value ? toDate(value) : new Date();
-  return formatInTimeZone(d, TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+  return formatInTimeZone(d, resolveTz(tz), "yyyy-MM-dd'T'HH:mm");
 }
 
 /**
  * Convert a `datetime-local` string (which the browser interprets as wall-clock in the
- * user's zone) into an ISO instant, treating the entered wall-clock as SITE time.
+ * user's zone) into an ISO instant, treating the entered wall-clock as the resolved office's
+ * local time — e.g. "8:00 AM" typed at the Tokyo office produces a UTC instant that's actually
+ * 8am Tokyo time, not 8am wherever the hardcoded fallback used to point.
  */
-export function localInputToISO(localValue) {
+export function localInputToISO(localValue, tz) {
   if (!localValue) return null;
-  // Reconstruct the instant: the string has no zone; anchor it to the site zone by
+  const zone = resolveTz(tz);
+  // Reconstruct the instant: the string has no zone; anchor it to the resolved zone by
   // computing the offset for that wall-clock date.
   const [datePart, timePart] = localValue.split('T');
   const [y, mo, d] = datePart.split('-').map(Number);
   const [h, mi] = timePart.split(':').map(Number);
-  // Build a UTC guess, then correct by the site offset at that moment.
+  // Build a UTC guess, then correct by the resolved zone's offset at that moment.
   const guess = new Date(Date.UTC(y, mo - 1, d, h, mi));
-  const offsetLabel = formatInTimeZone(guess, TIMEZONE, 'xxx'); // e.g. -07:00
+  const offsetLabel = formatInTimeZone(guess, zone, 'xxx'); // e.g. -07:00
   const sign = offsetLabel.startsWith('-') ? 1 : -1;
   const [offH, offM] = offsetLabel.slice(1).split(':').map(Number);
   const corrected = new Date(guess.getTime() + sign * (offH * 60 + offM) * 60000);

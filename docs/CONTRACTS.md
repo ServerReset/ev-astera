@@ -39,7 +39,7 @@ Each module exposes a service object (`<name>.service.js`) with pure-ish async m
 
 - receive `locationId` as the first argument when location-scoped,
 - read business rules through `configService.get(key, locationId)` — never hardcode,
-- use the Supabase service-role client from `db/supabase.js`,
+- use the Prisma client singleton from `db/prisma.js`,
 - emit events via the bus after a successful state change,
 - throw typed errors on rule violations.
 
@@ -53,7 +53,7 @@ Server:
 
 | Import | Path | Exports |
 |---|---|---|
-| Supabase client | `../../db/supabase.js` | `supabase` (service role) |
+| Prisma client | `../../db/prisma.js` | `prisma` (PrismaClient singleton) |
 | Errors | `../../utils/errors.js` | `AppError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError, BusinessRuleError, RateLimitError` |
 | Logger | `../../utils/logger.js` | `logger` (winston) |
 | Time | `../../utils/timeUtils.js` | `now, addMinutes, addHours, diffMinutes, startOfWeek, toZoned, formatTime` |
@@ -65,7 +65,7 @@ Server:
 | Auth provider | `../../providers/auth/index.js` | `authProvider` |
 | Validate mw | `../../middleware/validate.js` | `validate(schema, 'body'|'query'|'params')` |
 | Authn mw | `../../middleware/authenticate.js` | `authenticate` |
-| Authz mw | `../../middleware/authorize.js` | `authorize('admin')` |
+| Authz mw | `../../middleware/authorize.js` | `authorize('site_admin', 'super_admin')` |
 | Async wrap | `../../utils/asyncHandler.js` | `asyncHandler(fn)` (so throws reach the error mw) |
 | Response | `../../utils/respond.js` | `ok(res, data, status?)`, `paginated(res, items, page, total)` |
 

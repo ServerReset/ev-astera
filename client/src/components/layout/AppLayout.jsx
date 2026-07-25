@@ -4,6 +4,7 @@ import { NavFloating } from './NavFloating.jsx';
 import { Spinner } from '@/components/common/States.jsx';
 import { useNotificationSync } from '@/hooks/useNotificationSync.js';
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate.jsx';
+import { CelebrationOverlay } from '@/components/achievements/CelebrationOverlay.jsx';
 
 /**
  * Authenticated app shell. No top bar: navigation is a single floating M3 toolbar pinned to the
@@ -17,6 +18,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-bg">
       <OnboardingGate />
+      <CelebrationOverlay />
 
       <main className="px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28">
         <div className="mx-auto w-full max-w-6xl animate-fade-in">

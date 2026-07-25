@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Siren } from 'lucide-react';
 import { emergencyRequestSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
@@ -7,18 +7,25 @@ import { Textarea, Select } from '@/components/common/Input.jsx';
 import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
-import { EMERGENCY_REASONS } from '@/utils/constants.js';
+import { useMessageConfig } from '@/hooks/useMessageConfig.js';
 
 /**
  * Raise an emergency "I need a charger now" request. Cooldown-limited server-side; the
  * request notifies current chargers so they can offer to wrap up. Use sparingly — the copy
- * says so, and the server enforces a cooldown.
+ * says so, and the server enforces a cooldown. The reason list is admin-editable per office
+ * (useMessageConfig) — the server validates the submission against that same live list.
  */
 export function EmergencyModal({ open, onClose }) {
-  const [reason, setReason] = useState(EMERGENCY_REASONS[0]);
+  const { emergencyReasons } = useMessageConfig();
+  const [reason, setReason] = useState('');
   const [explanation, setExplanation] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Seed the select with the first reason once the list loads.
+  useEffect(() => {
+    if (emergencyReasons?.length && !reason) setReason(emergencyReasons[0]);
+  }, [emergencyReasons, reason]);
 
   const submit = async () => {
     setError(null);
@@ -56,7 +63,7 @@ export function EmergencyModal({ open, onClose }) {
         </div>
       }
     >
-      <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
+      <div className="mb-3 flex items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
         <Siren className="h-5 w-5 shrink-0 text-danger" />
         <span>This alerts everyone currently charging. Please only use it for genuine emergencies — there's a cooldown between requests.</span>
       </div>
@@ -64,7 +71,7 @@ export function EmergencyModal({ open, onClose }) {
         label="Reason"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        options={EMERGENCY_REASONS.map((r) => ({ value: r, label: r }))}
+        options={(emergencyReasons || []).map((r) => ({ value: r, label: r }))}
         className="mb-3"
       />
       <Textarea

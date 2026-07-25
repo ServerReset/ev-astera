@@ -10,7 +10,26 @@ import { AuthorizationError, BusinessRuleError, NotFoundError } from '../../util
 import { SESSION_STATUS, SETTING_KEYS } from '../../../../shared/constants.js';
 import { addMinutes, addHours, now, diffMinutes } from '../../utils/timeUtils.js';
 
+// Postgres advisory locks take a bigint key; Postgres's own hashtext() collapses an arbitrary
+// string into one deterministically. Session-scoped ('nudge:' + sessionId) and user-scoped
+// ('emergency:' + userId) locks below serialize each resource's check-then-act window (rate
+// limit / cooldown read, then the create) across concurrent requests — two tabs, a client
+// retry, or a fast double-tap can no longer both pass the same check before either write lands.
+async function withAdvisoryLock(key, fn) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', key);
+    return fn(tx);
+  });
+}
+
 export const messageService = {
+  /** Admin-editable content lists a client needs before rendering the nudge/emergency UI. */
+  async getConfig(locationId) {
+    const nudgePresets = await configService.get(SETTING_KEYS.NUDGE_PRESETS, locationId);
+    const emergencyReasons = await configService.get(SETTING_KEYS.EMERGENCY_REASONS, locationId);
+    return { nudgePresets, emergencyReasons };
+  },
+
   /**
    * Send a nudge to the person occupying a charger. Rate-limited per (sender, session) and
    * capped per session. The recipient is derived from the live session — never trusted from input.
@@ -25,36 +44,39 @@ export const messageService = {
     const rateMin = await configService.getNumber(SETTING_KEYS.NUDGE_RATE_LIMIT_MINUTES, locationId);
     const maxPer = await configService.getNumber(SETTING_KEYS.MAX_NUDGES_PER_SESSION, locationId);
 
-    // Rate limit: this sender, this session.
-    const recent = await prisma.messages.findFirst({
-      where: { kind: 'nudge', sender_id: senderId, session_id: sessionId },
-      orderBy: { created_at: 'desc' },
-      select: { created_at: true },
-    });
-    if (recent && diffMinutes(recent.created_at, now()) < rateMin) {
-      throw new BusinessRuleError(`Please wait ${rateMin} minutes between nudges.`);
-    }
-
-    // Cap total nudges on this session (from everyone).
-    const count = await prisma.messages.count({ where: { kind: 'nudge', session_id: sessionId } });
-    if (count >= maxPer) {
-      throw new BusinessRuleError('This session has already received the maximum number of nudges.');
-    }
-
+    // Locked per session: the rate-limit read, the cap read, and the create must be seen as
+    // one atomic step by every concurrent nudge attempt on this session (see withAdvisoryLock).
     let data;
     try {
-      data = await prisma.messages.create({
-        data: {
-          location_id: locationId,
-          kind: 'nudge',
-          sender_id: senderId,
-          recipient_id: session.user_id,
-          charger_id: chargerId,
-          session_id: sessionId,
-          body: message,
-        },
+      data = await withAdvisoryLock(`nudge:${sessionId}`, async (tx) => {
+        const recent = await tx.messages.findFirst({
+          where: { kind: 'nudge', sender_id: senderId, session_id: sessionId },
+          orderBy: { created_at: 'desc' },
+          select: { created_at: true },
+        });
+        if (recent && diffMinutes(recent.created_at, now()) < rateMin) {
+          throw new BusinessRuleError(`Please wait ${rateMin} minutes between nudges.`);
+        }
+
+        const count = await tx.messages.count({ where: { kind: 'nudge', session_id: sessionId } });
+        if (count >= maxPer) {
+          throw new BusinessRuleError('This session has already received the maximum number of nudges.');
+        }
+
+        return tx.messages.create({
+          data: {
+            location_id: locationId,
+            kind: 'nudge',
+            sender_id: senderId,
+            recipient_id: session.user_id,
+            charger_id: chargerId,
+            session_id: sessionId,
+            body: message,
+          },
+        });
       });
-    } catch {
+    } catch (err) {
+      if (err instanceof BusinessRuleError) throw err;
       throw new BusinessRuleError('Could not send nudge.');
     }
 
@@ -107,32 +129,45 @@ export const messageService = {
    * Broadcast handling (who to alert) is done in the listener.
    */
   async requestEmergency(locationId, userId, { reason, explanation }) {
-    const cooldownH = await configService.getNumber(SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS, locationId);
-    const last = await prisma.emergency_requests.findFirst({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
-      select: { created_at: true },
-    });
-    if (last) {
-      const nextAllowed = addHours(new Date(last.created_at), cooldownH);
-      if (now() < nextAllowed) {
-        throw new BusinessRuleError(`You can raise another emergency request in ${cooldownH} hours.`);
-      }
+    // The allowed reasons are admin-editable per office, so this can't be a static z.enum at
+    // the schema layer (shared/validation.js) — check against this location's actual list here.
+    const allowedReasons = await configService.get(SETTING_KEYS.EMERGENCY_REASONS, locationId);
+    if (!Array.isArray(allowedReasons) || !allowedReasons.includes(reason)) {
+      throw new BusinessRuleError('Please choose a valid reason.');
     }
 
+    const cooldownH = await configService.getNumber(SETTING_KEYS.EMERGENCY_COOLDOWN_HOURS, locationId);
     const windowMin = await configService.getNumber(SETTING_KEYS.EMERGENCY_RESPONSE_WINDOW_MINUTES, locationId);
+
+    // Locked per user: the cooldown read and the create must be seen as one atomic step by
+    // every concurrent request this user fires (double-tap, retry, two tabs) — see withAdvisoryLock.
     let data;
     try {
-      data = await prisma.emergency_requests.create({
-        data: {
-          location_id: locationId,
-          user_id: userId,
-          reason,
-          explanation: explanation || null,
-          expires_at: addMinutes(now(), windowMin),
-        },
+      data = await withAdvisoryLock(`emergency:${userId}`, async (tx) => {
+        const last = await tx.emergency_requests.findFirst({
+          where: { user_id: userId },
+          orderBy: { created_at: 'desc' },
+          select: { created_at: true },
+        });
+        if (last) {
+          const nextAllowed = addHours(new Date(last.created_at), cooldownH);
+          if (now() < nextAllowed) {
+            throw new BusinessRuleError(`You can raise another emergency request in ${cooldownH} hours.`);
+          }
+        }
+
+        return tx.emergency_requests.create({
+          data: {
+            location_id: locationId,
+            user_id: userId,
+            reason,
+            explanation: explanation || null,
+            expires_at: addMinutes(now(), windowMin),
+          },
+        });
       });
-    } catch {
+    } catch (err) {
+      if (err instanceof BusinessRuleError) throw err;
       throw new BusinessRuleError('Could not raise emergency request.');
     }
 

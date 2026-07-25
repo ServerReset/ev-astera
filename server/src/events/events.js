@@ -4,6 +4,12 @@ export const EVENTS = Object.freeze({
   USER_REGISTERED: 'user.registered',
   USER_UPDATED: 'user.updated',
 
+  // Locations (offices)
+  LOCATION_CREATED: 'location.created',
+  LOCATION_UPDATED: 'location.updated',
+  LOCATION_DEACTIVATED: 'location.deactivated',
+  LOCATION_REACTIVATED: 'location.reactivated',
+
   // Sessions
   SESSION_STARTED: 'session.started',
   SESSION_UPDATED: 'session.updated',
@@ -47,4 +53,7 @@ export const EVENTS = Object.freeze({
   CARPOOL_SCHEDULE_CANCELLED: 'carpool.schedule_cancelled',
   CARPOOL_CREDITS_AWARDED: 'carpool.credits_awarded',
   CARPOOL_PRIORITY_GRANTED: 'carpool.priority_granted',
+
+  // Achievements
+  ACHIEVEMENT_UNLOCKED: 'achievement.unlocked',
 });

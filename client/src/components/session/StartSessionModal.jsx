@@ -5,17 +5,21 @@ import { Button } from '@/components/common/Button.jsx';
 import { Input } from '@/components/common/Input.jsx';
 import { DurationSlider } from '@/components/common/DurationSlider.jsx';
 import { useZodForm } from '@/hooks/useZodForm.js';
+import { useSessionConfig } from '@/hooks/useSessionConfig.js';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 
 /**
  * Start-session flow. Pre-fills vehicle from the user profile. Duration is chosen on a
- * slider (minutes) to match startSessionSchema's 30min-4hr bounds. Requires the "connected"
- * confirmation checkbox (the schema enforces `confirmedConnected === true`).
+ * slider (minutes), bounded by the admin-configured MAX_SESSION_HOURS setting (fetched via
+ * useSessionConfig — not a hardcoded 4hr ceiling, which used to silently desync from whatever
+ * an admin actually set). Requires the "connected" confirmation checkbox (the schema enforces
+ * `confirmedConnected === true`).
  */
 export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
   const [error, setError] = useState(null);
+  const maxSessionMinutes = useSessionConfig();
   const { values, errors, submitting, setField, handleChange, handleSubmit } = useZodForm(startSessionSchema, {
     chargerId: charger?.id,
     durationMinutes: 120,
@@ -25,6 +29,12 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
 
   // Keep chargerId in sync when the modal is reused for different chargers.
   if (charger && values.chargerId !== charger.id) setField('chargerId', charger.id);
+
+  // Clamp the default once the real max loads — an admin-lowered ceiling below the 120min
+  // default would otherwise start the slider out of its own bounds.
+  if (maxSessionMinutes && values.durationMinutes > maxSessionMinutes) {
+    setField('durationMinutes', maxSessionMinutes);
+  }
 
   const onSubmit = handleSubmit(async (data) => {
     setError(null);
@@ -59,6 +69,7 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           label="How long do you need?"
           value={values.durationMinutes}
           onChange={(mins) => setField('durationMinutes', mins)}
+          max={maxSessionMinutes || undefined}
           error={errors.durationMinutes}
         />
 
@@ -71,7 +82,7 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           placeholder="White Tesla Model 3"
         />
 
-        <label className="flex items-start gap-2.5 rounded-xl border border-border bg-bg-elevated p-3 text-sm">
+        <label className="flex items-start gap-2.5 rounded-2xl border border-border bg-bg-elevated p-3 text-sm">
           <input
             type="checkbox"
             name="confirmedConnected"

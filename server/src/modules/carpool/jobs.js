@@ -23,7 +23,7 @@ import { rankRides } from './matcher.js';
 import { completeRideImpact } from './impact.js';
 
 async function activeLocations() {
-  return prisma.locations.findMany({ select: { id: true } });
+  return prisma.locations.findMany({ where: { active: true }, select: { id: true, timezone: true } });
 }
 
 // ── carpoolMaterialize ───────────────────────────────────────────────────────
@@ -33,7 +33,9 @@ async function activeLocations() {
  * from a read path is safe. */
 export async function carpoolMaterialize(locationId) {
   let actions = 0;
-  const locations = locationId ? [{ id: locationId }] : await activeLocations();
+  const locations = locationId
+    ? [await prisma.locations.findUnique({ where: { id: locationId }, select: { id: true, timezone: true } })].filter(Boolean)
+    : await activeLocations();
   for (const loc of locations) {
     const days = await configService.getNumber(SETTING_KEYS.CARPOOL_MATERIALIZE_DAYS, loc.id);
     const schedules = await prisma.carpool_schedules.findMany({ where: { location_id: loc.id, active: true } });
@@ -41,9 +43,9 @@ export async function carpoolMaterialize(locationId) {
     for (const s of schedules) {
       for (let d = 0; d <= days; d++) {
         const target = addDays(now(), d);
-        const dow = localWeekday(target);
+        const dow = localWeekday(target, loc.timezone);
         if (!s.days_of_week.includes(dow)) continue;
-        const departAt = atLocalTime(target, s.depart_time);
+        const departAt = atLocalTime(target, s.depart_time, loc.timezone);
         if (departAt <= now()) continue;
 
         // Skip if a concrete ride/request already exists for this schedule around that time.

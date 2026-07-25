@@ -88,10 +88,10 @@ export function AuthShell({ title, subtitle, children, footer }) {
             <div className="rounded-2xl bg-surface-2 p-3 shadow-glow lg:hidden">
               <AsteraMark size={40} />
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-content lg:mt-0">{title}</h1>
+            <h1 className="mt-4 text-headline-sm text-content lg:mt-0">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
           </div>
-          <div className="card p-6">{children}</div>
+          <div className="card rounded-xl-increased p-6">{children}</div>
           {footer && <div className="mt-4 text-center text-sm text-muted">{footer}</div>}
         </div>
       </div>

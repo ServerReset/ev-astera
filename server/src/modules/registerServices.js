@@ -7,6 +7,7 @@ import { registerService } from '../services/index.js';
 
 import { authService } from './auth/auth.service.js';
 import { userService } from './user/user.service.js';
+import { officeService } from './office/office.service.js';
 import { chargerService } from './charger/charger.service.js';
 import { sessionService } from './session/session.service.js';
 import { queueService } from './queue/queue.service.js';
@@ -19,6 +20,7 @@ import { adminService } from './admin/admin.service.js';
 export function registerAllServices() {
   registerService('auth', authService);
   registerService('user', userService);
+  registerService('office', officeService);
   registerService('charger', chargerService);
   registerService('session', sessionService);
   registerService('queue', queueService);

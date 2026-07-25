@@ -1,11 +1,21 @@
 import { useState } from 'react';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { cn } from '@/utils/cn.js';
 
-/** Thumbs up/down for a nudge, shown to the recipient. Optimistic, overwrites on re-react. */
+// The reaction pack — each maps to a nudgeReactSchema enum value (shared/validation.js) and a
+// notification template (shared/constants.js's nudge_reaction_* entries). Emoji carry the meaning
+// so a reply says something real ("on my way" / "almost done") instead of a bare up/down.
+const REACTIONS = [
+  { value: 'up', emoji: '👍', label: 'Got it' },
+  { value: 'pray', emoji: '🙏', label: 'Almost done' },
+  { value: 'run', emoji: '🏃', label: 'On my way' },
+  { value: 'eyes', emoji: '👀', label: 'Seen it' },
+  { value: 'down', emoji: '👎', label: 'Not yet' },
+];
+
+/** Emoji reaction row for a nudge, shown to the recipient. Optimistic; overwrites on re-react. */
 export function NudgeReactionButtons({ messageId, initialReaction }) {
   const [reaction, setReaction] = useState(initialReaction || null);
   const [busy, setBusy] = useState(false);
@@ -27,25 +37,29 @@ export function NudgeReactionButtons({ messageId, initialReaction }) {
   };
 
   return (
-    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        aria-label="Thumbs up"
-        disabled={busy}
-        onClick={(e) => react(e, 'up')}
-        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'up' ? 'bg-brand/15 text-brand-strong' : 'text-faint hover:bg-surface-2')}
-      >
-        <ThumbsUp className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label="Thumbs down"
-        disabled={busy}
-        onClick={(e) => react(e, 'down')}
-        className={cn('grid h-7 w-7 place-items-center rounded-lg transition-colors', reaction === 'down' ? 'bg-brand/15 text-brand-strong' : 'text-faint hover:bg-surface-2')}
-      >
-        <ThumbsDown className="h-4 w-4" />
-      </button>
+    <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      {REACTIONS.map((r) => {
+        const active = reaction === r.value;
+        return (
+          <button
+            key={r.value}
+            type="button"
+            aria-label={r.label}
+            aria-pressed={active}
+            title={r.label}
+            disabled={busy}
+            onClick={(e) => react(e, r.value)}
+            className={cn(
+              'grid h-8 w-8 place-items-center rounded-full text-base leading-none',
+              'transition-transform duration-spring ease-spring active:scale-90',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
+              active ? 'scale-110 bg-brand/15 ring-1 ring-brand/40' : 'grayscale hover:grayscale-0 hover:bg-surface-2'
+            )}
+          >
+            <span aria-hidden="true">{r.emoji}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

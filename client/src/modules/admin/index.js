@@ -6,7 +6,7 @@ const AdminPage = lazy(() => import('@/pages/admin/AdminPage.jsx'));
  *  registry's role check, and the route is additionally guarded by <RequireAdmin>. */
 export default {
   name: 'admin',
-  nav: [{ to: '/admin', label: 'Admin', icon: 'ShieldCheck', order: 90, roles: ['admin'] }],
-  routes: [{ path: '/admin', element: AdminPage, roles: ['admin'] }],
+  nav: [{ to: '/admin', label: 'Admin', icon: 'ShieldCheck', order: 90, roles: ['site_admin', 'super_admin'] }],
+  routes: [{ path: '/admin', element: AdminPage, roles: ['site_admin', 'super_admin'] }],
   realtimeTables: ['chargers', 'sessions', 'queue_entries', 'announcements'],
 };

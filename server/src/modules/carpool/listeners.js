@@ -3,6 +3,8 @@
  *   - Notifications for booking lifecycle, matches, and credits.
  *   - EV-charging tie-in (Feature 3): grant charger-queue priority to a driver who has a
  *     confirmed carpool booking today; release it when their session ends.
+ * Every title/body comes from getNotificationCopy() — an admin-editable template — see
+ * shared/constants.js's NOTIFICATION_TEMPLATES for the catalog.
  */
 import { EVENTS } from '../../events/events.js';
 import { emit } from '../../events/eventBus.js';
@@ -16,6 +18,8 @@ import {
   SETTING_KEYS,
 } from '../../../../shared/constants.js';
 import { formatTime } from '../../utils/timeUtils.js';
+import { getLocationMeta } from '../../utils/locationTz.js';
+import { getNotificationCopy } from '../../utils/notifTemplates.js';
 
 async function displayName(userId) {
   const data = await prisma.users.findUnique({ where: { id: userId }, select: { display_name: true } });
@@ -27,12 +31,13 @@ export const carpoolListeners = [
     event: EVENTS.CARPOOL_BOOKING_REQUESTED,
     handler: async (p) => {
       const rider = await displayName(p.riderId);
+      const { title, body } = await getNotificationCopy('carpool_booking_requested', p.locationId, { rider });
       await dispatchNotification(p.driverId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.CARPOOL_BOOKING,
         priority: NOTIFICATION_PRIORITY.NORMAL,
-        title: '🚗 New seat request',
-        body: `${rider} requested a seat on your ride.`,
+        title,
+        body,
         actionUrl: '/carpool',
         metadata: { rideId: p.rideId, bookingId: p.bookingId },
       });
@@ -42,12 +47,13 @@ export const carpoolListeners = [
     event: EVENTS.CARPOOL_BOOKING_CONFIRMED,
     handler: async (p) => {
       // Notify the rider.
+      const { title, body } = await getNotificationCopy('carpool_booking_confirmed', p.locationId);
       await dispatchNotification(p.riderId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.CARPOOL_BOOKING,
         priority: NOTIFICATION_PRIORITY.HIGH,
-        title: '✅ Ride confirmed',
-        body: 'Your carpool seat is confirmed. See you there!',
+        title,
+        body,
         actionUrl: '/carpool',
         metadata: { rideId: p.rideId },
       });
@@ -88,12 +94,13 @@ export const carpoolListeners = [
   {
     event: EVENTS.CARPOOL_BOOKING_DECLINED,
     handler: async (p) => {
+      const { title, body } = await getNotificationCopy('carpool_booking_declined', p.locationId);
       await dispatchNotification(p.riderId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.CARPOOL_BOOKING,
         priority: NOTIFICATION_PRIORITY.NORMAL,
-        title: 'Ride request declined',
-        body: 'The driver could not take you this time. Try another ride.',
+        title,
+        body,
         actionUrl: '/carpool',
       });
     },
@@ -101,13 +108,14 @@ export const carpoolListeners = [
   {
     event: EVENTS.CARPOOL_RIDE_CANCELLED,
     handler: async (p) => {
+      const { title, body } = await getNotificationCopy('carpool_ride_cancelled', p.locationId);
       for (const riderId of p.affectedRiders || []) {
         await dispatchNotification(riderId, {
           locationId: p.locationId,
           type: NOTIFICATION_TYPES.CARPOOL_BOOKING,
           priority: NOTIFICATION_PRIORITY.HIGH,
-          title: '⚠️ Carpool cancelled',
-          body: 'A ride you booked was cancelled by the driver.',
+          title,
+          body,
           actionUrl: '/carpool',
           metadata: { rideId: p.rideId },
         });
@@ -117,22 +125,27 @@ export const carpoolListeners = [
   {
     event: EVENTS.CARPOOL_MATCH_FOUND,
     handler: async (p) => {
+      const meta = await getLocationMeta(p.locationId);
+      const riderCopy = await getNotificationCopy('carpool_match_found_rider', p.locationId, {
+        departTime: formatTime(p.departAt, meta?.tz),
+      });
       await dispatchNotification(p.riderId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.CARPOOL_MATCH,
         priority: NOTIFICATION_PRIORITY.NORMAL,
-        title: '🔎 Carpool match found',
-        body: `A ride departing ${formatTime(p.departAt)} matches your request.`,
+        title: riderCopy.title,
+        body: riderCopy.body,
         actionUrl: '/carpool',
         metadata: { rideId: p.rideId, score: p.score },
       });
       if (p.driverId) {
+        const driverCopy = await getNotificationCopy('carpool_match_found_driver', p.locationId);
         await dispatchNotification(p.driverId, {
           locationId: p.locationId,
           type: NOTIFICATION_TYPES.CARPOOL_MATCH,
           priority: NOTIFICATION_PRIORITY.LOW,
-          title: '🔎 A rider matches your ride',
-          body: 'Someone nearby is looking for a ride like yours.',
+          title: driverCopy.title,
+          body: driverCopy.body,
           actionUrl: '/carpool',
           metadata: { rideId: p.rideId },
         });
@@ -143,12 +156,17 @@ export const carpoolListeners = [
     event: EVENTS.CARPOOL_CREDITS_AWARDED,
     handler: async (p) => {
       if (p.amount <= 0) return;
+      const { title, body } = await getNotificationCopy('carpool_credits_awarded', p.locationId, {
+        amount: p.amount,
+        reason: p.reason,
+        balanceAfter: p.balanceAfter,
+      });
       await dispatchNotification(p.userId, {
         locationId: p.locationId,
         type: NOTIFICATION_TYPES.CARPOOL_CREDITS,
         priority: NOTIFICATION_PRIORITY.LOW,
-        title: `🌱 +${p.amount} carpool credits`,
-        body: `${p.reason}. Balance: ${p.balanceAfter}.`,
+        title,
+        body,
         actionUrl: '/carpool/impact',
       });
     },

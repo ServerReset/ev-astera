@@ -14,10 +14,11 @@ import {
   CARPOOL_DIRECTION,
 } from '@shared/constants.js';
 
-/** Environment (read once). */
+/** Environment (read once). The office to operate on is discovered dynamically (the logged-in
+ * user's own locationId, or a super-admin's selected office) — see services/endpoints.js's
+ * loc() — not a build-time constant, since the app now serves many offices from one deploy. */
 export const ENV = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
-  locationId: import.meta.env.VITE_DEFAULT_LOCATION_ID,
   vapidPublicKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
 };
 
@@ -81,6 +82,7 @@ export const NOTIFICATION_META = {
   [NOTIFICATION_TYPES.CARPOOL_MATCH]: { icon: 'Search', tone: 'info' },
   [NOTIFICATION_TYPES.CARPOOL_REMINDER]: { icon: 'AlarmClock', tone: 'warning' },
   [NOTIFICATION_TYPES.CARPOOL_CREDITS]: { icon: 'Sprout', tone: 'success' },
+  [NOTIFICATION_TYPES.ACHIEVEMENT_UNLOCKED]: { icon: 'Trophy', tone: 'warning' },
   [NOTIFICATION_TYPES.SYSTEM]: { icon: 'Info', tone: 'muted' },
 };
 

@@ -12,8 +12,7 @@
     "dev": "nodemon src/index.js",
     "postinstall": "prisma generate --schema=./prisma/schema.prisma",
     "gen:vapid": "node scripts/genVapid.js",
-    "gen:hash": "node scripts/genHash.js",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "gen:hash": "node scripts/genHash.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

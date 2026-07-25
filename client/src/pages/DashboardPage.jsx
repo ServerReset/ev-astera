@@ -17,7 +17,7 @@ import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { chargerApi, sessionApi, queueApi } from '@/services/endpoints.js';
-import { ENV, CHARGER_STATUS } from '@/utils/constants.js';
+import { CHARGER_STATUS } from '@/utils/constants.js';
 
 /** Normalize the raw active-session row (snake_case + nested chargers) for ActiveSessionCard. */
 function normalizeActive(row) {
@@ -57,9 +57,7 @@ export default function DashboardPage() {
   }, []);
 
   // Any change to chargers/sessions/queue at this location refreshes the board.
-  useRealtime('dashboard', ['chargers', 'sessions', 'queue_entries'], refreshAll, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('dashboard', ['chargers', 'sessions', 'queue_entries'], refreshAll);
 
   const canStart = !mySession; // one active session per user
   const canJoinQueue = !mySession;
@@ -95,7 +93,7 @@ export default function DashboardPage() {
       <EmergencyBanner />
 
       {mySession && (
-        <div className="mb-6 animate-slide-up">
+        <div className="mb-6">
           <ActiveSessionCard
             session={mySession}
             onExtend={() => setEtaOpen(true)}

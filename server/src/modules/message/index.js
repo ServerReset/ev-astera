@@ -15,6 +15,11 @@ export default defineModule({
   routes(router) {
     router.use(authenticate);
 
+    router.get(
+      '/config',
+      asyncHandler(async (req, res) => ok(res, await messageService.getConfig(req.locationId)))
+    );
+
     router.post(
       '/nudge',
       validate(nudgeSchema),

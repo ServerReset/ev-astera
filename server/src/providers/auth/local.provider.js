@@ -27,6 +27,8 @@ const LOCK_DURATION_MIN = 15;
 
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
+const WITH_OFFICE = { locations: { select: { id: true, name: true, timezone: true, active: true } } };
+
 function toPublicUser(row) {
   return {
     id: row.id,
@@ -38,6 +40,7 @@ function toPublicUser(row) {
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
     onboardedAt: row.onboarded_at,
+    office: row.locations ? { id: row.locations.id, name: row.locations.name, timezone: row.locations.timezone } : null,
   };
 }
 
@@ -65,7 +68,12 @@ async function issueRefreshToken(userId, remember) {
 
 export const localProvider = {
   async register({ email, password, displayName, vehicleDescription, lat, lng, locationId }) {
-    const loc = locationId || env.defaultLocationId;
+    const loc = locationId;
+    const office = await prisma.locations.findUnique({
+      where: { id: loc },
+      select: { active: true, site_lat: true, site_lng: true },
+    });
+    if (!office || !office.active) throw new ValidationError('Select a valid office to sign up at.');
 
     // Fails CLOSED, not open: a signup gate is a security/business control, so any
     // misconfiguration (unparseable date, missing office coordinates, non-numeric radius)
@@ -89,8 +97,7 @@ export const localProvider = {
       if (lat == null || lng == null) {
         throw new BusinessRuleError('Location is required to sign up — enable location access and try again.');
       }
-      const location = await prisma.locations.findUnique({ where: { id: loc }, select: { site_lat: true, site_lng: true } });
-      if (location?.site_lat == null || location?.site_lng == null) {
+      if (office.site_lat == null || office.site_lng == null) {
         throw new AppError(
           'Signups are misconfigured (office location not set) — contact an admin.',
           500,
@@ -105,7 +112,7 @@ export const localProvider = {
           'SIGNUP_GEOFENCE_MISCONFIGURED'
         );
       }
-      const distanceMeters = haversineMiles({ lat, lng }, { lat: location.site_lat, lng: location.site_lng }) * 1609.34;
+      const distanceMeters = haversineMiles({ lat, lng }, { lat: office.site_lat, lng: office.site_lng }) * 1609.34;
       if (distanceMeters > radiusMeters) {
         throw new BusinessRuleError('You must be near the office to sign up.');
       }
@@ -125,6 +132,7 @@ export const localProvider = {
           display_name: displayName,
           vehicle_description: vehicleDescription || null,
         },
+        include: WITH_OFFICE,
       });
     } catch {
       throw new ConflictError('Could not create account');
@@ -139,7 +147,7 @@ export const localProvider = {
   },
 
   async login({ email, password, rememberMe }) {
-    const row = await prisma.users.findUnique({ where: { email } });
+    const row = await prisma.users.findUnique({ where: { email }, include: WITH_OFFICE });
 
     // Generic failure to prevent user enumeration.
     const invalid = () => new AuthenticationError('Invalid email or password');
@@ -150,6 +158,9 @@ export const localProvider = {
       throw invalid();
     }
     if (!row.active) throw new BusinessRuleError('This account has been deactivated');
+    // Every scoped route already 404s under a deactivated office (locationScope) — surface a
+    // clear reason here instead of letting the user log in only to find nothing works anywhere.
+    if (!row.locations?.active) throw new BusinessRuleError('Your office has been deactivated. Contact an admin.');
 
     if (row.locked_until && new Date(row.locked_until) > new Date()) {
       throw new BusinessRuleError('Account temporarily locked. Try again in a few minutes.');
@@ -190,7 +201,7 @@ export const localProvider = {
     if (!row || row.revoked || new Date(row.expires_at) < new Date()) {
       throw new AuthenticationError('Session expired');
     }
-    const userRow = await prisma.users.findUnique({ where: { id: row.user_id } });
+    const userRow = await prisma.users.findUnique({ where: { id: row.user_id }, include: WITH_OFFICE });
     if (!userRow || !userRow.active) throw new AuthenticationError('Session expired');
     return { accessToken: signAccessToken(userRow), user: toPublicUser(userRow) };
   },

@@ -6,8 +6,20 @@ import { ErrorState } from '@/components/common/States.jsx';
 import { Leaderboard } from '@/components/carpool/Leaderboard.jsx';
 import { ReliabilityLeaderboard } from '@/components/leaderboards/ReliabilityLeaderboard.jsx';
 import { useApi } from '@/hooks/useApi.js';
+import { useCountUp } from '@/hooks/useCountUp.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { carpoolApi, reliabilityApi } from '@/services/endpoints.js';
+
+/** Site-wide total that counts up from 0 (re-animates when the window filter changes). */
+function TotalValue({ value, decimals = 0, suffix = '' }) {
+  const n = useCountUp(value, { decimals });
+  return (
+    <span className="tabular-nums">
+      {n.toLocaleString(undefined, { maximumFractionDigits: decimals })}
+      {suffix}
+    </span>
+  );
+}
 
 /**
  * Dedicated leaderboards home: carpool CO₂/credits (relocated from CarpoolImpactPage, which
@@ -35,12 +47,16 @@ export default function LeaderboardsPage() {
           <ErrorState error={totals.error} onRetry={totals.refetch} title="Could not load savings" />
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-bg-elevated p-3">
-              <p className="text-2xl font-bold text-success tabular-nums">{totals.data?.co2Kg ?? 0} kg</p>
+            <div className="rounded-2xl bg-bg-elevated p-3">
+              <p className="text-2xl font-bold text-success tabular-nums">
+                <TotalValue value={totals.data?.co2Kg ?? 0} decimals={1} suffix=" kg" />
+              </p>
               <p className="text-xs text-muted">CO₂ saved</p>
             </div>
-            <div className="rounded-xl bg-bg-elevated p-3">
-              <p className="text-2xl font-bold text-content tabular-nums">{totals.data?.trips ?? 0}</p>
+            <div className="rounded-2xl bg-bg-elevated p-3">
+              <p className="text-2xl font-bold text-content tabular-nums">
+                <TotalValue value={totals.data?.trips ?? 0} />
+              </p>
               <p className="text-xs text-muted">Carpool trips</p>
             </div>
           </div>

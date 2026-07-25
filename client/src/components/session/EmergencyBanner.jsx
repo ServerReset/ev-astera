@@ -46,7 +46,7 @@ export function EmergencyBanner() {
   return (
     <div className="mb-4 space-y-2">
       {open.map((r) => (
-        <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 border-danger/40 bg-danger/5">
+        <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl-increased border-danger/40 bg-danger/5">
           <div className="flex items-start gap-2.5">
             <Siren className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
             <div>

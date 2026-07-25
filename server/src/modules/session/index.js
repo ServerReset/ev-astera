@@ -14,6 +14,13 @@ export default defineModule({
   routes(router) {
     router.use(authenticate);
 
+    // Real admin-configured bounds, so the client's duration slider never desyncs from what
+    // start()/updateEta() actually enforce.
+    router.get(
+      '/config',
+      asyncHandler(async (req, res) => ok(res, await sessionService.getConfig(req.locationId)))
+    );
+
     // Current user's active session (if any).
     router.get(
       '/active',
@@ -24,7 +31,7 @@ export default defineModule({
       '/',
       validate(startSessionSchema),
       asyncHandler(async (req, res) =>
-        created(res, await sessionService.start(req.locationId, req.user.userId, req.body))
+        created(res, await sessionService.start(req.locationId, req.locationTz, req.user.userId, req.body))
       )
     );
 

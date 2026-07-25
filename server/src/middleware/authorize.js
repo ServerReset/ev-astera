@@ -1,4 +1,4 @@
-/** Role gate. Use after `authenticate`. `authorize('admin')` → 403 unless req.user.role matches. */
+/** Role gate. Use after `authenticate`. `authorize('site_admin', 'super_admin')` → 403 unless req.user.role matches one of the given roles. */
 import { AuthorizationError, AuthenticationError } from '../utils/errors.js';
 
 export const authorize =

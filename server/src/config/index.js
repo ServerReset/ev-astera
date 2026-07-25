@@ -21,6 +21,7 @@ export const env = {
   port: parseInt(process.env.PORT || '3001', 10),
 
   postgresUrl: required('POSTGRES_URL'),
+  postgresUrlDirect: required('POSTGRES_URL_DIRECT'),
   cronSecret: required('CRON_SECRET'),
 
   jwtSecret: required('JWT_SECRET'),
@@ -33,12 +34,16 @@ export const env = {
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY,
   vapidSubject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
 
+  // Soft fallback only, for a handful of call sites that need SOME location when none is in
+  // scope (a push notification with no locationId in its payload, the audit log, /users/me/stats
+  // for a user whose own locationId is somehow missing). Not required — with multiple offices
+  // there is no single "the" default anymore, so nothing in assertConfig() enforces this is set.
   defaultLocationId: process.env.DEFAULT_LOCATION_ID,
 };
 
 /** Called at boot; throws if a hard-required value is missing in production. */
 export function assertConfig() {
-  const hard = ['postgresUrl', 'jwtSecret', 'defaultLocationId', 'cronSecret'];
+  const hard = ['postgresUrl', 'postgresUrlDirect', 'jwtSecret', 'cronSecret'];
   const missing = hard.filter((k) => !env[k]);
   if (missing.length) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);

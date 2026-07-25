@@ -10,12 +10,15 @@ import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { services } from '../../services/index.js';
 import { configService } from '../../services/config.service.js';
-import { NotFoundError, ConflictError } from '../../utils/errors.js';
+import { NotFoundError, ConflictError, AuthorizationError } from '../../utils/errors.js';
+import { geocodeAddress } from '../../utils/geocode.js';
+import { invalidateLocationMeta } from '../../utils/locationTz.js';
 import {
   SESSION_STATUS,
   QUEUE_STATUS,
   RIDE_STATUS,
   PAGE_SIZE,
+  ROLES,
 } from '../../../../shared/constants.js';
 import { startOfWeek, now, addDays } from '../../utils/timeUtils.js';
 
@@ -47,8 +50,8 @@ function generateTempPassword(length = 12) {
 
 export const adminService = {
   /** High-level dashboard numbers for the admin home. */
-  async overview(locationId) {
-    const weekStart = startOfWeek(now());
+  async overview(locationId, tz) {
+    const weekStart = startOfWeek(now(), tz);
     const dayAgo = addDays(now(), -1);
 
     const [activeSessions, queueWaiting, users, sessionsToday, openRides] = await Promise.all([
@@ -106,6 +109,37 @@ export const adminService = {
     const updated = await configService.update(locationId, patch);
     await emit(EVENTS.USER_UPDATED, { locationId, userId: adminId, action: 'settings_updated' });
     return updated;
+  },
+
+  // ── Office identity (name/address/timezone) ─────────────────────────────────────
+  async getOffice(locationId) {
+    const o = await prisma.locations.findUnique({ where: { id: locationId } });
+    if (!o) throw new NotFoundError('Office not found');
+    return { id: o.id, name: o.name, address: o.address, timezone: o.timezone, active: o.active };
+  },
+  async updateOffice(locationId, patch) {
+    const current = await prisma.locations.findUnique({ where: { id: locationId } });
+    if (!current) throw new NotFoundError('Office not found');
+
+    const data = {};
+    if (patch.name !== undefined) data.name = patch.name;
+    if (patch.timezone !== undefined) data.timezone = patch.timezone;
+    if (patch.address !== undefined) {
+      data.address = patch.address || null;
+      // Only re-geocode when the address actually changed (or coordinates were never set) —
+      // never re-hit the network on an unrelated field save.
+      const needsGeocode = patch.address && (patch.address !== current.address || current.site_lat == null || current.site_lng == null);
+      if (needsGeocode) {
+        const geo = await geocodeAddress(patch.address); // throws — nothing written on failure
+        data.site_lat = geo.lat;
+        data.site_lng = geo.lng;
+      }
+    }
+
+    const updated = await prisma.locations.update({ where: { id: locationId }, data });
+    invalidateLocationMeta(locationId);
+    await emit(EVENTS.LOCATION_UPDATED, { locationId });
+    return { id: updated.id, name: updated.name, address: updated.address, timezone: updated.timezone, active: updated.active };
   },
 
   // ── Carpool (delegate to carpool service for location-wide admin views + force-cancel) ──
@@ -199,7 +233,21 @@ export const adminService = {
       page,
     };
   },
-  async updateUser(locationId, userId, patch) {
+  async updateUser(locationId, userId, patch, callerRole) {
+    // Only a super-admin may grant super-admin — a site-admin escalating themselves or anyone
+    // else to the role that can manage every office would be a privilege-escalation hole.
+    if (patch.role === ROLES.SUPER_ADMIN && callerRole !== ROLES.SUPER_ADMIN) {
+      throw new AuthorizationError('Only a super admin can grant super admin.');
+    }
+    // Symmetric guard on the TARGET's existing role: a site-admin sharing an office with a
+    // super-admin could otherwise demote, disable, or (via resetWeek) reach into that
+    // super-admin's account despite never being granted super-admin themselves.
+    if (callerRole !== ROLES.SUPER_ADMIN) {
+      const target = await prisma.users.findFirst({ where: { id: userId, location_id: locationId }, select: { role: true } });
+      if (target?.role === ROLES.SUPER_ADMIN) {
+        throw new AuthorizationError('Only a super admin can modify another super admin.');
+      }
+    }
     const update = {};
     if (patch.role) update.role = patch.role;
     if (patch.active !== undefined) update.active = patch.active;
@@ -223,9 +271,12 @@ export const adminService = {
    * existing sessions are forced to sign in again with it. The plaintext is returned once —
    * the caller (admin UI) must show it to the admin immediately; it is never stored or logged.
    */
-  async resetUserPassword(locationId, userId) {
-    const user = await prisma.users.findFirst({ where: { id: userId, location_id: locationId }, select: { id: true } });
+  async resetUserPassword(locationId, userId, callerRole) {
+    const user = await prisma.users.findFirst({ where: { id: userId, location_id: locationId }, select: { id: true, role: true } });
     if (!user) throw new NotFoundError('User not found');
+    if (user.role === ROLES.SUPER_ADMIN && callerRole !== ROLES.SUPER_ADMIN) {
+      throw new AuthorizationError('Only a super admin can reset another super admin\'s password.');
+    }
 
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
@@ -239,7 +290,10 @@ export const adminService = {
   },
 
   /** Admin-delegated account creation: sets email + temp password + role directly, no invite email, no session issued. */
-  async createUser(locationId, { email, password, displayName, role }) {
+  async createUser(locationId, { email, password, displayName, role }, callerRole) {
+    if (role === ROLES.SUPER_ADMIN && callerRole !== ROLES.SUPER_ADMIN) {
+      throw new AuthorizationError('Only a super admin can create another super admin.');
+    }
     const existing = await prisma.users.findUnique({ where: { email }, select: { id: true } });
     if (existing) throw new ConflictError('An account with this email already exists');
 

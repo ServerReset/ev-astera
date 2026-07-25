@@ -4,7 +4,11 @@
  */
 
 // ── Roles ────────────────────────────────────────────────────────────────────
-export const ROLES = Object.freeze({ USER: 'user', ADMIN: 'admin' });
+// SITE_ADMIN manages exactly their own office (chargers/carpool/settings/users/announcements —
+// everything the old single ADMIN role did). SUPER_ADMIN additionally manages the office list
+// itself and can view/act on any office (see server/src/middleware/locationScope.js's bypass).
+export const ROLES = Object.freeze({ USER: 'user', SITE_ADMIN: 'site_admin', SUPER_ADMIN: 'super_admin' });
+export const ADMIN_ROLES = Object.freeze([ROLES.SITE_ADMIN, ROLES.SUPER_ADMIN]);
 
 // ── Charger / session status ──────────────────────────────────────────────────
 export const CHARGER_STATUS = Object.freeze({
@@ -48,6 +52,7 @@ export const NOTIFICATION_TYPES = Object.freeze({
   CARPOOL_MATCH: 'carpool_match',
   CARPOOL_REMINDER: 'carpool_reminder',
   CARPOOL_CREDITS: 'carpool_credits',
+  ACHIEVEMENT_UNLOCKED: 'achievement_unlocked',
   SYSTEM: 'system',
 });
 
@@ -138,7 +143,48 @@ export const SETTING_KEYS = Object.freeze({
   RELIABILITY_LOCKOUT_THRESHOLD: 'reliability_lockout_threshold',
   RELIABILITY_LOCKOUT_DURATION_HOURS: 'reliability_lockout_duration_hours',
   RELIABILITY_QUEUE_WEIGHT: 'reliability_queue_weight',
+  // content lists (admin-editable, jsonb array-of-strings)
+  NUDGE_PRESETS: 'nudge_presets',
+  EMERGENCY_REASONS: 'emergency_reasons',
 });
+
+// ── Notification templates (admin-editable per office) ──────────────────────────
+// Single source of truth for every user-facing notification's default copy and which runtime
+// {{placeholder}} variables it supports. Adding a new admin-editable notification means adding
+// one entry HERE — nothing else needs to change: notifTplSettingKey() derives its settings-table
+// keys, SETTING_DEFAULTS below picks up its defaults automatically, and the admin UI
+// (AdminPage.jsx's NOTIFICATION_TEMPLATES.filter(...)) picks it up by `group`. Every listener
+// renders through server/src/utils/notifTemplates.js's getNotificationCopy() instead of a
+// hardcoded literal. Announcement notifications are excluded — their title/body ARE the admin's
+// own per-announcement content already, not app-level copy.
+export const NOTIFICATION_TEMPLATES = Object.freeze([
+  { key: 'queue_turn', group: 'chargers', label: "It's your turn (queue)", vars: ['chargerName'], defaultTitle: "⚡ It's your turn!", defaultBody: '{{chargerName}} is free. Claim your spot before it expires.' },
+  { key: 'queue_skipped', group: 'chargers', label: 'Missed your queue turn', vars: [], defaultTitle: 'You missed your spot', defaultBody: "You didn't claim in time and were moved to the back of the queue." },
+  { key: 'session_overtime', group: 'chargers', label: 'Your session is overtime', vars: ['chargerName'], defaultTitle: '⚠️ Charging session overtime', defaultBody: 'Your session on {{chargerName}} has passed its ETA. Please wrap up when you can.' },
+  { key: 'overtime_admin_alert', group: 'chargers', label: 'Overtime admin alert', vars: ['chargerName', 'minutesOver'], defaultTitle: 'Overtime needs attention', defaultBody: '{{chargerName}} is {{minutesOver}} min past ETA.' },
+  { key: 'nudge_received', group: 'chargers', label: 'Nudge received', vars: ['message'], defaultTitle: '👋 You got a nudge!', defaultBody: '{{message}}' },
+  { key: 'nudge_reaction_up', group: 'chargers', label: 'Nudge reaction: thumbs up', vars: [], defaultTitle: '👍 Your nudge got a thumbs up', defaultBody: 'They acknowledged your nudge.' },
+  { key: 'nudge_reaction_down', group: 'chargers', label: 'Nudge reaction: thumbs down', vars: [], defaultTitle: '👎 Your nudge got a thumbs down', defaultBody: "They didn't want to move yet." },
+  { key: 'nudge_reaction_pray', group: 'chargers', label: 'Nudge reaction: almost done', vars: [], defaultTitle: '🙏 Almost done charging', defaultBody: "They're wrapping up — hang tight." },
+  { key: 'nudge_reaction_run', group: 'chargers', label: 'Nudge reaction: on my way', vars: [], defaultTitle: '🏃 On the way', defaultBody: "They're heading to move their car now." },
+  { key: 'nudge_reaction_eyes', group: 'chargers', label: 'Nudge reaction: seen it', vars: [], defaultTitle: '👀 Nudge seen', defaultBody: 'They saw your nudge — give them a moment.' },
+  { key: 'emergency_requested', group: 'chargers', label: 'Emergency request (to chargers in use)', vars: ['from', 'reason'], defaultTitle: '🚨 Emergency charge request', defaultBody: '{{from}}: {{reason}}. Can you wrap up your session?' },
+  { key: 'emergency_responded_accept', group: 'chargers', label: 'Emergency response: accepted', vars: ['from'], defaultTitle: '✅ Someone is freeing a charger', defaultBody: '{{from}} is wrapping up for you.' },
+  { key: 'emergency_responded_decline', group: 'chargers', label: 'Emergency response: declined', vars: ['from'], defaultTitle: 'Emergency update', defaultBody: "{{from}} can't help right now." },
+  { key: 'carpool_booking_requested', group: 'carpool', label: 'New seat request', vars: ['rider'], defaultTitle: '🚗 New seat request', defaultBody: '{{rider}} requested a seat on your ride.' },
+  { key: 'carpool_booking_confirmed', group: 'carpool', label: 'Ride confirmed', vars: [], defaultTitle: '✅ Ride confirmed', defaultBody: 'Your carpool seat is confirmed. See you there!' },
+  { key: 'carpool_booking_declined', group: 'carpool', label: 'Ride request declined', vars: [], defaultTitle: 'Ride request declined', defaultBody: 'The driver could not take you this time. Try another ride.' },
+  { key: 'carpool_ride_cancelled', group: 'carpool', label: 'Ride cancelled', vars: [], defaultTitle: '⚠️ Carpool cancelled', defaultBody: 'A ride you booked was cancelled by the driver.' },
+  { key: 'carpool_match_found_rider', group: 'carpool', label: 'Match found (to rider)', vars: ['departTime'], defaultTitle: '🔎 Carpool match found', defaultBody: 'A ride departing {{departTime}} matches your request.' },
+  { key: 'carpool_match_found_driver', group: 'carpool', label: 'Match found (to driver)', vars: [], defaultTitle: '🔎 A rider matches your ride', defaultBody: 'Someone nearby is looking for a ride like yours.' },
+  { key: 'carpool_credits_awarded', group: 'carpool', label: 'Credits awarded', vars: ['amount', 'reason', 'balanceAfter'], defaultTitle: '🌱 +{{amount}} carpool credits', defaultBody: '{{reason}}. Balance: {{balanceAfter}}.' },
+]);
+
+/** Settings-table key for one template's title or body — the ONLY place this naming scheme is
+ * defined, so it can't drift between the listener that reads it and the admin UI that writes it. */
+export function notifTplSettingKey(templateKey, field) {
+  return `notif_tpl_${templateKey}_${field}`;
+}
 
 // Fallback defaults used if a setting row is somehow missing. The DB seed is authoritative.
 export const SETTING_DEFAULTS = Object.freeze({
@@ -183,16 +229,28 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD]: 40,
   [SETTING_KEYS.RELIABILITY_LOCKOUT_DURATION_HOURS]: 48,
   [SETTING_KEYS.RELIABILITY_QUEUE_WEIGHT]: 0.3,
+  // Admin-editable content lists — fall back to these defaults when no settings row exists
+  // (same "empty settings table == defaults" behavior as every other setting). Fetched at
+  // runtime via message.service.js's getConfig(), not imported directly by client components —
+  // see NudgeModal.jsx/EmergencyModal.jsx, which no longer import a static array.
+  [SETTING_KEYS.NUDGE_PRESETS]: [
+    'Hey! Are you almost done charging? 🙏',
+    "I'm next in queue — just checking in!",
+    "No rush, just confirming you're still there.",
+    'I need to charge before I leave today.',
+  ],
+  [SETTING_KEYS.EMERGENCY_REASONS]: ['Very low battery', 'Need vehicle for emergency', 'Other'],
+  // Every notification template's title/body default, derived from NOTIFICATION_TEMPLATES so
+  // there's exactly one place that lists each template's copy — adding a template above makes
+  // its defaults show up here automatically, no second edit needed.
+  ...NOTIFICATION_TEMPLATES.reduce((acc, t) => {
+    acc[notifTplSettingKey(t.key, 'title')] = t.defaultTitle;
+    acc[notifTplSettingKey(t.key, 'body')] = t.defaultBody;
+    return acc;
+  }, {}),
 });
 
 // ── Misc ───────────────────────────────────────────────────────────────────────
 export const TIMEZONE = 'America/Los_Angeles';
 export const WORK_HOURS = Object.freeze({ START: 8, END: 18 }); // 8 AM – 6 PM
 export const PAGE_SIZE = 20;
-export const NUDGE_PRESETS = Object.freeze([
-  'Hey! Are you almost done charging? 🙏',
-  "I'm next in queue — just checking in!",
-  "No rush, just confirming you're still there.",
-  'I need to charge before I leave today.',
-]);
-export const EMERGENCY_REASONS = Object.freeze(['Very low battery', 'Need vehicle for emergency', 'Other']);

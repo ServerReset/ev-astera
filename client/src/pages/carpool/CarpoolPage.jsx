@@ -23,7 +23,7 @@ import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { formatDateTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
-import { ENV, DIRECTION_LABEL, WEEKDAYS, CARPOOL_ROLE } from '@/utils/constants.js';
+import { DIRECTION_LABEL, WEEKDAYS, CARPOOL_ROLE } from '@/utils/constants.js';
 
 const TABS = [
   { key: 'find', label: 'Find a ride', icon: Search },
@@ -100,9 +100,7 @@ function FindTab({ groups }) {
   const [offerOpen, setOfferOpen] = useState(false);
   const [bookRide, setBookRide] = useState(null);
 
-  useRealtime('carpool-rides', ['carpool_rides', 'carpool_bookings'], rides.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('carpool-rides', ['carpool_rides', 'carpool_bookings'], rides.refetch);
 
   return (
     <>
@@ -148,9 +146,7 @@ function MyRidesTab({ groups }) {
   const [busyId, setBusyId] = useState(null);
   const [confirm, confirmDialog] = useConfirm();
 
-  useRealtime('carpool-myrides', ['carpool_rides', 'carpool_bookings'], mine.refetch, {
-    filter: ENV.locationId ? `location_id=eq.${ENV.locationId}` : undefined,
-  });
+  useRealtime('carpool-myrides', ['carpool_rides', 'carpool_bookings'], mine.refetch);
 
   const driving = mine.data?.driving || [];
   const riding = mine.data?.riding || [];

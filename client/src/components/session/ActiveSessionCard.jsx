@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Zap, Clock, Timer } from 'lucide-react';
-import { Card } from '@/components/common/Card.jsx';
+import { Zap, Clock, Timer, ArrowUpRight, Car } from 'lucide-react';
 import { Button } from '@/components/common/Button.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { useCountdown, useElapsed } from '@/hooks/useCountdown.js';
 import { formatTime } from '@/utils/time.js';
 import { SESSION_STATUS } from '@/utils/constants.js';
@@ -11,6 +11,9 @@ import { cn } from '@/utils/cn.js';
 /**
  * Banner for the viewer's own active session: a live countdown to ETA, overtime emphasis,
  * and quick actions (extend ETA, end). Rendered at the top of the dashboard when present.
+ *
+ * One of the two approved hero-glass moments — real SVG-filter refraction (not a flat blur),
+ * tuned bolder (scale/chroma) than the ambient .lg-panel usage on nav/modals/toasts.
  */
 export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
   const overtime = session.status === SESSION_STATUS.OVERTIME;
@@ -18,6 +21,7 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
   const { label: elapsedLabel } = useElapsed(session.etaAt);
   const label = overtime ? elapsedLabel : countdownLabel;
   const [busy, setBusy] = useState(false);
+  const glassRef = useLiquidGlass(true, { scale: -95, chroma: 6, blur: 7, saturate: 1.5, mapBlur: 18, border: 0.09 });
 
   const wrap = (fn) => async () => {
     setBusy(true);
@@ -29,44 +33,60 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
   };
 
   return (
-    <Card className={cn('relative overflow-hidden', overtime ? 'border-warning/50' : 'border-brand/40')}>
-      <div className={cn('absolute inset-x-0 top-0 h-1', overtime ? 'bg-warning' : 'bg-brand')} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className={cn('grid h-12 w-12 place-items-center rounded-2xl', overtime ? 'bg-warning/15 text-warning' : 'bg-brand/15 text-brand-strong animate-pulse-ring')}>
-            <Zap className="h-6 w-6" />
+    <div
+      ref={glassRef}
+      className={cn(
+        'lg-hero relative overflow-hidden rounded-xl-increased border p-5 animate-pop-in',
+        overtime ? 'border-warning/50' : 'border-brand/40'
+      )}
+    >
+      <div
+        className={cn(
+          'pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl',
+          overtime ? 'bg-warning/20' : 'bg-brand/25'
+        )}
+        aria-hidden
+      />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <span
+            className={cn(
+              'grid h-14 w-14 shrink-0 place-items-center rounded-2xl',
+              overtime ? 'bg-warning/15 text-warning' : 'bg-brand/15 text-brand-strong animate-pulse-ring'
+            )}
+          >
+            <Zap className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-sm text-muted">{session.chargerName || 'Your charger'}</p>
-            <p className="text-lg font-semibold text-content">
-              {overtime ? 'Overtime' : 'Charging'}
-            </p>
+            <p className="text-body-sm text-muted">{session.chargerName || 'Your charger'}</p>
+            <p className="text-headline-sm text-content">{overtime ? 'Overtime' : 'Charging'}</p>
           </div>
         </div>
 
         <div className="text-right">
-          <div className={cn('flex items-center justify-end gap-1.5 text-2xl font-bold tabular-nums', overtime ? 'text-warning' : 'text-content')}>
-            {overtime ? <Timer className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+          <div className={cn('flex items-center justify-end gap-1.5 text-display-sm tabular-nums', overtime ? 'text-warning' : 'text-content')}>
+            {overtime ? <Timer className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
             {overtime ? `+${label}` : done ? '0:00' : label}
           </div>
-          <p className="text-xs text-faint">
-            {overtime ? 'over your estimate' : `est. done ${formatTime(session.etaAt)}`}
-          </p>
+          <p className="text-xs text-faint">{overtime ? 'over your estimate' : `est. done ${formatTime(session.etaAt)}`}</p>
         </div>
       </div>
 
       {overtime && (
-        <div className="mt-3">
+        <div className="relative mt-4">
           <Badge tone="warning">Others may be waiting — please wrap up or extend.</Badge>
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="relative mt-5 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" loading={busy} onClick={wrap(onExtend)}>
+          <ArrowUpRight className="h-4 w-4" />
           Adjust ETA
         </Button>
         {onLinkCarpool && (
           <Button variant="ghost" size="sm" onClick={onLinkCarpool}>
+            <Car className="h-4 w-4" />
             Offer a carpool
           </Button>
         )}
@@ -74,6 +94,6 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
           End session
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -14,14 +14,14 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
   const score = ride.matchScore;
 
   return (
-    <div className="card flex flex-col gap-3 p-4">
+    <div className="card rounded-xl-increased flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand/15 text-brand-strong">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand-strong">
             <Car className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-semibold text-content">{ride.driverName || 'You'}</p>
+            <p className="text-title-md text-content">{ride.driverName || 'You'}</p>
             <span className="text-xs text-muted">{DIRECTION_LABEL[ride.direction]}</span>
           </div>
         </div>
@@ -54,7 +54,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
         )}
       </div>
 
-      {ride.notes && <p className="rounded-lg bg-bg-elevated px-3 py-2 text-sm text-muted">{ride.notes}</p>}
+      {ride.notes && <p className="rounded-xl bg-bg-elevated px-3 py-2 text-sm text-muted">{ride.notes}</p>}
 
       <div className={cn('mt-auto flex gap-2 pt-1', variant !== 'driving' && 'justify-end')}>
         {variant === 'browse' && (

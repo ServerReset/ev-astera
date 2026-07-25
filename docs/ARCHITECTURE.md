@@ -79,9 +79,13 @@ No service calls another service's side effects directly. This is what keeps mod
 
 `configService.get(key, locationId)` reads the `settings` table, caches per `(location,key)` for 60s. Admin PATCH invalidates the cache. All business rules — including carpool ones (`carpool_min_lead_minutes`, `carpool_priority_enabled`, `carpool_credit_per_trip`, `carpool_co2_grams_per_mile`, …) — flow through here.
 
-## Location scoping
+## Location scoping (multi-office)
 
-Every table carries `location_id`; every scoped route is `/api/locations/:locationId/...`. `locationScope` validates the id exists and attaches `req.locationId`. Multi-site later = insert rows + expose the client `LocationContext` selector. No architectural change.
+Every table carries `location_id`; every scoped route is `/api/locations/:locationId/...`. `locationScope` validates the id exists and is active, attaches `req.locationId` + `req.locationTz` (the office's own timezone — see `utils/locationTz.js`), and enforces that the caller's own home office matches the route param — **except** for `super_admin`, who is exempt from that equality check and can reuse any site-admin route against any office (see `middleware/locationScope.js`).
+
+Offices themselves are managed by the root-scoped `office` module (`GET /api/offices` public for the signup dropdown; create/deactivate/reactivate are `super_admin`-only). An office's own identity (name/address/timezone) is edited through the `admin` module (`GET/PATCH /admin/office`) instead, so a site-admin can fix their own office without super-admin involvement.
+
+On the client, `services/endpoints.js`'s `loc()` resolves the current office dynamically — a super-admin's selected office (`stores/officeStore.js`) if set, otherwise the logged-in user's own `locationId` — never a build-time constant. `utils/time.js` mirrors this for display: every formatter resolves its timezone the same way, so times always read in the *relevant* office's local time regardless of the viewing device's own timezone.
 
 ## Event payloads (reference)
 

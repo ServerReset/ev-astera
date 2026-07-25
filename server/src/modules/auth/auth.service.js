@@ -4,6 +4,10 @@ import { emit } from '../../events/eventBus.js';
 import { EVENTS } from '../../events/events.js';
 import { env } from '../../config/index.js';
 
+// This module still needs `env` for the cookie helpers below (isProd, refresh expiry) even
+// though register()/login() no longer inject env.defaultLocationId — locationId now comes from
+// the request body (register: user-selected office) or is unused (login: looked up by email).
+
 const COOKIE_NAME = 'ev_refresh';
 
 export function setRefreshCookie(res, token, remember) {
@@ -25,13 +29,13 @@ export const refreshCookieName = COOKIE_NAME;
 
 export const authService = {
   async register(input) {
-    const result = await authProvider.register({ ...input, locationId: env.defaultLocationId });
+    const result = await authProvider.register(input);
     emit(EVENTS.USER_REGISTERED, { locationId: result.user.locationId, userId: result.user.id });
     return result;
   },
 
   async login(input) {
-    return authProvider.login({ ...input, locationId: env.defaultLocationId });
+    return authProvider.login(input);
   },
 
   async refresh(refreshToken) {

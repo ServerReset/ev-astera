@@ -84,12 +84,14 @@ export default {
         'elevation-1': 'var(--shadow-elevation-1)',
         'elevation-2': 'var(--shadow-elevation-2)',
         'elevation-3': 'var(--shadow-elevation-3)',
+        'hero-glow': 'var(--shadow-hero-glow)',
       },
       // M3 duration tokens as Tailwind `duration-*` utilities (additive to the numeric defaults).
       transitionDuration: {
         short: 'var(--duration-short)',
         medium: 'var(--duration-medium)',
         long: 'var(--duration-long)',
+        spring: 'var(--duration-spring)',
       },
       transitionTimingFunction: {
         emphasized: 'var(--ease-emphasized)',
@@ -98,6 +100,8 @@ export default {
         standard: 'var(--ease-standard)',
         'standard-decelerate': 'var(--ease-standard-decelerate)',
         'standard-accelerate': 'var(--ease-standard-accelerate)',
+        spring: 'var(--ease-spring)',
+        'spring-soft': 'var(--ease-spring-soft)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
@@ -108,6 +112,13 @@ export default {
         'scale-in': {
           from: { opacity: '0', transform: 'scale(0.96)' },
           to: { opacity: '1', transform: 'scale(1)' },
+        },
+        // M3 Expressive pop-in: overshoots past 1.0 then settles — for hero-moment mounts
+        // (ActiveSessionCard, podium rows), not for routine list/content entrances.
+        'pop-in': {
+          '0%': { opacity: '0', transform: 'scale(0.9) translateY(6px)' },
+          '60%': { opacity: '1', transform: 'scale(1.015) translateY(0)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
         },
         pulseRing: {
           '0%': { boxShadow: '0 0 0 0 rgb(var(--c-brand) / 0.5)' },
@@ -121,6 +132,7 @@ export default {
         'fade-in': 'fade-in var(--duration-medium) var(--ease-emphasized-decelerate)',
         'slide-up': 'slide-up var(--duration-medium) var(--ease-emphasized-decelerate)',
         'scale-in': 'scale-in var(--duration-short) var(--ease-emphasized-decelerate)',
+        'pop-in': 'pop-in var(--duration-spring) var(--ease-spring)',
         'pulse-ring': 'pulseRing 2s infinite',
       },
     },

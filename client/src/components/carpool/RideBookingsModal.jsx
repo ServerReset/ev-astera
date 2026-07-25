@@ -44,7 +44,7 @@ export function RideBookingsModal({ open, onClose, rideId, onChanged }) {
       ) : (
         <ul className="space-y-2">
           {bookings.map((b) => (
-            <li key={b.id} className="rounded-xl bg-bg-elevated p-3">
+            <li key={b.id} className="rounded-2xl bg-bg-elevated p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium text-content">{b.riderName}</p>

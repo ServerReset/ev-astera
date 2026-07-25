@@ -5,6 +5,7 @@ import { authenticate } from '../../middleware/authenticate.js';
 import { validate } from '../../middleware/validate.js';
 import { ok } from '../../utils/respond.js';
 import { env } from '../../config/index.js';
+import { getLocationMeta } from '../../utils/locationTz.js';
 import { updateProfileSchema, changePasswordSchema } from '../../../../shared/validation.js';
 import { userService } from './user.service.js';
 import { authService } from '../auth/auth.service.js';
@@ -38,9 +39,11 @@ export default defineModule({
 
     router.get(
       '/me/stats',
-      asyncHandler(async (req, res) =>
-        ok(res, await userService.getStats(req.user.userId, req.user.locationId || env.defaultLocationId))
-      )
+      asyncHandler(async (req, res) => {
+        const locationId = req.user.locationId || env.defaultLocationId;
+        const meta = await getLocationMeta(locationId);
+        ok(res, await userService.getStats(req.user.userId, locationId, meta?.tz));
+      })
     );
 
     router.get(

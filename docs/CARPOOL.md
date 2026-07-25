@@ -2,7 +2,7 @@
 
 Carpooling is a first-class feature module. It reuses the same seams as everything else (routes → service → events → listeners → jobs, config-driven rules, Realtime tables) and adds domain-specific pieces: a **matcher** and an **impact** calculator.
 
-## Data model (see schema.sql for full DDL)
+## Data model (see server/prisma/schema.prisma for full DDL)
 
 - `carpool_rides` — a driver's offered trip. `direction` (`to_site` | `from_site`), `origin_label` (free-text address/place name — no coordinates), `depart_at`, `seats_total`, `seats_available`, `status` (`open|full|in_progress|completed|cancelled`), optional `schedule_id`, optional `linked_session_id` (the driver's charging session that day).
 - `carpool_bookings` — a rider's seat on a ride. `status` (`requested|confirmed|declined|cancelled|completed`), `pickup_label` (free-text), `seats` (default 1).

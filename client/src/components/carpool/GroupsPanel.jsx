@@ -59,7 +59,7 @@ export function GroupsPanel({ onGroupsChanged }) {
       ) : (
         <ul className="space-y-2">
           {groups.data.map((g) => (
-            <li key={g.id} className="flex items-center justify-between gap-3 rounded-xl bg-bg-elevated p-3">
+            <li key={g.id} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-elevated p-3">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium text-content">
                   {g.name}

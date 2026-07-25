@@ -1,21 +1,33 @@
 /**
  * All API calls, grouped by domain. Every function returns the unwrapped payload
- * (the interceptor already stripped the `{ data }` envelope). Location-scoped paths use
- * the single configured location id; if the app ever goes multi-site, swap `loc()`.
+ * (the interceptor already stripped the `{ data }` envelope). Location-scoped paths resolve
+ * dynamically via `loc()`: a super-admin's currently-selected office (officeStore) if set,
+ * otherwise the logged-in user's own home office (authStore) — everyone else never sets a
+ * selection, so this is transparently just "my office" for regular users/site-admins.
  */
 import { api } from './api.js';
-import { ENV } from '@/utils/constants.js';
+import { useAuthStore } from '@/stores/authStore.js';
+import { useOfficeStore } from '@/stores/officeStore.js';
 
-const loc = () => ENV.locationId;
+const loc = () => useOfficeStore.getState().selectedOfficeId || useAuthStore.getState().user?.locationId;
 const L = (path) => `/locations/${loc()}${path}`;
 
 // ── Auth (root-scoped) ─────────────────────────────────────────────────────────
 export const authApi = {
-  signupStatus: () => api.get('/auth/signup-status'),
+  signupStatus: (locationId) => api.get('/auth/signup-status', { params: { locationId } }),
   register: (body) => api.post('/auth/register', body),
   login: (body) => api.post('/auth/login', body),
   refresh: () => api.post('/auth/refresh', {}),
   logout: () => api.post('/auth/logout', {}),
+};
+
+// ── Offices (root-scoped) ───────────────────────────────────────────────────────
+export const officeApi = {
+  list: () => api.get('/offices'),
+  listForAdmin: () => api.get('/offices/admin'),
+  create: (body) => api.post('/offices', body),
+  deactivate: (officeId) => api.post(`/offices/${officeId}/deactivate`, {}),
+  reactivate: (officeId) => api.post(`/offices/${officeId}/reactivate`, {}),
 };
 
 // ── Users (root-scoped) ─────────────────────────────────────────────────────────
@@ -37,6 +49,7 @@ export const chargerApi = {
 
 // ── Sessions ─────────────────────────────────────────────────────────────────
 export const sessionApi = {
+  getConfig: () => api.get(L('/sessions/config')),
   active: () => api.get(L('/sessions/active')),
   start: (body) => api.post(L('/sessions'), body),
   updateEta: (sessionId, durationMinutes) => api.patch(L(`/sessions/${sessionId}/eta`), { durationMinutes }),
@@ -54,6 +67,7 @@ export const queueApi = {
 
 // ── Messages (nudge / emergency) ────────────────────────────────────────────────
 export const messageApi = {
+  getConfig: () => api.get(L('/messages/config')),
   nudge: (body) => api.post(L('/messages/nudge'), body),
   reactToNudge: (body) => api.post(L('/messages/nudge/react'), body),
   emergencies: () => api.get(L('/messages/emergencies')),
@@ -113,6 +127,11 @@ export const reliabilityApi = {
   leaderboard: (limit) => api.get(L('/reliability/leaderboard'), { params: { limit } }),
 };
 
+// ── Achievements ─────────────────────────────────────────────────────────────────
+export const achievementApi = {
+  me: () => api.get(L('/achievements/me')),
+};
+
 // ── Admin (location-scoped, admin-gated) ────────────────────────────────────────
 export const adminApi = {
   overview: () => api.get(L('/admin/overview')),
@@ -124,6 +143,8 @@ export const adminApi = {
   forceEndSession: (sessionId) => api.post(L(`/admin/sessions/${sessionId}/force-end`), {}),
   getSettings: () => api.get(L('/admin/settings')),
   updateSettings: (patch) => api.patch(L('/admin/settings'), patch),
+  getOffice: () => api.get(L('/admin/office')),
+  updateOffice: (patch) => api.patch(L('/admin/office'), patch),
   listAnnouncements: () => api.get(L('/admin/announcements')),
   createAnnouncement: (body) => api.post(L('/admin/announcements'), body),
   deleteAnnouncement: (id) => api.delete(L(`/admin/announcements/${id}`)),

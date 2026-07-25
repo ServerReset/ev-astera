@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore.js';
 import { Spinner } from '@/components/common/States.jsx';
-import { ROLES } from '@/utils/constants.js';
+import { ADMIN_ROLES } from '@/utils/constants.js';
 
 /** Gate for authenticated routes. Redirects to /login (preserving intended path). */
 export function RequireAuth({ children }) {
@@ -21,10 +21,10 @@ export function RequireAuth({ children }) {
   return children;
 }
 
-/** Gate for admin-only routes. Sends non-admins home. */
+/** Gate for admin-only routes (site-admin or super-admin). Sends non-admins home. */
 export function RequireAdmin({ children }) {
   const role = useAuthStore((s) => s.user?.role);
-  if (role !== ROLES.ADMIN) return <Navigate to="/" replace />;
+  if (!ADMIN_ROLES.includes(role)) return <Navigate to="/" replace />;
   return children;
 }
 

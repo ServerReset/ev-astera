@@ -1,6 +1,8 @@
 /**
- * Admin module: location-scoped, admin-only operational controls + config.
- * Every route sits behind authenticate (from the location-scope mount) + authorize('admin').
+ * Admin module: location-scoped, admin-only operational controls + config. Reused by both
+ * site-admins (their own office) and super-admins (any office — locationScope's cross-office
+ * bypass lets a super-admin hit these same routes under a different :locationId).
+ * Every route sits behind authenticate (from the location-scope mount) + authorize(site_admin|super_admin).
  */
 import { defineModule } from '../_kit/defineModule.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
@@ -15,6 +17,7 @@ import {
   adminUpdateUserSchema,
   adminCreateUserSchema,
   chargerNameSchema,
+  updateOfficeSchema,
 } from '../../../../shared/validation.js';
 import { adminService } from './admin.service.js';
 
@@ -23,9 +26,9 @@ export default defineModule({
   basePath: '/admin',
   routes(router) {
     // Location scope + authenticate are applied by the mount; add the admin gate here.
-    router.use(authorize(ROLES.ADMIN));
+    router.use(authorize(ROLES.SITE_ADMIN, ROLES.SUPER_ADMIN));
 
-    router.get('/overview', asyncHandler(async (req, res) => ok(res, await adminService.overview(req.locationId))));
+    router.get('/overview', asyncHandler(async (req, res) => ok(res, await adminService.overview(req.locationId, req.locationTz))));
 
     // Chargers
     router.post(
@@ -87,6 +90,15 @@ export default defineModule({
       asyncHandler(async (req, res) => ok(res, await adminService.updateSettings(req.locationId, req.body, req.user.userId)))
     );
 
+    // Office identity (name/address/timezone) — separate from the settings-key patch above
+    // since these are columns on the locations row itself, not jsonb `settings` rows.
+    router.get('/office', asyncHandler(async (req, res) => ok(res, await adminService.getOffice(req.locationId))));
+    router.patch(
+      '/office',
+      validate(updateOfficeSchema),
+      asyncHandler(async (req, res) => ok(res, await adminService.updateOffice(req.locationId, req.body)))
+    );
+
     // Announcements
     router.get('/announcements', asyncHandler(async (req, res) => ok(res, await adminService.listAnnouncements(req.locationId))));
     router.post(
@@ -110,16 +122,20 @@ export default defineModule({
     router.patch(
       '/users/:userId',
       validate(adminUpdateUserSchema),
-      asyncHandler(async (req, res) => ok(res, await adminService.updateUser(req.locationId, req.params.userId, req.body)))
+      asyncHandler(async (req, res) =>
+        ok(res, await adminService.updateUser(req.locationId, req.params.userId, req.body, req.user.role))
+      )
     );
     router.post(
       '/users',
       validate(adminCreateUserSchema),
-      asyncHandler(async (req, res) => created(res, await adminService.createUser(req.locationId, req.body)))
+      asyncHandler(async (req, res) => created(res, await adminService.createUser(req.locationId, req.body, req.user.role)))
     );
     router.post(
       '/users/:userId/reset-password',
-      asyncHandler(async (req, res) => ok(res, await adminService.resetUserPassword(req.locationId, req.params.userId)))
+      asyncHandler(async (req, res) =>
+        ok(res, await adminService.resetUserPassword(req.locationId, req.params.userId, req.user.role))
+      )
     );
 
     // Audit feed

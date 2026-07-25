@@ -71,7 +71,7 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
               type="button"
               onClick={() => toggle(item.key)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-colors',
+                'flex w-full items-center gap-3 rounded-2xl border p-3 text-left text-sm transition-colors',
                 on ? 'border-success/50 bg-success/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
               )}
             >

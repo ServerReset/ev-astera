@@ -3,7 +3,7 @@
  * Import individual schemas; they are grouped by domain.
  */
 import { z } from 'zod';
-import { CARPOOL_DIRECTION, CARPOOL_ROLE, EMERGENCY_REASONS } from './constants.js';
+import { CARPOOL_DIRECTION, CARPOOL_ROLE } from './constants.js';
 
 // ── Primitives ─────────────────────────────────────────────────────────────────
 export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email');
@@ -33,6 +33,7 @@ export const registerSchema = z
     password: passwordSchema,
     confirmPassword: z.string(),
     vehicleDescription: z.string().trim().min(1, 'Vehicle description is required').max(120),
+    locationId: uuidSchema,
     lat: z.number().min(-90).max(90).optional(),
     lng: z.number().min(-180).max(180).optional(),
   })
@@ -40,6 +41,8 @@ export const registerSchema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
+
+export const signupStatusQuerySchema = z.object({ locationId: uuidSchema });
 
 export const loginSchema = z.object({
   email: emailSchema,
@@ -66,11 +69,16 @@ export const updateProfileSchema = z.object({
 });
 
 // ── Sessions ─────────────────────────────────────────────────────────────────
+// This is a sanity ceiling only, NOT the real business-rule max — that's the admin-editable
+// SETTING_KEYS.MAX_SESSION_HOURS, enforced server-side in session.service.js's start()/
+// updateEta(). Keeping this generous (24h) means an admin raising or lowering the real setting
+// can never silently desync from this client-side pre-check; the UI (DurationSlider via
+// sessionApi.getConfig()) fetches and displays the REAL max, this schema just rejects garbage.
 const durationMinutesSchema = z
   .number()
   .int()
   .min(30, 'Minimum 30 minutes')
-  .max(4 * 60, 'Maximum 4 hours');
+  .max(24 * 60, 'Maximum 24 hours');
 
 export const startSessionSchema = z.object({
   chargerId: uuidSchema,
@@ -102,12 +110,20 @@ export const nudgeSchema = z.object({
   sessionId: uuidSchema,
   message: z.string().trim().min(1).max(100),
 });
+// `up`/`down` are kept for backward-compat with rows stored before the reaction pack landed;
+// `pray`/`run`/`eyes` were added so a nudge reply can carry real context ("almost done" / "on my
+// way" / "seen it") instead of a bare up/down. The DB column is a plain nullable string, so
+// widening this enum needs no migration — see message/listeners.js's NUDGE_REACTION_TEMPLATE map.
 export const nudgeReactSchema = z.object({
   messageId: uuidSchema,
-  reaction: z.enum(['up', 'down']),
+  reaction: z.enum(['up', 'down', 'pray', 'run', 'eyes']),
 });
+// `reason` is validated as free text here (not a z.enum) because the real allowed list is
+// admin-editable per office (SETTING_KEYS.EMERGENCY_REASONS) and can't be known at this
+// module's load time — message.service.js's requestEmergency() checks the submitted reason
+// against that location's actual configured list before accepting it.
 export const emergencyRequestSchema = z.object({
-  reason: z.enum(EMERGENCY_REASONS),
+  reason: z.string().trim().min(1).max(80),
   explanation: z.string().trim().max(200).optional(),
 });
 export const emergencyRespondSchema = z.object({
@@ -132,7 +148,7 @@ export const updateSettingsSchema = z.record(z.string(), z.union([z.number(), z.
 export const setOfflineSchema = z.object({ reason: z.string().trim().max(200).optional() });
 export const chargerNameSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export const adminUpdateUserSchema = z.object({
-  role: z.enum(['user', 'admin']).optional(),
+  role: z.enum(['user', 'site_admin', 'super_admin']).optional(),
   active: z.boolean().optional(),
   resetWeek: z.boolean().optional(),
 });
@@ -140,8 +156,33 @@ export const adminCreateUserSchema = z.object({
   email: asteraEmailSchema,
   password: passwordSchema,
   displayName: z.string().trim().min(1).max(80),
-  role: z.enum(['user', 'admin']),
+  role: z.enum(['user', 'site_admin', 'super_admin']),
 });
+
+// ── Offices ──────────────────────────────────────────────────────────────────
+// Intl.supportedValuesOf isn't in every browser/Node version this runs in — when absent, skip
+// the allowlist check rather than rejecting every timezone string (the server DB doesn't
+// validate the value further, and a typo'd zone just falls back to UTC display, not a crash).
+const ianaZones = (() => {
+  try {
+    return new Set(Intl.supportedValuesOf('timeZone'));
+  } catch {
+    return null;
+  }
+})();
+const timezoneSchema = z
+  .string()
+  .trim()
+  .min(1, 'Timezone is required')
+  .max(64)
+  .refine((v) => !ianaZones || ianaZones.has(v), 'Not a recognized IANA timezone');
+
+export const createOfficeSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  address: z.string().trim().min(3).max(240).optional().or(z.literal('')),
+  timezone: timezoneSchema,
+});
+export const updateOfficeSchema = createOfficeSchema.partial();
 
 // ── Carpool ──────────────────────────────────────────────────────────────────
 const directionEnum = z.enum([CARPOOL_DIRECTION.TO_SITE, CARPOOL_DIRECTION.FROM_SITE]);

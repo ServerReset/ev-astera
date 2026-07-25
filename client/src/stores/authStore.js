@@ -6,14 +6,15 @@
 import { create } from 'zustand';
 import { authApi, userApi } from '@/services/endpoints.js';
 import { api, setAccessToken, setAuthClearedHandler, normalizeError } from '@/services/api.js';
-import { ROLES } from '@/utils/constants.js';
+import { ADMIN_ROLES, ROLES } from '@/utils/constants.js';
 
 export const useAuthStore = create((set, get) => ({
   user: null,
   status: 'idle', // 'idle' | 'loading' | 'authenticated' | 'unauthenticated'
   error: null,
 
-  isAdmin: () => get().user?.role === ROLES.ADMIN,
+  isAdmin: () => ADMIN_ROLES.includes(get().user?.role),
+  isSuperAdmin: () => get().user?.role === ROLES.SUPER_ADMIN,
 
   /** Called once on mount: try to restore a session via the refresh cookie. */
   bootstrap: async () => {

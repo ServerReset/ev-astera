@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { nudgeSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -6,18 +6,25 @@ import { Textarea } from '@/components/common/Input.jsx';
 import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
-import { NUDGE_PRESETS } from '@/utils/constants.js';
+import { useMessageConfig } from '@/hooks/useMessageConfig.js';
 import { cn } from '@/utils/cn.js';
 
 /**
  * Send a polite nudge to whoever is charging on a given charger. The recipient is derived
  * server-side from the live session; we only send chargerId + sessionId + message. Presets
- * make the common case one tap; a custom message is allowed within the 100-char limit.
+ * (admin-editable via useMessageConfig — not a hardcoded list) make the common case one tap;
+ * a custom message is allowed within the 100-char limit.
  */
 export function NudgeModal({ open, onClose, charger }) {
-  const [message, setMessage] = useState(NUDGE_PRESETS[0]);
+  const { nudgePresets } = useMessageConfig();
+  const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Seed the textarea with the first preset once the list loads.
+  useEffect(() => {
+    if (nudgePresets?.length && !message) setMessage(nudgePresets[0]);
+  }, [nudgePresets, message]);
 
   const submit = async () => {
     setError(null);
@@ -57,13 +64,13 @@ export function NudgeModal({ open, onClose, charger }) {
     >
       <p className="mb-3 text-sm text-muted">Pick a quick message or write your own.</p>
       <div className="mb-3 space-y-2">
-        {NUDGE_PRESETS.map((preset) => (
+        {(nudgePresets || []).map((preset) => (
           <button
             key={preset}
             type="button"
             onClick={() => setMessage(preset)}
             className={cn(
-              'w-full rounded-xl border p-2.5 text-left text-sm transition-colors',
+              'w-full rounded-2xl border p-2.5 text-left text-sm transition-colors',
               message === preset ? 'border-brand bg-brand/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
             )}
           >

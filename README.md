@@ -118,11 +118,16 @@ See [`server/.env.example`](server/.env.example) and [`client/.env.example`](cli
 
 ## Database setup (Prisma + Vercel Postgres)
 
-1. In the Vercel dashboard, add a Postgres database to this project (Project → Storage). Vercel injects the connection strings as project env vars — pull them locally with `vercel env pull`.
-2. `cd server && npx prisma migrate dev --name init` — creates every table from [`server/prisma/schema.prisma`](server/prisma/schema.prisma).
-3. `npx prisma db seed` — runs [`server/prisma/seed.js`](server/prisma/seed.js): creates the default location (fixed id `11111111-1111-1111-1111-111111111111`), an admin user (`admin@asteralabs.com`, placeholder password), and 3 chargers. Settings aren't seeded — `configService` falls back to `shared/constants.js`'s `SETTING_DEFAULTS` when no row exists, so defaults apply automatically.
-4. **Required:** from `server/`, run `npm run seed:admin` (defaults to password `ChangeMe123!`, or pass your own: `npm run seed:admin "MyPassword1!"`) to set a real bcrypt password hash — skipping it means the admin login 401s.
-5. Both `VITE_DEFAULT_LOCATION_ID` (client) and `DEFAULT_LOCATION_ID` (server) must be set to `11111111-1111-1111-1111-111111111111` — they have to match the location the seed actually created, or every request 404s at the location-scope check.
+[`server/prisma/schema.prisma`](server/prisma/schema.prisma) is the **only** place the schema is ever defined — there is no parallel hand-maintained SQL file to keep in sync. Every schema change is a real Prisma migration (`prisma migrate dev`), tracked in `server/prisma/migrations/` with a proper history table, never a one-off SQL script pasted into a console.
+
+1. In the Vercel dashboard, add a Postgres database to this project (Project → Storage → Prisma Postgres → Quickstart). That page gives you **two** connection strings — copy both into `server/.env`:
+   - `POSTGRES_URL` — the **pooled** string (host `pooled.db.prisma.io`). The running app uses this for every query.
+   - `POSTGRES_URL_DIRECT` — the **direct** string (host `db.prisma.io`). Only `prisma migrate`/`db push`/`db seed`/Prisma Studio use this — migrations need session continuity the pooler's transaction mode can't provide. Do not swap these: using the direct URL for app traffic works fine at low concurrency but silently exhausts connections under real load; using the pooled URL for a migration fails outright.
+2. `cd server && npx prisma migrate dev --name init` — creates every table from `schema.prisma`, plus the two partial indexes Prisma's DSL can't express (folded directly into that migration's SQL — see its own comment for what they do).
+3. `npx prisma db seed` — runs [`server/prisma/seed.js`](server/prisma/seed.js): seeds 3 offices across distinct timezones (Santa Clara, Austin, Bengaluru), one super-admin who can manage all of them, one site-admin + 3 chargers per office — all with real bcrypt password hashes set inline (printed to the console when the script finishes, no separate password-setting step needed). Settings aren't seeded — `configService` falls back to `shared/constants.js`'s `SETTING_DEFAULTS` when no row exists, so defaults apply automatically to every office.
+4. `DEFAULT_LOCATION_ID` (server-only; there's no client-side equivalent — the app discovers its office dynamically from the logged-in user) is an optional soft fallback used by a couple of edge-case call sites (an audit-log entry or push notification with no location in scope). Set it to the first seeded office's id (`11111111-1111-1111-1111-111111111111`) if you want those fallbacks to resolve to something real; leaving it unset is fine too.
+
+To make a schema change later: edit `schema.prisma`, then `npx prisma migrate dev --name <what-changed>` — never hand-write an `ALTER TABLE` against a live database.
 
 No Row-Level Security or anon key is involved — Prisma always connects with full server-side credentials, and the client never talks to the database directly (see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for what replaced the old Supabase Realtime/RLS model).
 
@@ -131,8 +136,8 @@ No Row-Level Security or anon key is involved — Prisma always connects with fu
 Everything — client build and API — deploys as **one Vercel project**, from your local machine via the Vercel CLI. No GitHub integration is used anywhere in this path.
 
 1. `npm install -g vercel && vercel login`, then from the repo root `vercel link` (decline connecting a Git repo — this stays local-CLI-only).
-2. Add a Postgres database to the project (Storage tab) if you haven't already, and set the remaining secrets in the dashboard: `JWT_SECRET`, `CRON_SECRET`, VAPID keys, `DEFAULT_LOCATION_ID`.
-3. Run the Prisma migration + seed against production (`npx prisma migrate deploy`, `npx prisma db seed`, `npm run seed:admin`) once you're confident it works locally.
+2. Add a Postgres database to the project (Storage tab) if you haven't already, and set the remaining secrets in the dashboard: `JWT_SECRET`, `CRON_SECRET`, VAPID keys, `DEFAULT_LOCATION_ID`, and both `POSTGRES_URL` (pooled) and `POSTGRES_URL_DIRECT` (direct) — see [Database setup](#database-setup-prisma--vercel-postgres) above for which is which.
+3. Run the Prisma migration + seed against production (`npx prisma migrate deploy`, `npx prisma db seed`) once you're confident it works locally. `migrate deploy` (not `migrate dev`) applies the same migration history from `server/prisma/migrations/` without prompting or generating new migrations — that folder is the single source of truth for both environments.
 4. From the repo root: `vercel --prod` — the root [`vercel.json`](vercel.json) builds `client/` (`buildCommand`, `outputDirectory: client/dist`), serves [`api/[[...path]].js`](api/%5B%5B...path%5D%5D.js) as the API function for every `/api/*` request, and registers the daily cron declared in `vercel.json` against [`api/cron/daily.js`](api/cron/daily.js).
 5. Check the Vercel dashboard's Cron Jobs tab to confirm `/api/cron/daily` is scheduled.
 

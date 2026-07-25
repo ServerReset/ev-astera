@@ -45,15 +45,20 @@ export function NudgeInboxWidget() {
           const meta = NOTIFICATION_META[n.type] || NOTIFICATION_META.system;
           return (
             <li key={n.id}>
-              <button
-                type="button"
+              {/* A real nudge row nests NudgeReactionButtons' own <button>s — a <button> wrapper
+                  here would be invalid HTML (nested interactive elements break focus/AT
+                  semantics), so this is a div with button semantics instead. */}
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => open(n)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open(n))}
                 className={cn(
-                  'flex w-full items-start gap-2.5 rounded-xl p-2 text-left transition-colors hover:bg-surface-2',
+                  'flex w-full items-start gap-2.5 rounded-2xl p-2 text-left transition-colors hover:bg-surface-2 cursor-pointer',
                   !n.readAt && 'ring-1 ring-brand/30'
                 )}
               >
-                <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg', TONE_CLASS[meta.tone] || TONE_CLASS.muted)}>
+                <span className={cn('mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl', TONE_CLASS[meta.tone] || TONE_CLASS.muted)}>
                   <Icon name={meta.icon} className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -68,7 +73,7 @@ export function NudgeInboxWidget() {
                     </div>
                   )}
                 </div>
-              </button>
+              </div>
             </li>
           );
         })}

@@ -20,7 +20,7 @@ export function Skeleton({ className }) {
 /** Empty-state placeholder with optional CTA. */
 export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border py-12 px-6 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl-increased border border-dashed border-border py-12 px-6 text-center">
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-faint">
         <Icon className="h-6 w-6" />
       </span>

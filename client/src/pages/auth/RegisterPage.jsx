@@ -6,9 +6,9 @@ import { useAuthStore } from '@/stores/authStore.js';
 import { useZodForm } from '@/hooks/useZodForm.js';
 import { RedirectIfAuthed } from '@/components/auth/guards.jsx';
 import { AuthShell } from './AuthShell.jsx';
-import { Input } from '@/components/common/Input.jsx';
+import { Input, Select } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
-import { authApi } from '@/services/endpoints.js';
+import { authApi, officeApi } from '@/services/endpoints.js';
 
 /** Wraps navigator.geolocation in a promise with the three real-world failure modes named. */
 function getLocation() {
@@ -38,17 +38,15 @@ export default function RegisterPage() {
   const [formError, setFormError] = useState(null);
   const [geoError, setGeoError] = useState(null);
   const [locating, setLocating] = useState(false);
-  // `statusError: true` is its own conservative branch (not folded into `releaseAt`/
-  // `geofenceEnabled`) — a failed status check should never quietly render as "signups are
-  // open," which is what defaulting releaseAt to null used to do even though geofenceEnabled
-  // defaulted to the safe `true`. Fail closed consistently for both gates instead.
-  const [gateStatus, setGateStatus] = useState({ loading: true, statusError: false, releaseAt: null, geofenceEnabled: true });
 
+  // Offices are fetched once, independent of the signup-status gate below (which is per-office
+  // and re-fetched whenever the selection changes).
+  const [offices, setOffices] = useState({ loading: true, error: false, list: [] });
   useEffect(() => {
-    authApi
-      .signupStatus()
-      .then((s) => setGateStatus({ loading: false, statusError: false, releaseAt: s.releaseAt, geofenceEnabled: s.geofenceEnabled }))
-      .catch(() => setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnabled: true }));
+    officeApi
+      .list()
+      .then((list) => setOffices({ loading: false, error: false, list }))
+      .catch(() => setOffices({ loading: false, error: true, list: [] }));
   }, []);
 
   const { values, errors, submitting, handleChange, handleSubmit } = useZodForm(registerSchema, {
@@ -57,7 +55,31 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     vehicleDescription: '',
+    locationId: '',
   });
+
+  // Default to the first office once the list loads, so the signup-status fetch below has
+  // something to gate on without the user having to touch the picker first.
+  useEffect(() => {
+    if (values.locationId || offices.list.length === 0) return;
+    handleChange({ target: { name: 'locationId', value: offices.list[0].id, type: 'text' } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offices.list]);
+
+  // `statusError: true` is its own conservative branch (not folded into `releaseAt`/
+  // `geofenceEnabled`) — a failed status check should never quietly render as "signups are
+  // open," which is what defaulting releaseAt to null used to do even though geofenceEnabled
+  // defaulted to the safe `true`. Fail closed consistently for both gates instead.
+  const [gateStatus, setGateStatus] = useState({ loading: true, statusError: false, releaseAt: null, geofenceEnabled: true });
+
+  useEffect(() => {
+    if (!values.locationId) return;
+    setGateStatus((s) => ({ ...s, loading: true }));
+    authApi
+      .signupStatus(values.locationId)
+      .then((s) => setGateStatus({ loading: false, statusError: false, releaseAt: s.releaseAt, geofenceEnabled: s.geofenceEnabled }))
+      .catch(() => setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnabled: true }));
+  }, [values.locationId]);
 
   const locked = gateStatus.releaseAt && new Date() < new Date(gateStatus.releaseAt);
 
@@ -82,6 +104,21 @@ export default function RegisterPage() {
     if (res.ok) navigate('/', { replace: true });
     else setFormError(res.error?.message || 'Registration failed.');
   });
+
+  if (offices.loading || !values.locationId) return null;
+
+  if (offices.error) {
+    return (
+      <RedirectIfAuthed>
+        <AuthShell title="Can't load offices" subtitle="Try again in a moment">
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <WifiOff className="h-10 w-10 text-danger" />
+            <p className="text-sm text-muted">We couldn't reach the server to list offices. Reload the page to try again.</p>
+          </div>
+        </AuthShell>
+      </RedirectIfAuthed>
+    );
+  }
 
   if (gateStatus.loading) return null;
 
@@ -141,6 +178,14 @@ export default function RegisterPage() {
         }
       >
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          <Select
+            label="Office"
+            name="locationId"
+            value={values.locationId}
+            onChange={handleChange}
+            error={errors.locationId}
+            options={offices.list.map((o) => ({ value: o.id, label: o.name }))}
+          />
           <Input
             label="Full name"
             name="displayName"

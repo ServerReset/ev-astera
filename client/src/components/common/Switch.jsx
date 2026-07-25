@@ -25,7 +25,7 @@ export function Switch({ checked, onChange, label, disabled }) {
     >
       <span
         className={cn(
-          'rounded-full bg-white transition-[width,height] duration-medium ease-emphasized',
+          'rounded-full bg-white transition-[width,height] duration-spring ease-spring',
           checked ? 'h-6 w-6' : 'h-5 w-5'
         )}
         style={{ boxShadow: 'var(--shadow-elevation-1)' }}

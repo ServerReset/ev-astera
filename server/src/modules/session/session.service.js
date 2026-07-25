@@ -27,9 +27,9 @@ import {
 } from '../../../../shared/constants.js';
 import { addMinutes, startOfWeek, now, diffMinutes } from '../../utils/timeUtils.js';
 
-async function assertWeeklyLimit(userId, locationId) {
+async function assertWeeklyLimit(userId, locationId, tz) {
   const max = await configService.getNumber(SETTING_KEYS.MAX_WEEKLY_SESSIONS, locationId);
-  const weekStart = startOfWeek(now());
+  const weekStart = startOfWeek(now(), tz);
   const count = await prisma.sessions.count({
     where: { user_id: userId, started_at: { gte: weekStart } },
   });
@@ -92,7 +92,14 @@ export async function transitionOvertimeSessions(sessions) {
 }
 
 export const sessionService = {
-  async start(locationId, userId, { chargerId, durationMinutes, vehicleDescription }) {
+  /** Real admin-configured bounds, so the client's slider/pre-check never desyncs from what
+   * the server actually enforces (see shared/validation.js's durationMinutesSchema comment). */
+  async getConfig(locationId) {
+    const maxSessionHours = await configService.getNumber(SETTING_KEYS.MAX_SESSION_HOURS, locationId);
+    return { maxSessionMinutes: maxSessionHours * 60 };
+  },
+
+  async start(locationId, tz, userId, { chargerId, durationMinutes, vehicleDescription }) {
     const maxHours = await configService.getNumber(SETTING_KEYS.MAX_SESSION_HOURS, locationId);
     if (durationMinutes > maxHours * 60) {
       throw new BusinessRuleError(`Maximum session is ${maxHours} hours.`, {
@@ -109,7 +116,7 @@ export const sessionService = {
     if (charger.status === CHARGER_STATUS.OFFLINE) throw new BusinessRuleError('This charger is offline.');
 
     await assertNoActiveSession(userId);
-    await assertWeeklyLimit(userId, locationId);
+    await assertWeeklyLimit(userId, locationId, tz);
 
     const etaAt = addMinutes(now(), durationMinutes);
     let data;

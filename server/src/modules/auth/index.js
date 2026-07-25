@@ -5,9 +5,8 @@ import { validate } from '../../middleware/validate.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authLimiter } from '../../middleware/rateLimiter.js';
 import { ok, created } from '../../utils/respond.js';
-import { registerSchema, loginSchema } from '../../../../shared/validation.js';
+import { registerSchema, loginSchema, signupStatusQuerySchema } from '../../../../shared/validation.js';
 import { configService } from '../../services/config.service.js';
-import { env } from '../../config/index.js';
 import { SETTING_KEYS } from '../../../../shared/constants.js';
 import { authService, setRefreshCookie, clearRefreshCookie, refreshCookieName } from './auth.service.js';
 
@@ -16,13 +15,14 @@ export default defineModule({
   scope: 'root',
   basePath: '/auth',
   routes(router) {
-    // Public — lets the register page show a locked/gated state before the user submits.
-    // The real enforcement lives server-side in local.provider.js's register(); this route
-    // exposes nothing sensitive, just the gate state.
+    // Public — lets the register page show a locked/gated state before the user submits, for
+    // whichever office they've picked. The real enforcement lives server-side in
+    // local.provider.js's register(); this route exposes nothing sensitive, just the gate state.
     router.get(
       '/signup-status',
+      validate(signupStatusQuerySchema, 'query'),
       asyncHandler(async (req, res) => {
-        const loc = env.defaultLocationId;
+        const loc = req.query.locationId;
         const releaseAt = await configService.get(SETTING_KEYS.SIGNUP_RELEASE_AT, loc);
         const geofenceEnabled = await configService.getBool(SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED, loc);
         ok(res, { releaseAt: releaseAt || null, geofenceEnabled });

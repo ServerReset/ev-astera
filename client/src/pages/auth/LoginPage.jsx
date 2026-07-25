@@ -70,7 +70,7 @@ export default function LoginPage() {
                 name="rememberMe"
                 checked={values.rememberMe}
                 onChange={handleChange}
-                className="h-4 w-4 rounded border-border bg-bg-elevated text-brand focus:ring-brand"
+                className="h-4 w-4 rounded-md border-border bg-bg-elevated text-brand focus:ring-brand"
               />
               Remember me
             </label>

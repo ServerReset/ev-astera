@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore.js';
 import { allRoutes } from '@/modules/registry.js';
+import { ADMIN_ROLES } from '@shared/constants.js';
 import { AppLayout } from '@/components/layout/AppLayout.jsx';
 import { RequireAuth, RequireAdmin } from '@/components/auth/guards.jsx';
 import { Toaster } from '@/components/common/Toaster.jsx';
@@ -42,7 +43,7 @@ export default function App() {
             <Route
               key={path}
               path={path}
-              element={roles?.includes('admin') ? <RequireAdmin><Element /></RequireAdmin> : <Element />}
+              element={roles?.some((r) => ADMIN_ROLES.includes(r)) ? <RequireAdmin><Element /></RequireAdmin> : <Element />}
             />
           ))}
         </Route>

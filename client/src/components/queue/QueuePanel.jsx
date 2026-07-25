@@ -59,7 +59,7 @@ export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
               <li
                 key={e.id}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2 text-sm',
+                  'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm',
                   isMine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated'
                 )}
               >
@@ -97,7 +97,7 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
   return (
     <div
       className={cn(
-        'mb-3 rounded-xl border p-3',
+        'mb-3 rounded-2xl border p-3',
         notified ? 'border-success/50 bg-success/10' : claimed ? 'border-info/50 bg-info/10' : 'border-border bg-bg-elevated'
       )}
     >

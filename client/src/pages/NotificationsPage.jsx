@@ -168,15 +168,25 @@ export default function NotificationsPage() {
                 className="animate-slide-up [animation-fill-mode:backwards]"
                 style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
               >
-                <button
-                  type="button"
-                  onClick={() => open(n)}
-                  disabled={!clickable && !isUnread}
+                {/* A nudge row nests NudgeReactionButtons' own <button>s — a <button> wrapper
+                    here would be invalid HTML (nested interactive elements break focus/AT
+                    semantics), so this is a div with button semantics instead. */}
+                <div
+                  role="button"
+                  tabIndex={clickable || isUnread ? 0 : -1}
+                  aria-disabled={!clickable && !isUnread}
+                  onClick={() => (clickable || isUnread) && open(n)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && (clickable || isUnread)) {
+                      e.preventDefault();
+                      open(n);
+                    }
+                  }}
                   className={cn(
                     'flex w-full items-start gap-3 rounded-2xl border p-3 text-left',
                     'transition-[background-color,border-color] duration-medium ease-standard',
                     isUnread ? 'border-transparent bg-surface-2' : 'border-border bg-surface',
-                    (clickable || isUnread) && 'hover:border-border-strong',
+                    (clickable || isUnread) && 'hover:border-border-strong cursor-pointer',
                     !clickable && !isUnread && 'cursor-default'
                   )}
                 >
@@ -206,7 +216,7 @@ export default function NotificationsPage() {
                     )}
                   </div>
                   {isUnread && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}
-                </button>
+                </div>
               </li>
             );
           })}

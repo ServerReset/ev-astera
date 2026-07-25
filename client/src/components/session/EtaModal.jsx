@@ -2,39 +2,44 @@ import { useEffect, useState } from 'react';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { DurationSlider } from '@/components/common/DurationSlider.jsx';
+import { useSessionConfig } from '@/hooks/useSessionConfig.js';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 
 /**
  * Minutes between the session's start and its current ETA — the slider's true starting
- * point. Clamped/rounded to the slider's own bounds (30-240, step 15) so an unusual original
- * duration can never render the range input out of bounds.
+ * point. Clamped/rounded to the slider's own bounds (30min .. maxMinutes, step 15) so an
+ * unusual original duration can never render the range input out of bounds.
  */
-function originalDurationMinutes(session) {
-  if (!session?.startedAt || !session?.etaAt) return 120;
+function originalDurationMinutes(session, maxMinutes) {
+  if (!session?.startedAt || !session?.etaAt) return Math.min(120, maxMinutes);
   const mins = Math.round((new Date(session.etaAt).getTime() - new Date(session.startedAt).getTime()) / 60_000);
-  if (mins <= 0) return 120;
+  if (mins <= 0) return Math.min(120, maxMinutes);
   const stepped = Math.round(mins / 15) * 15;
-  return Math.min(240, Math.max(30, stepped));
+  return Math.min(maxMinutes, Math.max(30, stepped));
 }
 
 /**
  * Adjust ETA. Submits a new total duration in minutes measured from the session's start
  * (matches updateEtaSchema + the server clamping total to max session hours from start).
+ * The slider's ceiling comes from the admin-configured MAX_SESSION_HOURS setting (useSessionConfig)
+ * rather than a hardcoded 4hr bound, so it never desyncs from what the server actually enforces.
  */
 export function EtaModal({ open, onClose, session, onUpdated }) {
-  const [minutes, setMinutes] = useState(() => originalDurationMinutes(session));
+  const maxSessionMinutes = useSessionConfig();
+  const [minutes, setMinutes] = useState(() => originalDurationMinutes(session, maxSessionMinutes || 240));
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Re-seed from the session's actual current duration each time the modal opens — it was
-  // previously hardcoded to 120, which silently shortened/lengthened sessions whose real
-  // duration differed (updateEta treats this as a TOTAL from start, not "add N minutes").
+  // Re-seed from the session's actual current duration each time the modal opens (or once the
+  // real max loads) — it was previously hardcoded to 120, which silently shortened/lengthened
+  // sessions whose real duration differed (updateEta treats this as a TOTAL from start, not
+  // "add N minutes").
   useEffect(() => {
-    if (open) setMinutes(originalDurationMinutes(session));
+    if (open) setMinutes(originalDurationMinutes(session, maxSessionMinutes || 240));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, session?.id]);
+  }, [open, session?.id, maxSessionMinutes]);
 
   const submit = async () => {
     setSubmitting(true);
@@ -69,7 +74,7 @@ export function EtaModal({ open, onClose, session, onUpdated }) {
       }
     >
       <p className="mb-3 text-sm text-muted">Set the total time you need, measured from when you started.</p>
-      <DurationSlider label="Total duration" value={minutes} onChange={setMinutes} />
+      <DurationSlider label="Total duration" value={minutes} onChange={setMinutes} max={maxSessionMinutes || undefined} />
       {error && <p className="field-error mt-3">{error}</p>}
     </Modal>
   );

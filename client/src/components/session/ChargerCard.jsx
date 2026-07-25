@@ -19,23 +19,23 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
   return (
     <div
       className={cn(
-        'card p-4 flex flex-col gap-3 transition-shadow',
+        'card rounded-xl-increased p-4 flex flex-col gap-3 transition-shadow duration-medium',
         charger.status === CHARGER_STATUS.OVERTIME && 'border-warning/40',
-        isMine && 'ring-1 ring-brand/50'
+        isMine && 'ring-2 ring-brand/50'
       )}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span
             className={cn(
-              'grid h-10 w-10 place-items-center rounded-xl',
+              'grid h-11 w-11 place-items-center rounded-2xl',
               available ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-muted'
             )}
           >
             <Zap className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-semibold text-content">{charger.name}</p>
+            <p className="text-title-md text-content">{charger.name}</p>
             <Badge tone={meta.tone} dot>
               {meta.label}
             </Badge>
@@ -51,7 +51,7 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
 
       {/* Occupied */}
       {s && (
-        <div className="rounded-xl bg-bg-elevated p-3 text-sm">
+        <div className="rounded-2xl bg-bg-elevated p-3 text-sm">
           <div className="flex items-center gap-2 text-content">
             <User className="h-4 w-4 text-muted" />
             <span className="font-medium">{isMine ? 'You' : s.userDisplayName}</span>
@@ -64,7 +64,7 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
             </span>
           </div>
           {charger.carpool && (
-            <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-brand/10 px-2 py-1 text-xs text-brand-strong">
+            <div className="mt-2 flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs text-brand-strong">
               <Car className="h-3.5 w-3.5" />
               Carpooling {DIRECTION_LABEL[charger.carpool.direction]} · departs {formatTime(charger.carpool.departAt)}
             </div>

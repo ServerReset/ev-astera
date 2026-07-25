@@ -106,39 +106,52 @@ const HTTP_FALLBACK_MESSAGES = {
   429: 'Too many requests. Please slow down and try again shortly.',
 };
 
-/** Shape server/network errors into a consistent object: { code, message, details, status }. */
+const NORMALIZED = Symbol('normalized');
+
+/**
+ * Shape server/network errors into a consistent object: { code, message, details, status }.
+ * Idempotent: the response interceptor above already normalizes every rejection before it
+ * reaches a caller, but nearly every call site also does `catch (err) { normalizeError(err) }`
+ * defensively — re-running the raw-axios-error logic on an already-normalized object has no
+ * `.response` to find, so it used to fall through to the generic NETWORK_ERROR message and
+ * silently swallow the real one. Marked with a symbol (not just "has code+message", which a
+ * legitimate raw error could coincidentally also have) so a second call is a true no-op.
+ */
 export function normalizeError(error) {
+  if (error?.[NORMALIZED]) return error;
+
   const resp = error?.response;
+  let result;
   if (resp?.data?.error) {
     const e = resp.data.error;
-    return { code: e.code, message: e.message, details: e.details || null, status: resp.status };
-  }
-  if (resp) {
+    result = { code: e.code, message: e.message, details: e.details || null, status: resp.status };
+  } else if (resp) {
     const fallback =
       HTTP_FALLBACK_MESSAGES[resp.status] ||
       (resp.status >= 500
         ? 'The server ran into a problem on its end. Please try again in a moment.'
         : `Request failed (${resp.status}).`);
-    return { code: 'HTTP_ERROR', message: fallback, status: resp.status };
-  }
-  if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
-    return {
+    result = { code: 'HTTP_ERROR', message: fallback, status: resp.status };
+  } else if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
+    result = {
       code: 'TIMEOUT',
       message: 'The server took too long to respond. Check your connection and try again.',
       status: 0,
       details: { debug: error?.code || error?.message },
     };
+  } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    result = { code: 'OFFLINE', message: "You're offline — reconnect and try again.", status: 0 };
+  } else {
+    result = {
+      code: 'NETWORK_ERROR',
+      message: "Couldn't reach the server. Check your connection and try again.",
+      status: 0,
+      // No `response` reached the client at all — genuine network/CORS/DNS failure, not a
+      // server-authored error. Keep the raw axios code/message here so a CORS rejection or
+      // DNS failure is distinguishable from "request never sent" in dev tools.
+      details: { debug: error?.code || error?.message },
+    };
   }
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return { code: 'OFFLINE', message: "You're offline — reconnect and try again.", status: 0 };
-  }
-  return {
-    code: 'NETWORK_ERROR',
-    message: "Couldn't reach the server. Check your connection and try again.",
-    status: 0,
-    // No `response` reached the client at all — genuine network/CORS/DNS failure, not a
-    // server-authored error. Keep the raw axios code/message here so a CORS rejection or
-    // DNS failure is distinguishable from "request never sent" in dev tools.
-    details: { debug: error?.code || error?.message },
-  };
+  Object.defineProperty(result, NORMALIZED, { value: true, enumerable: false });
+  return result;
 }

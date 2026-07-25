@@ -251,7 +251,10 @@ export const SETTING_DEFAULTS = Object.freeze({
   [SETTING_KEYS.CARPOOL_CREDIT_PER_RIDER]: 5,
   [SETTING_KEYS.CARPOOL_HQ_ADDRESS]: '',
   [SETTING_KEYS.SIGNUP_RELEASE_AT]: '',
-  [SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED]: true,
+  // Off by default: anyone with an @asteralabs.com email can register from anywhere (home,
+  // remote, a desktop that can't do geolocation). An admin can turn the on-site geofence back ON
+  // per office in settings if they want to require physical presence to sign up.
+  [SETTING_KEYS.SIGNUP_GEOFENCE_ENABLED]: false,
   [SETTING_KEYS.SIGNUP_GEOFENCE_RADIUS_METERS]: 500,
   [SETTING_KEYS.QUEUE_MAX_AUTO_REQUEUES]: 2,
   [SETTING_KEYS.RELIABILITY_ENABLED]: true,

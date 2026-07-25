@@ -8,6 +8,7 @@ import { RedirectIfAuthed } from '@/components/auth/guards.jsx';
 import { AuthShell } from './AuthShell.jsx';
 import { Input, Select } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
+import { Spinner } from '@/components/common/States.jsx';
 import { authApi, officeApi } from '@/services/endpoints.js';
 
 /** Wraps navigator.geolocation in a promise with the real-world failure modes named. */
@@ -124,8 +125,9 @@ export default function RegisterPage() {
     else setFormError(res.error?.message || 'Registration failed.');
   });
 
-  if (offices.loading || !values.locationId) return null;
-
+  // Check error/empty states BEFORE the loading guard — otherwise a failed or empty offices load
+  // (where values.locationId never gets set) would fall into the old `return null` and render a
+  // permanently blank page instead of a message the user can act on.
   if (offices.error) {
     return (
       <RedirectIfAuthed>
@@ -139,7 +141,30 @@ export default function RegisterPage() {
     );
   }
 
-  if (gateStatus.loading) return null;
+  if (!offices.loading && offices.list.length === 0) {
+    return (
+      <RedirectIfAuthed>
+        <AuthShell title="No offices available" subtitle="Signups aren't set up yet">
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <WifiOff className="h-10 w-10 text-muted" />
+            <p className="text-sm text-muted">There are no offices open for registration right now. Contact an admin.</p>
+          </div>
+        </AuthShell>
+      </RedirectIfAuthed>
+    );
+  }
+
+  // Still loading offices, or waiting for the default office to seed / the gate check to finish —
+  // show a spinner inside the shell, never a blank screen.
+  if (offices.loading || !values.locationId || gateStatus.loading) {
+    return (
+      <RedirectIfAuthed>
+        <AuthShell title="Create your account" subtitle="Join the workplace charging & carpool hub">
+          <Spinner label="Loading…" />
+        </AuthShell>
+      </RedirectIfAuthed>
+    );
+  }
 
   if (gateStatus.statusError) {
     return (

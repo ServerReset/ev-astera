@@ -6,7 +6,13 @@ import { cn } from '@/utils/cn.js';
  */
 export function Tabs({ tabs, value, onChange, className }) {
   return (
-    <div className={cn('mb-5 flex gap-1 overflow-x-auto rounded-full bg-surface-2 p-1', className)} role="tablist">
+    <div
+      className={cn(
+        'mb-5 flex gap-1 overflow-x-auto rounded-full border border-border/60 bg-surface-2/60 p-1 backdrop-blur-md',
+        className
+      )}
+      role="tablist"
+    >
       {tabs.map((t) => {
         const active = t.key === value;
         const Icon = t.icon;
@@ -17,9 +23,9 @@ export function Tabs({ tabs, value, onChange, className }) {
             aria-selected={active}
             onClick={() => onChange(t.key)}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium',
-              'transition-[background-color,color] duration-short ease-standard',
-              active ? 'bg-surface text-content shadow-sm' : 'text-muted hover:text-content'
+              'press flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium',
+              'transition-[background-color,color,box-shadow] duration-medium ease-emphasized',
+              active ? 'bg-surface text-content shadow-elevation-1' : 'text-muted hover:text-content'
             )}
           >
             {Icon && <Icon className="h-4 w-4" />}

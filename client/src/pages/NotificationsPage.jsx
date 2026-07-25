@@ -9,6 +9,7 @@ import { NudgeReactionButtons } from '@/components/notifications/NudgeReactionBu
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { NOTIFICATION_META, NOTIFICATION_TYPES } from '@/utils/constants.js';
 import { relativeTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
@@ -33,6 +34,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const { items, unread, loading, error, refresh, markRead, markAllRead } = useNotificationStore();
   const push = usePushNotifications();
+  const ripple = useRipple();
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function NotificationsPage() {
       />
 
       {/* Push subscription toggle — an elevated tonal card, its own concern above the feed. */}
-      <div className="card animate-slide-up mb-5 flex items-center justify-between gap-3 p-4">
+      <div className="card hover-sheen animate-slide-up mb-5 flex items-center justify-between gap-3 p-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
@@ -156,11 +158,11 @@ export default function NotificationsPage() {
           />
         </div>
       ) : shown.length === 0 ? (
-        <div className="animate-scale-in [&_span:first-child]:animate-float">
+        <div className="animate-scale-in [&_span:first-child]:animate-glow [&_span:first-child]:!bg-success/15 [&_span:first-child]:!text-success">
           <EmptyState
             icon={CheckCheck}
             title="You’re all caught up"
-            description="No unread alerts right now."
+            description="No unread alerts right now. Enjoy the quiet."
           />
         </div>
       ) : (
@@ -183,6 +185,7 @@ export default function NotificationsPage() {
                   tabIndex={clickable || isUnread ? 0 : -1}
                   aria-disabled={!clickable && !isUnread}
                   onClick={() => (clickable || isUnread) && open(n)}
+                  onPointerDown={(clickable || isUnread) ? ripple : undefined}
                   onKeyDown={(e) => {
                     if ((e.key === 'Enter' || e.key === ' ') && (clickable || isUnread)) {
                       e.preventDefault();
@@ -190,15 +193,22 @@ export default function NotificationsPage() {
                     }
                   }}
                   className={cn(
-                    'group flex w-full items-start gap-3 rounded-2xl border p-3 text-left',
-                    'transition-[background-color,border-color,box-shadow] duration-medium ease-standard',
+                    'group ripple relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border p-3 text-left',
+                    'transition-[background-color,border-color,box-shadow,transform] duration-medium ease-standard',
                     isUnread
-                      ? 'border-brand/25 bg-brand/[0.06] shadow-elevation-1'
+                      ? 'border-brand/30 bg-brand/[0.07] shadow-elevation-1'
                       : 'border-border bg-surface',
-                    (clickable || isUnread) && 'hover:border-border-strong hover:shadow-elevation-1 cursor-pointer',
+                    (clickable || isUnread) && 'hover-sheen cursor-pointer hover:-translate-y-px hover:border-border-strong hover:shadow-elevation-2',
                     !clickable && !isUnread && 'cursor-default'
                   )}
                 >
+                  {/* Unread rows carry a soft brand seam down the leading edge. */}
+                  {isUnread && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-2 left-0 w-0.5 rounded-full bg-gradient-to-b from-transparent via-brand to-transparent opacity-70"
+                    />
+                  )}
                   <span
                     className={cn(
                       'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl',

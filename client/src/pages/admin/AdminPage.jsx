@@ -18,6 +18,8 @@ import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
+import { useTilt, useRipple } from '@/hooks/useInteractions.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { adminApi, chargerApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -58,12 +60,22 @@ const TONE_CHIP = {
   warning: 'bg-warning/15 text-warning',
 };
 
+// A soft, tone-matched glow that blooms in the tile's top corner on hover — decorative depth
+// behind the content, so it never touches legibility. Static classes only (no interpolation).
+const TONE_GLOW = {
+  brand: 'bg-brand/20',
+  info: 'bg-info/20',
+  success: 'bg-success/25',
+  warning: 'bg-warning/20',
+};
+
 // Shared dense-table cell paddings so every admin table reads uniformly.
 const TH = 'px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-muted';
 const TD = 'px-4 py-3 align-middle';
 
 export default function AdminPage() {
   const [section, setSection] = useState('overview');
+  const ripple = useRipple();
   const viewerRole = useAuthStore((s) => s.user?.role);
   const isSuperAdmin = viewerRole === ROLES.SUPER_ADMIN;
 
@@ -102,7 +114,7 @@ export default function AdminPage() {
         {/* Persistent section rail — MD3 secondary navigation, large windows only. */}
         <nav aria-label="Admin sections" className="hidden xl:block">
           <div className="sticky top-6 space-y-1">
-            {SECTIONS.map((s) => {
+            {SECTIONS.map((s, i) => {
               const active = s.key === section;
               const SectionIcon = s.icon;
               return (
@@ -110,17 +122,26 @@ export default function AdminPage() {
                   key={s.key}
                   type="button"
                   onClick={() => setSection(s.key)}
+                  onPointerDown={ripple}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'press flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
+                    'group press ripple flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
                     'transition-all duration-medium ease-emphasized',
+                    ENTER,
                     active
                       ? 'bg-brand/15 text-brand-strong shadow-elevation-1'
                       : 'text-muted hover:bg-surface-2 hover:text-content hover:translate-x-0.5'
                   )}
+                  style={stagger(i)}
                 >
-                  <SectionIcon className={cn('h-5 w-5 shrink-0 transition-transform duration-medium ease-spring', active && 'scale-110')} />
+                  <SectionIcon
+                    className={cn(
+                      'h-5 w-5 shrink-0 transition-transform duration-medium ease-spring',
+                      active ? 'scale-110' : 'group-hover:scale-110'
+                    )}
+                  />
                   <span className="truncate">{s.label}</span>
+                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand animate-glow" />}
                 </button>
               );
             })}
@@ -174,34 +195,77 @@ function OverviewTab() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {tiles.map((t, i) => (
-        <Card
-          key={t.label}
-          className={cn(
-            'group relative overflow-hidden transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2',
-            ENTER
-          )}
-          style={stagger(i)}
-        >
-          <span
-            className={cn(
-              'mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110',
-              TONE_CHIP[t.tone]
-            )}
-          >
-            <t.icon className={cn('h-5 w-5', t.hero && 'animate-float')} />
-          </span>
-          <p
-            className={cn(
-              'text-3xl font-bold tabular-nums',
-              t.hero ? 'text-gradient-brand' : 'text-content'
-            )}
-          >
-            {t.value ?? 0}
-          </p>
-          <p className="mt-0.5 text-sm text-muted">{t.label}</p>
-        </Card>
+        <StatTile key={t.label} tile={t} index={i} />
       ))}
     </div>
+  );
+}
+
+// One overview stat tile. The sustainability hero tile earns this screen's signature flair: a
+// cursor-following 3D tilt, a slow light-over-water drift across the glass, a floating leaf, and a
+// hidden delight — clicking it puffs a little leaf-green confetti from the pointer. Ordinary tiles
+// stay calm (lift + icon spring on hover only), so the one hero moment reads as special.
+function StatTile({ tile: t, index: i }) {
+  // Tilt lives on a bare wrapper (Card doesn't forward refs, and is do-not-edit) so the 3D
+  // rotation reads on the whole tile while Card keeps its single glass layer inside.
+  const tiltRef = useTilt(5);
+  const celebrate = (e) => {
+    burstConfetti({ x: e.clientX, y: e.clientY, count: 42, colors: ['#4fb477', '#7fd6a1', '#a7e8bf', '#ffffff'] });
+  };
+
+  const card = (
+    <Card
+      className={cn(
+        'group relative h-full overflow-hidden transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2 hover-sheen',
+        t.hero && 'glass-drift',
+        !t.hero && ENTER
+      )}
+      style={t.hero ? undefined : stagger(i)}
+    >
+      {/* Decorative tone-matched bloom in the top corner — fades in on hover, purely behind
+          content (aria-hidden, pointer-events-none) so it adds depth without touching contrast. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-0 blur-2xl transition-opacity duration-medium ease-emphasized group-hover:opacity-100',
+          TONE_GLOW[t.tone]
+        )}
+      />
+      <span
+        className={cn(
+          'relative mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-3',
+          TONE_CHIP[t.tone]
+        )}
+      >
+        <t.icon className={cn('h-5 w-5', t.hero && 'animate-float')} />
+      </span>
+      <p
+        className={cn(
+          'relative text-3xl font-bold tabular-nums transition-transform duration-medium ease-spring group-hover:-translate-y-0.5',
+          t.hero ? 'text-gradient-brand' : 'text-content'
+        )}
+      >
+        {t.value ?? 0}
+      </p>
+      <p className="relative mt-0.5 text-sm text-muted">{t.label}</p>
+    </Card>
+  );
+
+  if (!t.hero) return card;
+
+  // Signature flair: cursor-tilt + a hidden delight — clicking the CO₂ tile puffs leaf-green
+  // confetti from the pointer, quietly rewarding the number everyone likes to watch climb.
+  return (
+    <button
+      ref={tiltRef}
+      type="button"
+      onClick={celebrate}
+      aria-label={`${t.label}. Tap for a little celebration.`}
+      className={cn('tilt block w-full rounded-2xl text-left', ENTER)}
+      style={stagger(i)}
+    >
+      {card}
+    </button>
   );
 }
 
@@ -216,6 +280,7 @@ function ChargersTab() {
   const [renameFor, setRenameFor] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [confirm, confirmDialog] = useConfirm();
+  const ripple = useRipple();
 
   useRealtime('admin-chargers', ['chargers', 'sessions'], chargers.refetch);
 
@@ -282,7 +347,7 @@ function ChargersTab() {
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" className="ripple hover-sheen" onPointerDown={ripple} onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" />
           Add charger
         </Button>
@@ -298,13 +363,13 @@ function ChargersTab() {
             return (
               <Card
                 key={c.id}
-                className={cn('transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)}
+                className={cn('group hover-sheen transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2', ENTER)}
                 style={stagger(i)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-semibold text-content">
-                      {c.name}
+                      <span className="transition-transform duration-medium ease-spring group-hover:translate-x-0.5">{c.name}</span>
                       <Badge tone={meta.tone} dot>{meta.label}</Badge>
                     </p>
                     {c.session ? (

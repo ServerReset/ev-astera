@@ -1,6 +1,7 @@
 import { Loader2, Inbox, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/cn.js';
 import { Button } from './Button.jsx';
+import { useRipple } from '@/hooks/useInteractions.js';
 
 /** Centered spinner for full-view loads. */
 export function Spinner({ className, label }) {
@@ -23,9 +24,10 @@ export function Skeleton({ className }) {
 /** Empty-state placeholder with optional CTA. */
 export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl-increased border border-dashed border-border py-12 px-6 text-center animate-scale-in">
-      {/* Gently floating tonal chip keeps empty states feeling alive rather than dead-ended. */}
-      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-faint animate-float">
+    <div className="group flex flex-col items-center justify-center gap-3 rounded-xl-increased border border-dashed border-border py-12 px-6 text-center animate-scale-in">
+      {/* Gently floating tonal chip keeps empty states feeling alive rather than dead-ended;
+          a soft brand tint blooms in on hover so the surface feels responsive, not inert. */}
+      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-faint animate-float transition-colors duration-medium ease-emphasized group-hover:bg-brand/10 group-hover:text-brand-strong">
         <Icon className="h-6 w-6" />
       </span>
       <div>
@@ -39,6 +41,7 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
 
 /** Error-state placeholder with retry. */
 export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
+  const ripple = useRipple();
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 py-10 px-6 text-center animate-scale-in">
       <span className="grid h-11 w-11 place-items-center rounded-2xl bg-danger/10 text-danger animate-pop-in">
@@ -49,7 +52,7 @@ export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
         <p className="mt-1 text-sm text-muted">{error?.message || 'Please try again.'}</p>
       </div>
       {onRetry && (
-        <Button variant="secondary" size="sm" onClick={onRetry}>
+        <Button variant="secondary" size="sm" className="ripple" onClick={onRetry} onPointerDown={ripple}>
           Retry
         </Button>
       )}

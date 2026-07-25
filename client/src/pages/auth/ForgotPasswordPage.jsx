@@ -18,8 +18,8 @@ export default function ForgotPasswordPage() {
       }
     >
       <div className="flex flex-col items-center gap-4 py-2 text-center animate-scale-in">
-        <span className="grid h-16 w-16 place-items-center rounded-2xl bg-brand/15 text-brand-strong shadow-elevation-1 animate-glow">
-          <ShieldQuestion className="h-8 w-8 animate-float" />
+        <span className="hover-sheen group grid h-16 w-16 place-items-center rounded-2xl bg-brand/15 text-brand-strong shadow-elevation-1 animate-glow transition-transform duration-medium ease-spring hover:scale-105">
+          <ShieldQuestion className="h-8 w-8 animate-float transition-transform duration-medium ease-spring group-hover:rotate-[8deg]" />
         </span>
         <p className="text-sm text-muted animate-slide-up [animation-fill-mode:backwards] [animation-delay:100ms]">
           This site doesn't send reset emails. Ask an admin at your location to reset your password

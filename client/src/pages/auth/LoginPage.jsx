@@ -7,12 +7,14 @@ import { RedirectIfAuthed } from '@/components/auth/guards.jsx';
 import { AuthShell } from './AuthShell.jsx';
 import { Input } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
+import { useRipple } from '@/hooks/useInteractions.js';
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
   const location = useLocation();
   const [formError, setFormError] = useState(null);
+  const ripple = useRipple();
   const from = location.state?.from?.pathname || '/';
 
   const { values, errors, submitting, handleChange, handleSubmit } = useZodForm(loginSchema, {
@@ -84,7 +86,12 @@ export default function LoginPage() {
           </div>
           {formError && <p className="field-error animate-pop-in">{formError}</p>}
           <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:240ms]">
-            <Button type="submit" className="w-full press sheen" loading={submitting}>
+            <Button
+              type="submit"
+              className="w-full press sheen ripple hover-sheen"
+              loading={submitting}
+              onPointerDown={ripple}
+            >
               Sign in
             </Button>
           </div>

@@ -65,6 +65,9 @@ export default function DashboardPage() {
   const list = chargers.data || [];
   const sortedQueue = useMemo(() => queue.data || [], [queue.data]);
 
+  // Spin the refresh affordance whenever any board query is in flight — quiet, honest feedback.
+  const refreshing = chargers.loading || active.loading || queue.loading || mine.loading;
+
   const availableCount = list.filter((c) => c.status === CHARGER_STATUS.AVAILABLE).length;
 
   return (
@@ -80,7 +83,7 @@ export default function DashboardPage() {
         action={
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={refreshAll} aria-label="Refresh">
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 transition-transform duration-medium ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setEmergencyOpen(true)}>
               <Siren className="h-4 w-4" />
@@ -142,13 +145,12 @@ export default function DashboardPage() {
               description="Chargers configured for your site will show up here."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 3xl:grid-cols-3">
-              {list.map((charger, i) => (
-                <div
-                  key={charger.id}
-                  className="animate-slide-up [animation-fill-mode:backwards]"
-                  style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
-                >
+            <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2 3xl:grid-cols-3">
+              {list.map((charger) => (
+                // Plain wrapper is the stagger child (it holds the slide-up entrance) so the
+                // card's own tilt/hover transforms live one level down and aren't clobbered by
+                // the entrance animation's persisted transform.
+                <div key={charger.id} className="h-full">
                   <ChargerCard
                     charger={charger}
                     isMine={mySession?.chargerId === charger.id}
@@ -166,7 +168,7 @@ export default function DashboardPage() {
         {/* Secondary rail — alerts + queue. Side-by-side up through 2xl (fills the width
             instead of reading as a narrow list); becomes a sticky single-column rail once the
             two-pane split takes over on very wide monitors. */}
-        <aside className="mt-6 grid gap-4 sm:grid-cols-2 2xl:mt-0 2xl:sticky 2xl:top-20 2xl:grid-cols-1 2xl:gap-6">
+        <aside className="stagger mt-6 grid gap-4 sm:grid-cols-2 2xl:mt-0 2xl:sticky 2xl:top-20 2xl:grid-cols-1 2xl:gap-6">
           <QueuePanel
             entries={sortedQueue}
             mine={mine.data}

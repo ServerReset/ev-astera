@@ -1,6 +1,10 @@
 import { Leaf, Car, Route, Coins, TreePine, Users } from 'lucide-react';
 import { Card } from '@/components/common/Card.jsx';
 import { useCountUp } from '@/hooks/useCountUp.js';
+import { burstConfetti } from '@/utils/confetti.js';
+
+// Eco-toned confetti for the hidden delight on the CO₂ hero.
+const ECO_COLORS = ['#4fb477', '#7bd88f', '#a7e8bd', '#3c9d63', '#d6f5e0'];
 
 /** A number that counts up from 0 on mount, with optional prefix/suffix (e.g. " kg"). */
 function AnimatedNumber({ value, decimals = 0, suffix = '' }) {
@@ -54,15 +58,28 @@ export function ImpactStats({ impact }) {
   return (
     <div className="space-y-3">
       {/* Signature moment: the CO₂ hero — green glass, sheen band, gradient count-up number. */}
-      <Card className="lg-hero relative overflow-hidden animate-scale-in [animation-fill-mode:backwards]">
+      <Card className="lg-hero glass-drift relative overflow-hidden animate-scale-in [animation-fill-mode:backwards]">
         <div
           className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-success/25 blur-3xl"
           aria-hidden="true"
         />
+        <div
+          className="pointer-events-none absolute -bottom-12 -left-6 h-32 w-32 rounded-full bg-brand/20 blur-3xl"
+          aria-hidden="true"
+        />
         <div className="relative flex items-center gap-4">
-          <span className="sheen grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-success/15 text-success shadow-elevation-1">
+          <button
+            type="button"
+            aria-label="Celebrate your carbon savings"
+            title="Every seat counts 🌱"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              burstConfetti({ x: r.left + r.width / 2, y: r.top + r.height / 2, colors: ECO_COLORS, count: 70 });
+            }}
+            className="press hover-sheen grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-success/15 text-success shadow-elevation-1 outline-none transition-transform duration-medium ease-spring hover:scale-105 focus-visible:ring-2 focus-visible:ring-success/60"
+          >
             <Leaf className="h-8 w-8 animate-float" />
-          </span>
+          </button>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-success">CO₂ saved together</p>
             <p className="text-4xl font-extrabold leading-tight text-gradient-brand tabular-nums sm:text-5xl">

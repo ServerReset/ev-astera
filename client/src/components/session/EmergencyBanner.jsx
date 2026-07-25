@@ -6,6 +6,7 @@ import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { useApi } from '@/hooks/useApi.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { relativeTime } from '@/utils/time.js';
@@ -22,6 +23,7 @@ import { relativeTime } from '@/utils/time.js';
  */
 export function EmergencyBanner() {
   const userId = useAuthStore((s) => s.user?.id);
+  const ripple = useRipple();
   const list = useApi(() => messageApi.emergencies(), []);
   const lastNotifiedId = useNotificationStore((s) => s.items[0]?.id);
 
@@ -44,10 +46,18 @@ export function EmergencyBanner() {
   };
 
   return (
-    <div className="mb-4 space-y-2">
+    <div className="stagger mb-4 space-y-2">
       {open.map((r) => (
-        <Card key={r.id} className="flex animate-slide-up flex-wrap items-center justify-between gap-3 rounded-xl-increased border-danger/40 bg-danger/5">
-          <div className="flex items-start gap-2.5">
+        <Card
+          key={r.id}
+          className="hover-sheen relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-xl-increased border-danger/40 bg-danger/5"
+        >
+          {/* Urgency aura: a soft danger glow breathing in from the corner. */}
+          <div
+            className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 animate-pulse rounded-full bg-danger/15 blur-2xl"
+            aria-hidden
+          />
+          <div className="relative flex items-start gap-2.5">
             <Siren className="mt-0.5 h-5 w-5 shrink-0 animate-pulse text-danger" />
             <div>
               <p className="font-medium text-content">
@@ -57,11 +67,11 @@ export function EmergencyBanner() {
               <p className="text-xs text-faint">Requested {relativeTime(r.createdAt)}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" className="press" onClick={() => respond(r.id, false)}>
+          <div className="relative flex gap-2">
+            <Button variant="ghost" size="sm" className="press ripple" onPointerDown={ripple} onClick={() => respond(r.id, false)}>
               Can't help
             </Button>
-            <Button variant="danger" size="sm" className="press" onClick={() => respond(r.id, true)}>
+            <Button variant="danger" size="sm" className="press ripple hover-sheen" onPointerDown={ripple} onClick={() => respond(r.id, true)}>
               I'll wrap up
             </Button>
           </div>

@@ -10,6 +10,7 @@ import { Input, Select } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { Spinner } from '@/components/common/States.jsx';
 import { authApi, officeApi } from '@/services/endpoints.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 
 /** Wraps navigator.geolocation in a promise with the real-world failure modes named. */
 function getLocation() {
@@ -47,6 +48,7 @@ export default function RegisterPage() {
   const [formError, setFormError] = useState(null);
   const [geoError, setGeoError] = useState(null);
   const [locating, setLocating] = useState(false);
+  const ripple = useRipple();
 
   // Offices are fetched once, independent of the signup-status gate below (which is per-office
   // and re-fetched whenever the selection changes).
@@ -316,7 +318,12 @@ export default function RegisterPage() {
           )}
           {formError && <p className="field-error animate-pop-in">{formError}</p>}
           <div className="animate-slide-up [animation-fill-mode:backwards] [animation-delay:340ms]">
-            <Button type="submit" className="w-full press sheen" loading={submitting || locating}>
+            <Button
+              type="submit"
+              className="w-full press sheen ripple hover-sheen"
+              loading={submitting || locating}
+              onPointerDown={ripple}
+            >
               {locating ? 'Checking your location…' : 'Create account'}
             </Button>
           </div>

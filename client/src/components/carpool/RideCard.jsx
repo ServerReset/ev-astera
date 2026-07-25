@@ -18,7 +18,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
   const isActive = ride.status !== RIDE_STATUS.COMPLETED && ride.status !== RIDE_STATUS.CANCELLED;
 
   return (
-    <div className="group card rounded-xl-increased flex h-full flex-col gap-3 p-4 transition-all duration-medium ease-emphasized hover:-translate-y-0.5 hover:shadow-elevation-2">
+    <div className="group card card-interactive hover-sheen rounded-xl-increased flex h-full flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6">
@@ -52,7 +52,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancel, onComplet
         </div>
         {ride.co2GramsSaved > 0 && (
           <div className="flex items-center gap-1.5 font-medium text-success">
-            <Leaf className="h-4 w-4 shrink-0" />
+            <Leaf className="h-4 w-4 shrink-0 transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6" />
             {Math.round((ride.co2GramsSaved / 1000) * 10) / 10} kg CO₂ saved
           </div>
         )}

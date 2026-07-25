@@ -8,6 +8,7 @@ import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { useMessageConfig } from '@/hooks/useMessageConfig.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 
 /**
  * Raise an emergency "I need a charger now" request. Cooldown-limited server-side; the
@@ -21,6 +22,7 @@ export function EmergencyModal({ open, onClose }) {
   const [explanation, setExplanation] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const ripple = useRipple();
 
   // Seed the select with the first reason once the list loads.
   useEffect(() => {
@@ -57,30 +59,31 @@ export function EmergencyModal({ open, onClose }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="danger" className="press" onClick={submit} loading={submitting}>
+          <Button variant="danger" className="press ripple" onPointerDown={ripple} onClick={submit} loading={submitting}>
             Send request
           </Button>
         </div>
       }
     >
-      <div className="mb-3 flex animate-fade-in items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
-        <Siren className="h-5 w-5 shrink-0 animate-pulse text-danger" />
-        <span>This alerts everyone currently charging. Please only use it for genuine emergencies — there's a cooldown between requests.</span>
+      <div className="stagger space-y-3">
+        <div className="flex items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
+          <Siren className="h-5 w-5 shrink-0 animate-pulse text-danger" />
+          <span>This alerts everyone currently charging. Please only use it for genuine emergencies — there's a cooldown between requests.</span>
+        </div>
+        <Select
+          label="Reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          options={(emergencyReasons || []).map((r) => ({ value: r, label: r }))}
+        />
+        <Textarea
+          label="Details (optional)"
+          value={explanation}
+          maxLength={200}
+          onChange={(e) => setExplanation(e.target.value)}
+          placeholder="Anything that helps others decide"
+        />
       </div>
-      <Select
-        label="Reason"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        options={(emergencyReasons || []).map((r) => ({ value: r, label: r }))}
-        className="mb-3"
-      />
-      <Textarea
-        label="Details (optional)"
-        value={explanation}
-        maxLength={200}
-        onChange={(e) => setExplanation(e.target.value)}
-        placeholder="Anything that helps others decide"
-      />
       {error && <p className="field-error mt-2">{error}</p>}
     </Modal>
   );

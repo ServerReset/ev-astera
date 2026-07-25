@@ -4,6 +4,7 @@ import { Button } from '@/components/common/Button.jsx';
 import { Badge } from '@/components/common/Badge.jsx';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { useCountdown, useElapsed } from '@/hooks/useCountdown.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { formatTime } from '@/utils/time.js';
 import { SESSION_STATUS } from '@/utils/constants.js';
 import { cn } from '@/utils/cn.js';
@@ -21,6 +22,7 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
   const { label: elapsedLabel } = useElapsed(session.etaAt);
   const label = overtime ? elapsedLabel : countdownLabel;
   const [busy, setBusy] = useState(false);
+  const ripple = useRipple();
   const glassRef = useLiquidGlass(true, { scale: -95, chroma: 6, blur: 7, saturate: 1.5, mapBlur: 18, border: 0.09 });
 
   const wrap = (fn) => async () => {
@@ -40,8 +42,18 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
         overtime ? 'border-warning/50' : 'border-brand/40'
       )}
     >
-      {/* Signature flair: a slow specular sheen sweeping the live hero (calm mode only). */}
-      {!overtime && <div className="sheen pointer-events-none absolute inset-0" aria-hidden />}
+      {/* Signature flair: a slow light-over-water drift across the live hero's glass, layered
+          beneath the content for a living-surface feel. (A second specular `sheen` here was one
+          loop too many alongside the hairline pulse + icon ring — drift alone carries the shine.) */}
+      <div className="glass-drift pointer-events-none absolute inset-0" aria-hidden />
+      {/* Live-charging pulse: a faint brand hairline breathing along the bottom edge, echoing
+          the current flowing into the car. Calm mode only. */}
+      {!overtime && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px animate-pulse bg-gradient-to-r from-transparent via-brand/60 to-transparent"
+          aria-hidden
+        />
+      )}
 
       <div
         className={cn(
@@ -83,17 +95,17 @@ export function ActiveSessionCard({ session, onExtend, onEnd, onLinkCarpool }) {
       )}
 
       <div className="relative mt-5 flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" loading={busy} onClick={wrap(onExtend)}>
+        <Button variant="secondary" size="sm" className="ripple" onPointerDown={ripple} loading={busy} onClick={wrap(onExtend)}>
           <ArrowUpRight className="h-4 w-4" />
           Adjust ETA
         </Button>
         {onLinkCarpool && (
-          <Button variant="ghost" size="sm" onClick={onLinkCarpool}>
+          <Button variant="ghost" size="sm" className="ripple" onPointerDown={ripple} onClick={onLinkCarpool}>
             <Car className="h-4 w-4" />
             Offer a carpool
           </Button>
         )}
-        <Button variant="primary" size="sm" className="ml-auto" loading={busy} onClick={wrap(onEnd)}>
+        <Button variant="primary" size="sm" className="ripple ml-auto" onPointerDown={ripple} loading={busy} onClick={wrap(onEnd)}>
           End session
         </Button>
       </div>

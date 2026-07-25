@@ -20,6 +20,7 @@ import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { NOTIFICATION_TYPES } from '@/utils/constants.js';
 import { Switch } from '@/components/common/Switch.jsx';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { cn } from '@/utils/cn.js';
 
 // Settings is a list-detail screen: a segmented tab bar on compact/medium collapses to a
@@ -59,6 +60,7 @@ const PREF_TOGGLES = [
 export default function SettingsPage() {
   const [section, setSection] = useState('profile');
   const user = useAuthStore((s) => s.user);
+  const ripple = useRipple();
   if (!user) return <Spinner label="Loading your settings…" />;
 
   return (
@@ -82,9 +84,10 @@ export default function SettingsPage() {
                   key={s.key}
                   type="button"
                   onClick={() => setSection(s.key)}
+                  onPointerDown={ripple}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'group press flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-medium',
+                    'group press ripple relative flex w-full items-center gap-3 overflow-hidden rounded-full px-4 py-2.5 text-left text-sm font-medium',
                     'transition-[background-color,color] duration-medium ease-emphasized',
                     active ? 'bg-brand/15 text-brand-strong shadow-elevation-1' : 'text-muted hover:bg-surface-2 hover:text-content'
                   )}
@@ -142,10 +145,12 @@ function StreakChip({ days }) {
 
 /** Row linking to the full achievements wall. */
 function AchievementsLink() {
+  const ripple = useRipple();
   return (
     <Link
       to="/achievements"
-      className="press group flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-[background-color,border-color,box-shadow] duration-medium ease-standard hover:border-border-strong hover:bg-surface-2 hover:shadow-elevation-1"
+      onPointerDown={ripple}
+      className="press hover-sheen ripple group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-border bg-surface p-4 transition-[background-color,border-color,box-shadow,transform] duration-medium ease-standard hover:-translate-y-px hover:border-border-strong hover:bg-surface-2 hover:shadow-elevation-2"
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6">
         <Trophy className="h-5 w-5" />
@@ -331,11 +336,12 @@ function ThemePreview({ optKey }) {
 function AppearanceSection() {
   const themePref = useThemeStore((s) => s.pref);
   const setThemePref = useThemeStore((s) => s.setPref);
+  const ripple = useRipple();
 
   return (
     <Card>
       <CardHeader title="Appearance" subtitle="Choose how EV Hub looks" icon={Palette} />
-      <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-3">
+      <div role="radiogroup" aria-label="Theme" className="stagger grid grid-cols-3 gap-3">
         {THEME_OPTIONS.map((opt) => {
           const active = themePref === opt.key;
           const OptIcon = opt.icon;
@@ -346,8 +352,9 @@ function AppearanceSection() {
               role="radio"
               aria-checked={active}
               onClick={() => setThemePref(opt.key)}
+              onPointerDown={ripple}
               className={cn(
-                'group press relative flex flex-col items-center gap-3 rounded-2xl border p-3 text-center',
+                'group press ripple hover-sheen relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border p-3 text-center',
                 'transition-[background-color,border-color,box-shadow,transform] duration-medium ease-emphasized',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/80',
                 active
@@ -467,9 +474,19 @@ function AboutSection() {
             <dt className="text-muted">App</dt>
             <dd className="font-medium text-content">EV Hub — Astera Labs</dd>
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="group/team flex items-center justify-between gap-3">
             <dt className="text-muted">Built by</dt>
-            <dd className="font-medium text-content">Team Go Bananas — Astera Labs 2026 Hackathon</dd>
+            <dd className="font-medium text-content">
+              Team Go Bananas
+              {/* Tiny hidden delight: a banana peeks in when you hover the team name. */}
+              <span
+                aria-hidden="true"
+                className="ml-1 inline-block max-w-0 -translate-y-0.5 overflow-hidden opacity-0 transition-all duration-medium ease-spring group-hover/team:max-w-[1.5em] group-hover/team:translate-y-0 group-hover/team:opacity-100"
+              >
+                🍌
+              </span>
+              {' '}— Astera Labs 2026 Hackathon
+            </dd>
           </div>
         </dl>
       </Card>

@@ -6,6 +6,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary.jsx';
 import { useNotificationSync } from '@/hooks/useNotificationSync.js';
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate.jsx';
 import { CelebrationOverlay } from '@/components/achievements/CelebrationOverlay.jsx';
+import { Aurora } from '@/components/common/Aurora.jsx';
+import { useEasterEggs } from '@/hooks/useEasterEggs.js';
 
 /**
  * Authenticated app shell. No top bar: navigation is a single floating M3 toolbar pinned to the
@@ -15,10 +17,12 @@ import { CelebrationOverlay } from '@/components/achievements/CelebrationOverlay
  */
 export function AppLayout() {
   useNotificationSync();
+  useEasterEggs();
   const { pathname } = useLocation();
 
   return (
     <div className="min-h-screen bg-bg">
+      <Aurora />
       <OnboardingGate />
       <CelebrationOverlay />
 

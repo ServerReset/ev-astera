@@ -259,28 +259,81 @@ select:-webkit-autofill {
   transition: background-color 600000s 0s, color 600000s 0s;
 }
 
-/* ── Ambient aurora — a soft brand wash fixed behind everything, so the glass surfaces above
- * have real color/motion to refract and blur. Very low opacity; decorative, pointer-none. It
- * lives on body::before so every route gets it for free. Disabled under reduced-motion below. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: -20vmax;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(38vmax 38vmax at 12% 8%, rgb(var(--c-brand) / 0.18), transparent 60%),
-    radial-gradient(32vmax 32vmax at 88% 22%, rgb(var(--c-brand-strong) / 0.13), transparent 62%),
-    radial-gradient(42vmax 42vmax at 78% 96%, rgb(var(--c-tertiary) / 0.08), transparent 60%);
-  background-repeat: no-repeat;
-  filter: blur(8px);
-  animation: aurora-drift 34s var(--ease-standard) infinite alternate;
+/* ── Living aurora ────────────────────────────────────────────────────────────
+ * A soft, slowly-moving brand wash fixed behind everything, so the glass surfaces above have
+ * real color + motion to refract and blur. Built from THREE stacked, independently-drifting
+ * layers on a dedicated <div id="aurora"> (mounted once in AppLayout / auth pages) plus its two
+ * pseudo-elements — each moves on a different timescale and direction so the blend never repeats,
+ * giving a genuinely alive, never-static feel. Low opacity + heavy blur keep it ambient, never
+ * loud. Reduced-motion freezes all of it (see the media query at the bottom of this file).
+ *
+ * `--aurora-mx`/`--aurora-my` are nudged by a mouse-parallax hook (useAuroraParallax) — the whole
+ * field lags the cursor by a few px for depth. They default to 0 so it's fine without the hook. */
+:root {
+  --aurora-mx: 0px;
+  --aurora-my: 0px;
 }
 
-@keyframes aurora-drift {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(2vmax, -1.5vmax, 0) scale(1.06); }
-  100% { transform: translate3d(-1.5vmax, 2vmax, 0) scale(1.03); }
+.aurora {
+  position: fixed;
+  inset: -25vmax;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  /* Layer 1 — the largest, slowest brand bloom, top-left. */
+  background:
+    radial-gradient(40vmax 40vmax at 14% 10%, rgb(var(--c-brand) / 0.20), transparent 60%),
+    radial-gradient(30vmax 30vmax at 82% 18%, rgb(var(--c-brand-strong) / 0.14), transparent 62%);
+  background-repeat: no-repeat;
+  filter: blur(10px);
+  transform: translate3d(var(--aurora-mx), var(--aurora-my), 0);
+  animation: aurora-1 42s var(--ease-standard) infinite alternate;
+}
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+}
+/* Layer 2 — a mid bloom drifting the opposite way, bottom-right, warm tertiary accent. */
+.aurora::before {
+  background:
+    radial-gradient(44vmax 44vmax at 80% 94%, rgb(var(--c-tertiary) / 0.10), transparent 60%),
+    radial-gradient(26vmax 26vmax at 22% 78%, rgb(var(--c-brand) / 0.12), transparent 64%);
+  animation: aurora-2 55s var(--ease-standard) infinite alternate;
+}
+/* Layer 3 — a small, faster-moving highlight that keeps subtle life in the center. */
+.aurora::after {
+  background: radial-gradient(22vmax 22vmax at 50% 42%, rgb(var(--c-brand-strong) / 0.10), transparent 66%);
+  animation: aurora-3 31s var(--ease-standard) infinite alternate;
+}
+
+@keyframes aurora-1 {
+  0%   { transform: translate3d(calc(var(--aurora-mx)), calc(var(--aurora-my)), 0) scale(1) rotate(0deg); }
+  50%  { transform: translate3d(calc(var(--aurora-mx) + 3vmax), calc(var(--aurora-my) - 2vmax), 0) scale(1.08) rotate(2deg); }
+  100% { transform: translate3d(calc(var(--aurora-mx) - 2vmax), calc(var(--aurora-my) + 3vmax), 0) scale(1.04) rotate(-1deg); }
+}
+@keyframes aurora-2 {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%  { transform: translate3d(-4vmax, 2vmax, 0) scale(1); }
+  100% { transform: translate3d(3vmax, -3vmax, 0) scale(1.1); }
+}
+@keyframes aurora-3 {
+  0%   { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0.7; }
+  50%  { transform: translate3d(2vmax, 2vmax, 0) scale(1.15); opacity: 1; }
+  100% { transform: translate3d(-2vmax, -1vmax, 0) scale(1); opacity: 0.8; }
+}
+
+/* Fine film grain over the aurora — breaks up gradient banding on wide/dark screens and adds a
+   premium, textured depth. A tiny SVG-noise data-URI tiled; extremely cheap, static. */
+.aurora-grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Component layer: reusable primitives ──────────────────────────────────── */
@@ -492,6 +545,92 @@ body::before {
 }
 .press:active { transform: scale(0.96); }
 
+/* ── Interactive glass surface: the convenience class for a clickable card. Lifts + brightens +
+   sweeps a faint sheen on hover, springs down on press. Layer onto `.card`. ────────────────── */
+.card-interactive {
+  cursor: pointer;
+  transition: transform var(--duration-medium) var(--ease-emphasized),
+              box-shadow var(--duration-medium) var(--ease-emphasized),
+              border-color var(--duration-medium) var(--ease-emphasized);
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevation-2);
+  border-color: rgb(var(--c-brand) / 0.35);
+}
+.card-interactive:active { transform: translateY(0) scale(0.995); }
+
+/* Hover-sheen: a specular band that sweeps ONCE on hover (not looping like .sheen) — for cards
+   and CTAs. Cheap; pointer-events-none. */
+.hover-sheen { position: relative; overflow: hidden; isolation: isolate; }
+.hover-sheen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.14) 50%, transparent 65%);
+  transform: translateX(-150%) skewX(-12deg);
+  transition: transform 0.7s var(--ease-emphasized);
+  pointer-events: none;
+}
+.hover-sheen:hover::before { transform: translateX(150%) skewX(-12deg); }
+
+/* Ripple: a click-origin ripple. JS sets --rx/--ry (%), toggles [data-ripple]; the ::after
+   expands + fades once. Purely decorative, respects reduced-motion. */
+.ripple { position: relative; overflow: hidden; }
+.ripple::after {
+  content: '';
+  position: absolute;
+  left: var(--rx, 50%);
+  top: var(--ry, 50%);
+  width: 8px; height: 8px;
+  border-radius: 9999px;
+  background: rgb(var(--c-brand) / 0.35);
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.ripple[data-ripple='on']::after {
+  animation: ripple 0.6s var(--ease-emphasized-decelerate);
+}
+@keyframes ripple {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(34); opacity: 0; }
+}
+
+/* Tilt: a subtle 3D parallax tilt toward the cursor. JS sets --tilt-x/--tilt-y (deg). */
+.tilt {
+  transform: perspective(700px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.2s var(--ease-standard);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Staggered list entrance: put on a container; direct children slide-up in sequence. Caps the
+   delay so long lists don't crawl in. */
+.stagger > * {
+  animation: slide-up var(--duration-medium) var(--ease-emphasized-decelerate) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(n+8) { animation-delay: 280ms; }
+
+/* A slow, subtle drifting highlight across a glass surface — like light moving over water. */
+@keyframes glass-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.glass-drift {
+  background-image: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / 0.05) 50%, transparent 60%);
+  background-size: 250% 250%;
+  animation: glass-drift 12s var(--ease-standard) infinite;
+}
+
 /*
  * ── Liquid glass material dressing ──────────────────────────────────────────
  * Optics (refraction/blur) come from useLiquidGlass + utils/liquidGlass.js via
@@ -556,9 +695,10 @@ body::before {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  /* Kill the ambient aurora motion entirely (a slow full-viewport transform); keep the static
-     wash. */
-  body::before {
+  /* Freeze the living aurora entirely (slow full-viewport transforms); the static wash remains. */
+  .aurora,
+  .aurora::before,
+  .aurora::after {
     animation: none !important;
   }
 }

@@ -48,10 +48,10 @@ export default function LeaderboardsPage() {
         ) : totals.error ? (
           <ErrorState error={totals.error} onRetry={totals.refetch} title="Could not load savings" />
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="card-solid relative overflow-hidden rounded-2xl p-3.5">
-              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-success/20 blur-2xl" aria-hidden />
-              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-success/15 text-success">
+          <div className="stagger grid grid-cols-2 gap-3">
+            <div className="card-solid hover-sheen group relative overflow-hidden rounded-2xl p-3.5">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-success/20 blur-2xl transition-transform duration-medium ease-emphasized group-hover:scale-125" aria-hidden />
+              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-success/15 text-success transition-transform duration-medium ease-spring group-hover:scale-110">
                 <Leaf className="h-4 w-4" />
               </span>
               <p className="text-3xl font-bold tabular-nums text-gradient-brand">
@@ -59,8 +59,9 @@ export default function LeaderboardsPage() {
               </p>
               <p className="text-xs text-muted">CO₂ saved</p>
             </div>
-            <div className="card-solid relative overflow-hidden rounded-2xl p-3.5">
-              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-brand/12 text-brand-strong">
+            <div className="card-solid hover-sheen group relative overflow-hidden rounded-2xl p-3.5">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand/20 blur-2xl transition-transform duration-medium ease-emphasized group-hover:scale-125" aria-hidden />
+              <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-110">
                 <Route className="h-4 w-4" />
               </span>
               <p className="text-3xl font-bold tabular-nums text-content">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 import { nudgeSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -7,6 +8,7 @@ import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { useMessageConfig } from '@/hooks/useMessageConfig.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { cn } from '@/utils/cn.js';
 
 /**
@@ -20,6 +22,7 @@ export function NudgeModal({ open, onClose, charger }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const ripple = useRipple();
 
   // Seed the textarea with the first preset once the list loads.
   useEffect(() => {
@@ -56,7 +59,7 @@ export function NudgeModal({ open, onClose, charger }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="press" onClick={submit} loading={submitting}>
+          <Button className="press ripple hover-sheen" onPointerDown={ripple} onClick={submit} loading={submitting}>
             Send nudge
           </Button>
         </div>
@@ -64,23 +67,34 @@ export function NudgeModal({ open, onClose, charger }) {
     >
       <p className="mb-3 text-sm text-muted">Pick a quick message or write your own.</p>
       <div className="mb-3 space-y-2">
-        {(nudgePresets || []).map((preset, i) => (
-          <button
-            key={preset}
-            type="button"
-            onClick={() => setMessage(preset)}
-            className={cn(
-              'press w-full animate-slide-up rounded-2xl border p-2.5 text-left text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
-              message === preset
-                ? 'border-brand bg-brand/10 text-content'
-                : 'border-border bg-bg-elevated text-muted hover:border-border-strong hover:text-content'
-            )}
-            style={{ animationDelay: `${i * 45}ms` }}
-            aria-pressed={message === preset}
-          >
-            {preset}
-          </button>
-        ))}
+        {(nudgePresets || []).map((preset, i) => {
+          const on = message === preset;
+          return (
+            <button
+              key={preset}
+              type="button"
+              onPointerDown={ripple}
+              onClick={() => setMessage(preset)}
+              className={cn(
+                'press ripple flex w-full animate-slide-up items-center gap-2 rounded-2xl border p-2.5 text-left text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
+                on
+                  ? 'border-brand bg-brand/10 text-content'
+                  : 'border-border bg-bg-elevated text-muted hover:border-border-strong hover:text-content'
+              )}
+              style={{ animationDelay: `${i * 45}ms` }}
+              aria-pressed={on}
+            >
+              <Check
+                className={cn(
+                  'h-4 w-4 shrink-0 transition-all duration-medium ease-spring',
+                  on ? 'scale-100 text-brand opacity-100' : 'scale-50 opacity-0'
+                )}
+                aria-hidden
+              />
+              {preset}
+            </button>
+          );
+        })}
       </div>
       <Textarea
         label="Message"

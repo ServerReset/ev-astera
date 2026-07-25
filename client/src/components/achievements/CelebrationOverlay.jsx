@@ -79,6 +79,8 @@ export function CelebrationOverlay() {
           )}
           aria-hidden
         />
+        {/* A slow light-over-water drift layered under the content — extra shimmer for the reveal. */}
+        <div className="glass-drift pointer-events-none absolute inset-0 rounded-3xl" aria-hidden />
         <button
           type="button"
           aria-label="Dismiss"

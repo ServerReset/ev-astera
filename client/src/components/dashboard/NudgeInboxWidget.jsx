@@ -5,6 +5,7 @@ import { Icon } from '@/components/common/Icon.jsx';
 import { NudgeReactionButtons } from '@/components/notifications/NudgeReactionButtons.jsx';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { NOTIFICATION_META } from '@/utils/constants.js';
 import { relativeTime } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
@@ -27,6 +28,7 @@ export function NudgeInboxWidget() {
   const navigate = useNavigate();
   const { items, markRead } = useNotificationStore();
   const { subscribed } = usePushNotifications();
+  const ripple = useRipple();
 
   if (!items.length) return null;
 
@@ -57,9 +59,10 @@ export function NudgeInboxWidget() {
                 role="button"
                 tabIndex={0}
                 onClick={() => open(n)}
+                onPointerDown={ripple}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open(n))}
                 className={cn(
-                  'group flex w-full items-start gap-2.5 rounded-2xl p-2 text-left cursor-pointer',
+                  'group ripple relative flex w-full items-start gap-2.5 overflow-hidden rounded-2xl p-2 text-left cursor-pointer',
                   'transition-[background-color,box-shadow] duration-medium ease-standard hover:bg-surface-2',
                   isUnread && 'bg-brand/[0.06] ring-1 ring-inset ring-brand/30'
                 )}

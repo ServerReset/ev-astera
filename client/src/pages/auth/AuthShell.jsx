@@ -1,5 +1,6 @@
 import { Zap, Car, Leaf } from 'lucide-react';
 import { AsteraMark } from '@/components/common/AsteraMark.jsx';
+import { Aurora } from '@/components/common/Aurora.jsx';
 
 // The three real product pillars — used as the hero's content so the marketing panel is
 // grounded in what the app actually does, not filler. lucide-react stays the single icon source.
@@ -26,6 +27,7 @@ export function AuthShell({ title, subtitle, children, footer }) {
     // as a fallback for pre-2022 browsers without dvh support; dvh overrides it where supported.
     // lg splits into two equal columns, each its own height so neither forces the page taller.
     <div className="min-h-screen min-h-[100dvh] bg-bg lg:grid lg:grid-cols-2">
+      <Aurora />
       {/* Hero pane — lg+ only. Ambient brand aurora + the product pillars. Sticky full-height so
           it never scrolls with a long form beside it. */}
       <aside className="relative hidden overflow-hidden bg-bg-elevated lg:flex lg:h-screen lg:h-[100dvh] lg:flex-col lg:justify-between lg:p-12 lg:sticky lg:top-0">

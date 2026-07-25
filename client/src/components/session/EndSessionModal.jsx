@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Sparkles } from 'lucide-react';
 import { endSessionSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -20,6 +21,7 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
   const [checked, setChecked] = useState({});
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const ripple = useRipple();
 
   const toggle = (key) => setChecked((c) => ({ ...c, [key]: !c[key] }));
   const allChecked = CHECKLIST.every((c) => checked[c.key]);
@@ -55,7 +57,14 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} loading={submitting} disabled={!allChecked}>
+          <Button
+            variant="primary"
+            className={cn('ripple', allChecked && 'hover-sheen')}
+            onPointerDown={ripple}
+            onClick={submit}
+            loading={submitting}
+            disabled={!allChecked}
+          >
             End session
           </Button>
         </div>
@@ -88,6 +97,12 @@ export function EndSessionModal({ open, onClose, session, onEnded }) {
           );
         })}
       </div>
+      {allChecked && !error && (
+        <div className="mt-3 flex animate-scale-in items-center gap-2 rounded-2xl border border-success/40 bg-success/10 p-3 text-sm text-content">
+          <Sparkles className="h-4 w-4 shrink-0 text-success" aria-hidden />
+          All set — the charger's ready for the next driver. Thanks for keeping it tidy!
+        </div>
+      )}
       {error && <p className="field-error mt-3">{error}</p>}
     </Modal>
   );

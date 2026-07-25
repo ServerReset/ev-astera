@@ -5,6 +5,7 @@ import { Icon } from '@/components/common/Icon.jsx';
 import { ErrorState, EmptyState } from '@/components/common/States.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { achievementApi } from '@/services/endpoints.js';
+import { useTilt } from '@/hooks/useInteractions.js';
 import { TIER_META } from '@/utils/achievements.js';
 import { formatDate } from '@/utils/time.js';
 import { cn } from '@/utils/cn.js';
@@ -14,14 +15,19 @@ function BadgeTile({ badge, index }) {
   const tier = TIER_META[badge.tier] || TIER_META.bronze;
   const { unlocked, progress } = badge;
   const pct = progress ? Math.round((progress.current / progress.target) * 100) : 0;
+  // Unlocked badges earn the premium treatment: a 3D tilt toward the cursor + a one-time
+  // specular sheen sweep. Locked ones stay quietly present with a gentle press/lift.
+  const tiltRef = useTilt(8);
 
   return (
     <div
+      ref={unlocked ? tiltRef : null}
       className={cn(
         'group relative flex flex-col items-center gap-2 overflow-hidden rounded-3xl border p-4 text-center',
         'animate-pop-in [animation-fill-mode:backwards]',
-        'transition-all duration-medium ease-emphasized press hover:-translate-y-0.5 hover:shadow-elevation-2',
-        unlocked ? cn(tier.card, 'shadow-elevation-1') : 'border-border bg-surface opacity-90 hover:opacity-100'
+        unlocked
+          ? cn('tilt hover-sheen transition-shadow duration-medium ease-emphasized hover:shadow-elevation-2', tier.card, 'shadow-elevation-1')
+          : 'transition-all duration-medium ease-emphasized press hover:-translate-y-0.5 hover:shadow-elevation-2 border-border bg-surface opacity-90 hover:opacity-100'
       )}
       style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
     >
@@ -89,7 +95,15 @@ export default function AchievementsPage() {
         icon={Trophy}
         action={
           data ? (
-            <span className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-sm font-semibold tabular-nums text-brand-strong ring-1 ring-brand/25 animate-scale-in">
+            // A quiet reward for completionists: the counter lights up once every badge is earned.
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold tabular-nums ring-1 animate-scale-in',
+                data.unlockedCount >= data.total && data.total > 0
+                  ? 'bg-warning/15 text-warning ring-warning/30 animate-glow'
+                  : 'bg-brand/15 text-brand-strong ring-brand/25'
+              )}
+            >
               {data.unlockedCount} / {data.total}
             </span>
           ) : null

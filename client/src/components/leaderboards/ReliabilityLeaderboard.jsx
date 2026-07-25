@@ -15,13 +15,15 @@ function PodiumFirst({ row, highlightUserId }) {
     <div
       ref={glassRef}
       className={cn(
-        'lg-hero sheen relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
+        'lg-hero relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
         mine ? 'border-brand/60' : 'border-warning/40'
       )}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/20 blur-3xl" aria-hidden />
+      {/* Slow light-over-water drift, kept behind content so it never sweeps across the text. */}
+      <div className="glass-drift pointer-events-none absolute inset-0" aria-hidden />
       <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning animate-float">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning shadow-elevation-1 animate-float">
           <Crown className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-title-md text-content">
@@ -81,7 +83,7 @@ function RankedList({ rows, highlightUserId, emptyLabel, podium = false }) {
     <div>
       {podium && top3[0] && <PodiumFirst row={top3[0]} highlightUserId={highlightUserId} />}
       {(podium ? [...top3.slice(1), ...rest] : rest).length > 0 && (
-        <ol className="space-y-1.5">
+        <ol className="stagger space-y-1.5">
           {(podium ? top3.slice(1) : []).map((r, i) => (
             <PodiumRow key={r.userId} row={r} rank={i + 1} highlightUserId={highlightUserId} />
           ))}

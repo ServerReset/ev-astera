@@ -9,6 +9,7 @@ import { queueApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
 import { QUEUE_STATUS, QUEUE_STATUS_LABEL } from '@/utils/constants.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { cn } from '@/utils/cn.js';
 
 /**
@@ -18,6 +19,7 @@ import { cn } from '@/utils/cn.js';
  */
 export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
   const [busy, setBusy] = useState(false);
+  const ripple = useRipple();
 
   const run = async (fn, successMsg) => {
     setBusy(true);
@@ -40,33 +42,32 @@ export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
         icon={Users}
         action={
           !mine && canJoin ? (
-            <Button size="sm" className="press" onClick={() => run(() => queueApi.join(null), "You're in the queue.")} loading={busy}>
+            <Button size="sm" className="press ripple" onPointerDown={ripple} onClick={() => run(() => queueApi.join(null), "You're in the queue.")} loading={busy}>
               Join queue
             </Button>
           ) : null
         }
       />
 
-      {mine && <MyTurnBanner entry={mine} busy={busy} run={run} onChanged={onChanged} />}
+      {mine && <MyTurnBanner entry={mine} busy={busy} run={run} onChanged={onChanged} ripple={ripple} />}
 
       {entries.length === 0 ? (
         <EmptyState icon={Users} title="The queue is empty" description="Join to be notified the moment a charger frees up." />
       ) : (
-        <ol className="space-y-1.5">
-          {entries.map((e, i) => {
+        <ol className="stagger space-y-1.5">
+          {entries.map((e) => {
             const isMine = mine && e.id === mine.id;
             return (
               <li
                 key={e.id}
                 className={cn(
-                  'flex animate-slide-up items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors duration-medium [animation-fill-mode:backwards]',
+                  'group flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors duration-medium',
                   isMine ? 'bg-brand/10 ring-1 ring-brand/40' : 'bg-bg-elevated hover:bg-surface-2'
                 )}
-                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
               >
                 <span
                   className={cn(
-                    'grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold',
+                    'grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold transition-transform duration-medium ease-spring group-hover:scale-110',
                     isMine ? 'bg-brand/20 text-brand-strong' : 'bg-surface-2 text-muted'
                   )}
                 >
@@ -95,7 +96,7 @@ export function QueuePanel({ entries = [], mine, canJoin, onJoin, onChanged }) {
 }
 
 /** Banner for the viewer's own entry: countdown + claim/leave depending on status. */
-function MyTurnBanner({ entry, busy, run, onChanged }) {
+function MyTurnBanner({ entry, busy, run, onChanged, ripple }) {
   const notified = entry.status === QUEUE_STATUS.NOTIFIED;
   const claimed = entry.status === QUEUE_STATUS.CLAIMED;
   const { label, done } = useCountdown(entry.expiresAt, { onDone: onChanged });
@@ -103,10 +104,18 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
   return (
     <div
       className={cn(
-        'mb-3 animate-scale-in rounded-2xl border p-3',
+        'hover-sheen relative mb-3 animate-scale-in rounded-2xl border p-3',
         notified ? 'border-success/50 bg-success/10 animate-glow' : claimed ? 'border-info/50 bg-info/10' : 'border-border bg-bg-elevated'
       )}
     >
+      {/* Signature flair: when it's your turn, a soft success halo breathes in from the corner. */}
+      {notified && (
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 animate-pulse rounded-full bg-success/25 blur-2xl"
+          aria-hidden
+        />
+      )}
+      <div className="relative">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-medium text-content">
@@ -120,8 +129,8 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
         </div>
         <div className="flex gap-2">
           {notified && (
-            <Button size="sm" className="press" onClick={() => run(() => queueApi.claim(entry.id), 'Claimed! Head to the charger.')} loading={busy}>
-              <Hand className="h-4 w-4" />
+            <Button size="sm" className="press ripple group/claim" onPointerDown={ripple} onClick={() => run(() => queueApi.claim(entry.id), 'Claimed! Head to the charger.')} loading={busy}>
+              <Hand className="h-4 w-4 transition-transform duration-medium ease-spring group-hover/claim:-rotate-12" />
               Claim
             </Button>
           )}
@@ -134,6 +143,8 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
           <Button
             size="sm"
             variant="ghost"
+            className="ripple"
+            onPointerDown={ripple}
             onClick={() => run(() => queueApi.leave(entry.id), 'Left the queue.')}
             loading={busy}
           >
@@ -141,6 +152,7 @@ function MyTurnBanner({ entry, busy, run, onChanged }) {
             Leave
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

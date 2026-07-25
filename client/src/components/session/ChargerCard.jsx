@@ -3,6 +3,7 @@ import { Badge } from '@/components/common/Badge.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { CHARGER_STATUS, CHARGER_STATUS_META, DIRECTION_LABEL } from '@/utils/constants.js';
 import { formatTime, relativeTime } from '@/utils/time.js';
+import { useTilt, useRipple } from '@/hooks/useInteractions.js';
 import { cn } from '@/utils/cn.js';
 
 /**
@@ -17,12 +18,20 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
   // A reserved charger is free but spoken-for by a queue turn in progress — don't offer Start to
   // others (the server rejects it anyway; this keeps the UI honest). See charger.service reserved.
   const available = charger.status === CHARGER_STATUS.AVAILABLE && !charger.reserved;
+  // The hero interaction: an available, startable card feels irresistibly tappable — a subtle
+  // tilt-toward-cursor on the wrapper (kept off the card so it doesn't fight the hover lift). The
+  // card is NOT itself a click target (that would be a mouse-only, keyboard-unreachable action, and
+  // clicking any corner to start a session is easy to do by accident) — the "Start charging" button
+  // inside is the real, fully-accessible action; the lift/sheen just draw the eye to it.
+  const interactive = available && canStart;
+  const tiltRef = useTilt(5);
+  const ripple = useRipple();
 
-  return (
+  const card = (
     <div
       className={cn(
-        'card group relative flex flex-col overflow-hidden rounded-xl-increased p-4 transition-all duration-medium ease-emphasized',
-        available && 'hover:-translate-y-1 hover:shadow-elevation-2',
+        'card group relative flex h-full flex-col overflow-hidden rounded-xl-increased p-4 transition-all duration-medium ease-emphasized',
+        available && 'card-interactive hover-sheen',
         charger.status === CHARGER_STATUS.OVERTIME && 'border-warning/50',
         isMine && 'ring-2 ring-brand/50'
       )}
@@ -46,7 +55,12 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
                 : 'bg-surface-2 text-muted'
             )}
           >
-            <Zap className="h-5 w-5" />
+            <Zap
+              className={cn(
+                'h-5 w-5 transition-transform duration-medium ease-spring',
+                available && 'group-hover:scale-110 group-hover:-rotate-6'
+              )}
+            />
           </span>
           <div>
             <p className="text-title-md text-content">{charger.name}</p>
@@ -98,18 +112,26 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
       {/* Actions */}
       <div className="mt-auto flex gap-2 pt-1">
         {available && canStart && (
-          <Button size="sm" className="press flex-1" onClick={() => onStart?.(charger)}>
+          <Button
+            size="sm"
+            className="press hover-sheen ripple flex-1"
+            onPointerDown={ripple}
+            onClick={(e) => {
+              e.stopPropagation();
+              onStart?.(charger);
+            }}
+          >
             Start charging
           </Button>
         )}
         {s && isMine && (
-          <Button size="sm" variant="secondary" className="press flex-1" onClick={() => onEndMine?.(charger)}>
+          <Button size="sm" variant="secondary" className="press ripple flex-1" onPointerDown={ripple} onClick={() => onEndMine?.(charger)}>
             End session
           </Button>
         )}
         {s && !isMine && (
-          <Button size="sm" variant="ghost" className="press flex-1" onClick={() => onNudge?.(charger)}>
-            <Hand className="h-4 w-4" />
+          <Button size="sm" variant="ghost" className="press ripple group/nudge flex-1" onPointerDown={ripple} onClick={() => onNudge?.(charger)}>
+            <Hand className="h-4 w-4 transition-transform duration-medium ease-spring group-hover/nudge:-rotate-12" />
             Nudge
           </Button>
         )}
@@ -117,4 +139,14 @@ export function ChargerCard({ charger, isMine, canStart, onStart, onNudge, onEnd
       </div>
     </div>
   );
+
+  // Only available/startable cards get the 3D tilt; occupied/offline tiles stay calm and flat.
+  if (interactive) {
+    return (
+      <div ref={tiltRef} className="tilt h-full">
+        {card}
+      </div>
+    );
+  }
+  return card;
 }

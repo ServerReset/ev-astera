@@ -15,13 +15,17 @@ function PodiumFirst({ row, highlightUserId }) {
     <div
       ref={glassRef}
       className={cn(
-        'lg-hero sheen relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
+        'lg-hero relative mb-2 overflow-hidden rounded-xl-increased border p-3.5 animate-pop-in',
         mine ? 'border-brand/60' : 'border-warning/40'
       )}
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/20 blur-3xl" aria-hidden />
+      {/* Slow light-over-water drift across the champion's glass — the screen's signature flair.
+          Kept as a BEHIND-content overlay (not .sheen on the container) so the specular band never
+          sweeps across the name/score text. */}
+      <div className="glass-drift pointer-events-none absolute inset-0" aria-hidden />
       <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning animate-float">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-warning/15 text-warning shadow-elevation-1 animate-float">
           <Crown className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-title-md text-content">
@@ -80,7 +84,9 @@ export function Leaderboard({ rows = [], highlightUserId, window, onWindowChange
                   <li
                     key={r.userId}
                     className={cn(
-                      'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all duration-medium ease-emphasized hover:-translate-y-px animate-slide-up [animation-fill-mode:backwards]',
+                      // Display-only ranking rows — no ripple/lift (those imply a tap that does
+                      // nothing); just a soft hover tint + a staggered entrance.
+                      'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors duration-medium ease-emphasized animate-slide-up [animation-fill-mode:backwards]',
                       mine
                         ? 'bg-brand/10 ring-1 ring-brand/40'
                         : rank % 2

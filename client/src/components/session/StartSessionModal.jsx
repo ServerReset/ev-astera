@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Zap } from 'lucide-react';
 import { startSessionSchema } from '@shared/validation.js';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
@@ -6,9 +7,11 @@ import { Input } from '@/components/common/Input.jsx';
 import { DurationSlider } from '@/components/common/DurationSlider.jsx';
 import { useZodForm } from '@/hooks/useZodForm.js';
 import { useSessionConfig } from '@/hooks/useSessionConfig.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
+import { burstConfetti } from '@/utils/confetti.js';
 
 /**
  * Start-session flow. Pre-fills vehicle from the user profile. Duration is chosen on a
@@ -20,6 +23,7 @@ import { toast } from '@/stores/toastStore.js';
 export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
   const [error, setError] = useState(null);
   const maxSessionMinutes = useSessionConfig();
+  const ripple = useRipple();
   const { values, errors, submitting, setField, handleChange, handleSubmit } = useZodForm(startSessionSchema, {
     chargerId: charger?.id,
     durationMinutes: 120,
@@ -41,6 +45,8 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
     try {
       const session = await sessionApi.start(data);
       toast.success('Charging session started.');
+      // Signature moment: a quick electric-green burst as the plug comes alive.
+      burstConfetti({ colors: ['#4fb477', '#f5c542', '#3c79bc', '#ffffff'], count: 70 });
       onStarted?.(session);
       onClose?.();
     } catch (err) {
@@ -58,13 +64,14 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="press" onClick={onSubmit} loading={submitting}>
+          <Button className="press ripple hover-sheen" onPointerDown={ripple} onClick={onSubmit} loading={submitting}>
+            <Zap className="h-4 w-4" aria-hidden />
             Start
           </Button>
         </div>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="stagger space-y-4" noValidate>
         <DurationSlider
           label="How long do you need?"
           value={values.durationMinutes}
@@ -82,7 +89,14 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
           placeholder="White Tesla Model 3"
         />
 
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-border bg-bg-elevated p-3 text-sm transition-colors duration-medium hover:border-border-strong">
+        <label
+          className={
+            'press flex cursor-pointer items-start gap-2.5 rounded-2xl border p-3 text-sm transition-colors duration-medium ' +
+            (values.confirmedConnected
+              ? 'border-success/50 bg-success/10'
+              : 'border-border bg-bg-elevated hover:border-border-strong')
+          }
+        >
           <input
             type="checkbox"
             name="confirmedConnected"
@@ -90,7 +104,7 @@ export function StartSessionModal({ open, onClose, charger, user, onStarted }) {
             onChange={handleChange}
             className="mt-0.5 h-4 w-4 rounded border-border bg-bg text-brand focus:ring-brand"
           />
-          <span className="text-muted">
+          <span className={values.confirmedConnected ? 'text-content' : 'text-muted'}>
             I've plugged in and confirmed the charger is delivering power to my vehicle.
           </span>
         </label>

@@ -3,6 +3,7 @@ import { Modal } from '@/components/common/Modal.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { DurationSlider } from '@/components/common/DurationSlider.jsx';
 import { useSessionConfig } from '@/hooks/useSessionConfig.js';
+import { useRipple } from '@/hooks/useInteractions.js';
 import { sessionApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -31,6 +32,7 @@ export function EtaModal({ open, onClose, session, onUpdated }) {
   const [minutes, setMinutes] = useState(() => originalDurationMinutes(session, maxSessionMinutes || 240));
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const ripple = useRipple();
 
   // Re-seed from the session's actual current duration each time the modal opens (or once the
   // real max loads) — it was previously hardcoded to 120, which silently shortened/lengthened
@@ -67,14 +69,16 @@ export function EtaModal({ open, onClose, session, onUpdated }) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="press" onClick={submit} loading={submitting}>
+          <Button className="press ripple hover-sheen" onPointerDown={ripple} onClick={submit} loading={submitting}>
             Update
           </Button>
         </div>
       }
     >
-      <p className="mb-3 text-sm text-muted">Set the total time you need, measured from when you started.</p>
-      <DurationSlider label="Total duration" value={minutes} onChange={setMinutes} max={maxSessionMinutes || undefined} />
+      <div className="stagger space-y-3">
+        <p className="text-sm text-muted">Set the total time you need, measured from when you started.</p>
+        <DurationSlider label="Total duration" value={minutes} onChange={setMinutes} max={maxSessionMinutes || undefined} />
+      </div>
       {error && <p className="field-error mt-3">{error}</p>}
     </Modal>
   );

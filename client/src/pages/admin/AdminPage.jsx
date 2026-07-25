@@ -26,6 +26,12 @@ const TABS = [
   { key: 'audit', label: 'Audit', icon: ScrollText },
 ];
 
+// Tabs that fetch their own data internally (Users/Carpool/Audit own their useApi, so AdminPage
+// can't reach their refetch). The header Refresh passes them a bumped `refreshSignal` prop, which
+// each re-runs its fetch on — WITHOUT remounting, so the admin's search text / page / sub-tab is
+// preserved (a remount-to-refresh reset all of that, bouncing them to page 1 / empty search).
+const SELF_FETCHING_TABS = new Set(['users', 'carpool', 'audit']);
+
 /**
  * The admin console. A Tabs shell over seven surfaces. Super-admins get an office switcher whose
  * selection re-scopes every API call (endpoints.js's loc()); we key the page-level fetches on the
@@ -33,6 +39,11 @@ const TABS = [
  */
 export default function AdminPage() {
   const [tab, setTab] = useState('overview');
+  // Bumped by the header Refresh button for the self-fetching tabs (Users/Carpool/Audit) — those
+  // own their useApi internally, so AdminPage can't reach their refetch. Passed down as a
+  // `refreshSignal` prop (NOT folded into the subtree key), so each tab re-runs its fetch on change
+  // without remounting — preserving its search text, page, and sub-tab.
+  const [refreshSignal, setRefreshSignal] = useState(0);
   const selectedOfficeId = useOfficeStore((s) => s.selectedOfficeId);
 
   // Page-level data used by the lighter tabs; the heavier tabs (Users, Carpool, Audit) fetch
@@ -58,6 +69,7 @@ export default function AdminPage() {
     else if (tab === 'chargers') chargers.refetch();
     else if (tab === 'settings') settings.refetch();
     else if (tab === 'announcements') announcements.refetch();
+    else if (SELF_FETCHING_TABS.has(tab)) setRefreshSignal((n) => n + 1);
   };
 
   return (
@@ -78,14 +90,16 @@ export default function AdminPage() {
 
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
 
+      {/* Key on office + tab only — NOT refreshSignal — so a refresh re-runs the fetch without
+          wiping the tab's internal view state (search/page/sub-tab). */}
       <div key={`${scopeKey}-${tab}`} className="animate-fade-in">
         {tab === 'overview' && <OverviewTab overview={overview} />}
         {tab === 'chargers' && <ChargersTab chargers={chargers} />}
-        {tab === 'users' && <UsersTab />}
+        {tab === 'users' && <UsersTab refreshSignal={refreshSignal} />}
         {tab === 'settings' && <SettingsTab settings={settings} />}
         {tab === 'announcements' && <AnnouncementsTab announcements={announcements} />}
-        {tab === 'carpool' && <CarpoolTab />}
-        {tab === 'audit' && <AuditTab />}
+        {tab === 'carpool' && <CarpoolTab refreshSignal={refreshSignal} />}
+        {tab === 'audit' && <AuditTab refreshSignal={refreshSignal} />}
       </div>
     </div>
   );

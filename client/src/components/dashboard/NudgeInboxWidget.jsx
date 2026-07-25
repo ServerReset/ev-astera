@@ -51,7 +51,16 @@ export function NudgeInboxWidget() {
                 role="button"
                 tabIndex={0}
                 onClick={() => open(n)}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open(n))}
+                // Only act on keys that originate on the row itself. Nested reaction <button>s
+                // bubble their keydown up here; without the target guard, activating a reaction
+                // with the keyboard would ALSO navigate away from the notification.
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    open(n);
+                  }
+                }}
                 className={cn(
                   'flex w-full items-start gap-2.5 rounded-2xl p-2 text-left transition-colors duration-medium ease-standard hover:bg-surface-2 cursor-pointer',
                   !n.readAt && 'ring-1 ring-brand/30'

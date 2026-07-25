@@ -22,7 +22,9 @@ import { addDays, addMinutes, now } from '../../utils/timeUtils.js';
 
 const SALT_ROUNDS = 12;
 const LOCK_THRESHOLD = 5;
-const LOCK_WINDOW_MIN = 15;
+// NOTE: there is intentionally no rolling failure WINDOW — the login-failure-window migration
+// (20260725040000) that would have added last_failed_at was reverted (see its migration.sql), so
+// the counter reverted to per-attempt. Reintroducing a window needs that column + migration first.
 const LOCK_DURATION_MIN = 15;
 
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');

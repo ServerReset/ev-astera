@@ -21,14 +21,14 @@ const OPTIONS = [
 function Preview({ palette, split }) {
   if (split) {
     return (
-      <div className="relative flex h-16 overflow-hidden rounded-xl ring-1 ring-black/10">
+      <div className="relative flex h-16 overflow-hidden rounded-xl ring-1 ring-border">
         <div className="w-1/2"><MiniWindow palette={LIGHT} /></div>
         <div className="w-1/2"><MiniWindow palette={DARK} /></div>
       </div>
     );
   }
   return (
-    <div className="h-16 overflow-hidden rounded-xl ring-1 ring-black/10">
+    <div className="h-16 overflow-hidden rounded-xl ring-1 ring-border">
       <MiniWindow palette={palette} />
     </div>
   );

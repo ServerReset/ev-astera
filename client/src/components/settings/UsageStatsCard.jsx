@@ -31,6 +31,8 @@ export function UsageStatsCard({ stats }) {
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
   const streak = stats?.streakDays ?? 0;
   const carpool = stats?.carpool || {};
+  // Count the hero number up to match the stat tiles below, so the whole card animates as one.
+  const usedShown = useCountUp(used);
 
   return (
     <div
@@ -44,7 +46,7 @@ export function UsageStatsCard({ stats }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">This week</p>
           <p className="mt-0.5 flex items-baseline gap-1.5">
-            <span className="text-4xl font-black tabular-nums text-gradient-brand">{used}</span>
+            <span className="text-4xl font-black tabular-nums text-gradient-brand">{usedShown}</span>
             <span className="text-lg font-semibold text-muted">/ {max || '∞'} sessions</span>
           </p>
         </div>
@@ -62,8 +64,12 @@ export function UsageStatsCard({ stats }) {
           <div className="h-2.5 overflow-hidden rounded-full bg-surface/60">
             <div
               className={cn(
-                'h-full rounded-full bg-gradient-to-r from-brand to-brand-strong transition-[width] duration-long ease-emphasized',
-                pct >= 100 && 'from-warning to-warning'
+                'h-full rounded-full transition-[width] duration-long ease-emphasized',
+                // Swap the WHOLE gradient, not just the `from-*` stop: Tailwind's gradient
+                // utilities all write the same CSS vars, so layering `from-warning to-warning`
+                // over `from-brand to-brand-strong` leaves the winner up to stylesheet emit
+                // order rather than className order. A static either/or keeps it deterministic.
+                pct >= 100 ? 'bg-gradient-to-r from-warning to-warning' : 'bg-gradient-to-r from-brand to-brand-strong'
               )}
               style={{ width: `${pct}%` }}
             />

@@ -8,6 +8,7 @@ import { Spinner, ErrorState, EmptyState } from '@/components/common/States.jsx'
 import { AdminTable, AdminRow, Td } from './adminShared.jsx';
 import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { useRipple } from '@/hooks/useInteractions.js';
+import { burstConfetti } from '@/utils/confetti.js';
 import { adminApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -108,7 +109,7 @@ export function ChargersTab({ chargers }) {
         </div>
       )}
 
-      <CreateChargerModal open={createOpen} onClose={() => setCreateOpen(false)} onDone={() => { setCreateOpen(false); chargers.refetch(); }} />
+      <CreateChargerModal open={createOpen} isFirst={list.length === 0} onClose={() => setCreateOpen(false)} onDone={() => { setCreateOpen(false); chargers.refetch(); }} />
       <RenameChargerModal charger={renameFor} onClose={() => setRenameFor(null)} onDone={() => { setRenameFor(null); chargers.refetch(); }} />
       <OfflineChargerModal charger={offlineFor} onClose={() => setOfflineFor(null)} onDone={() => { setOfflineFor(null); chargers.refetch(); }} />
       {dialog}
@@ -128,23 +129,31 @@ function IconBtn({ title, tone, onClick, disabled, children }) {
       aria-label={title}
       onClick={onClick}
       disabled={disabled}
-      className={`grid h-9 w-9 place-items-center rounded-full transition-colors duration-short active:scale-90 disabled:opacity-40 ${TONES[tone] || 'text-muted hover:bg-surface-2 hover:text-content'}`}
+      className={`grid h-9 w-9 place-items-center rounded-full transition-colors duration-short focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 active:scale-90 disabled:opacity-40 ${TONES[tone] || 'text-muted hover:bg-surface-2 hover:text-content'}`}
     >
       {children}
     </button>
   );
 }
 
-function CreateChargerModal({ open, onClose, onDone }) {
+function CreateChargerModal({ open, isFirst, onClose, onDone }) {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const ripple = useRipple();
-  const submit = async () => {
+  const submit = async (e) => {
     if (!name.trim()) return;
     setSaving(true);
     try {
       await adminApi.createCharger({ name: name.trim() });
-      toast.success('Charger added');
+      // The very first charger gets the board running — a real once-per-office milestone worth a
+      // small celebration. Burst from the click point when we have one (a keyboard-activated button
+      // reports clientX/Y of 0 — fall back to the default top-center in that case).
+      if (isFirst) {
+        burstConfetti(e?.clientX ? { x: e.clientX, y: e.clientY } : undefined);
+        toast.success('First charger added — your board is live! ⚡');
+      } else {
+        toast.success('Charger added');
+      }
       setName('');
       onDone();
     } catch (err) {

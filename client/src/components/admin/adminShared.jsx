@@ -2,6 +2,15 @@ import { cn } from '@/utils/cn.js';
 import { useCountUp } from '@/hooks/useCountUp.js';
 import { useTilt, useRipple } from '@/hooks/useInteractions.js';
 
+// Static literal-class map (never interpolate class names) — hoisted so it isn't reallocated
+// per render.
+const TONE_ICON = {
+  brand: 'bg-brand/15 text-brand-strong ring-brand/20',
+  success: 'bg-success/15 text-success ring-success/20',
+  warning: 'bg-warning/15 text-warning ring-warning/20',
+  info: 'bg-info/15 text-info ring-info/20',
+};
+
 /**
  * A glass stat tile for the Overview grid. Count-up number, hover lift + sheen, tilt-to-cursor.
  * `hero` renders the number with the brand gradient (reserve for ONE tile per grid).
@@ -10,20 +19,14 @@ export function StatTile({ icon: Icon, label, value, decimals = 0, suffix = '', 
   const n = useCountUp(Number(value) || 0, { decimals });
   const tiltRef = useTilt(6);
   const display = decimals ? n.toFixed(decimals) : Math.round(n).toLocaleString();
-
-  const TONE_ICON = {
-    brand: 'bg-brand/15 text-brand-strong ring-brand/20',
-    success: 'bg-success/15 text-success ring-success/20',
-    warning: 'bg-warning/15 text-warning ring-warning/20',
-    info: 'bg-info/15 text-info ring-info/20',
-  }[tone] || 'bg-brand/15 text-brand-strong ring-brand/20';
+  const toneIcon = TONE_ICON[tone] || TONE_ICON.brand;
 
   return (
     <div ref={tiltRef} className="tilt h-full">
       <div className="card card-interactive hover-sheen group relative flex h-full flex-col gap-3 overflow-hidden rounded-xl-increased p-5 transition-all duration-medium ease-emphasized">
         <div className="flex items-center justify-between">
-          <span className={cn('grid h-11 w-11 place-items-center rounded-2xl ring-1 transition-transform duration-medium ease-spring group-hover:scale-105', TONE_ICON)}>
-            <Icon className="h-5 w-5" />
+          <span className={cn('grid h-11 w-11 place-items-center rounded-2xl ring-1 transition-transform duration-medium ease-spring group-hover:scale-105', toneIcon)}>
+            <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
         </div>
         <div>
@@ -143,7 +146,7 @@ export function ChipListEditor({ label, hint, values = [], onChange, placeholder
               type="button"
               onClick={() => remove(v)}
               aria-label={`Remove ${v}`}
-              className="grid h-5 w-5 place-items-center rounded-full text-brand-strong/70 transition-colors hover:bg-brand/20 hover:text-brand-strong active:scale-90"
+              className="grid h-5 w-5 place-items-center rounded-full text-brand-strong/70 transition-colors hover:bg-brand/20 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 active:scale-90"
             >
               ×
             </button>

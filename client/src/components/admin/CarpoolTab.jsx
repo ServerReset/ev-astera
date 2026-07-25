@@ -12,8 +12,10 @@ import { toast } from '@/stores/toastStore.js';
 import { RIDE_STATUS_META, DIRECTION_LABEL, WEEKDAYS } from '@/utils/constants.js';
 import { formatDateTime } from '@/utils/time.js';
 
-/** Carpool admin: rides / requests / schedules / groups, each with a force-cancel or delete. */
-export function CarpoolTab() {
+/** Carpool admin: rides / requests / schedules / groups, each with a force-cancel or delete.
+ *  `refreshSignal` (header Refresh) re-runs the active sub-list's fetch without remounting the tab,
+ *  so the chosen sub-tab (Rides/Requests/Schedules/Groups) survives a refresh. */
+export function CarpoolTab({ refreshSignal = 0 }) {
   const [sub, setSub] = useState('rides');
   const [confirm, dialog] = useConfirm();
 
@@ -28,10 +30,10 @@ export function CarpoolTab() {
     <div>
       <Tabs tabs={tabs} value={sub} onChange={setSub} />
       <div className="animate-fade-in">
-        {sub === 'rides' && <RidesList confirm={confirm} />}
-        {sub === 'requests' && <RequestsList confirm={confirm} />}
-        {sub === 'schedules' && <SchedulesList confirm={confirm} />}
-        {sub === 'groups' && <GroupsList confirm={confirm} />}
+        {sub === 'rides' && <RidesList confirm={confirm} refreshSignal={refreshSignal} />}
+        {sub === 'requests' && <RequestsList confirm={confirm} refreshSignal={refreshSignal} />}
+        {sub === 'schedules' && <SchedulesList confirm={confirm} refreshSignal={refreshSignal} />}
+        {sub === 'groups' && <GroupsList confirm={confirm} refreshSignal={refreshSignal} />}
       </div>
       {dialog}
     </div>
@@ -56,17 +58,17 @@ function DeleteBtn({ onClick, label = 'Cancel' }) {
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger active:scale-90"
+      className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-danger/70 active:scale-90"
     >
       <Trash2 className="h-4 w-4" />
     </button>
   );
 }
 
-function RidesList({ confirm }) {
-  const q = useList(() => adminApi.listCarpoolRides());
+function RidesList({ confirm, refreshSignal = 0 }) {
+  const q = useList(() => adminApi.listCarpoolRides(), [refreshSignal]);
   const cancel = async (r) => {
-    if (await confirm({ title: 'Cancel ride?', message: `Cancel ${r.driverName || 'this'} ride departing ${formatDateTime(r.departAt)}? Riders will be notified.`, danger: true, confirmLabel: 'Cancel ride' })) {
+    if (await confirm({ title: 'Cancel ride?', message: `Cancel ${r.driverName ? `${r.driverName}'s` : 'this'} ride departing ${formatDateTime(r.departAt)}? Riders will be notified.`, danger: true, confirmLabel: 'Cancel ride' })) {
       try { await adminApi.cancelCarpoolRide(r.id); toast.success('Ride cancelled'); q.refetch(); }
       catch (err) { toast.error(normalizeError(err).message); }
     }
@@ -91,10 +93,10 @@ function RidesList({ confirm }) {
   );
 }
 
-function RequestsList({ confirm }) {
-  const q = useList(() => adminApi.listCarpoolRequests());
+function RequestsList({ confirm, refreshSignal = 0 }) {
+  const q = useList(() => adminApi.listCarpoolRequests(), [refreshSignal]);
   const cancel = async (r) => {
-    if (await confirm({ title: 'Cancel request?', message: `Cancel ${r.riderName || 'this'} ride request?`, danger: true, confirmLabel: 'Cancel request' })) {
+    if (await confirm({ title: 'Cancel request?', message: `Cancel ${r.riderName ? `${r.riderName}'s` : 'this'} ride request?`, danger: true, confirmLabel: 'Cancel request' })) {
       try { await adminApi.cancelCarpoolRequest(r.id); toast.success('Request cancelled'); q.refetch(); }
       catch (err) { toast.error(normalizeError(err).message); }
     }
@@ -118,10 +120,10 @@ function RequestsList({ confirm }) {
   );
 }
 
-function SchedulesList({ confirm }) {
-  const q = useList(() => adminApi.listCarpoolSchedules());
+function SchedulesList({ confirm, refreshSignal = 0 }) {
+  const q = useList(() => adminApi.listCarpoolSchedules(), [refreshSignal]);
   const del = async (s) => {
-    if (await confirm({ title: 'Delete schedule?', message: `Delete ${s.userName || 'this'} recurring ${s.role}?`, danger: true, confirmLabel: 'Delete' })) {
+    if (await confirm({ title: 'Delete schedule?', message: `Delete ${s.userName ? `${s.userName}'s` : 'this'} recurring ${s.role} schedule?`, danger: true, confirmLabel: 'Delete' })) {
       try { await adminApi.deleteCarpoolSchedule(s.id); toast.success('Schedule deleted'); q.refetch(); }
       catch (err) { toast.error(normalizeError(err).message); }
     }
@@ -146,8 +148,8 @@ function SchedulesList({ confirm }) {
   );
 }
 
-function GroupsList({ confirm }) {
-  const q = useList(() => adminApi.listCarpoolGroups());
+function GroupsList({ confirm, refreshSignal = 0 }) {
+  const q = useList(() => adminApi.listCarpoolGroups(), [refreshSignal]);
   const del = async (g) => {
     if (await confirm({ title: 'Delete group?', message: `Delete "${g.name}" and remove all ${g.memberCount} member(s)?`, danger: true, confirmLabel: 'Delete' })) {
       try { await adminApi.deleteCarpoolGroup(g.id); toast.success('Group deleted'); q.refetch(); }

@@ -112,14 +112,19 @@ function MyTurnBanner({ mine, busy, onClaim }) {
         size="sm"
         className="press ripple mt-2 w-full"
         loading={busy}
+        // Once the grace window has elapsed the server will reject the claim ("no longer
+        // available"), so disabling here prevents both a doomed request AND a premature confetti
+        // burst that would celebrate a spot the user has already lost.
+        disabled={busy || done}
         onClick={(e) => {
+          if (done) return;
           // Burst from the button you actually pressed, in warm "you won the wait" colors.
           const r = e.currentTarget.getBoundingClientRect();
           burstConfetti({ x: r.left + r.width / 2, y: r.top, colors: ['#3c79bc', '#5a96d6', '#4ade80', '#f5c542', '#ffffff'] });
           onClaim();
         }}
       >
-        Claim my charger
+        {done ? 'Window closed' : 'Claim my charger'}
       </Button>
     </div>
   );

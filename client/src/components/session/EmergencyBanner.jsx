@@ -35,13 +35,16 @@ function EmergencyRow({ req, canRespond, onChanged }) {
   if (done) return null;
 
   const respond = async (accept, e) => {
+    // Capture the button's position NOW, synchronously — React nulls out e.currentTarget once the
+    // handler returns, so reading it after the await below would always be null and the confetti
+    // would fall back to screen-center instead of bursting from the button the user pressed.
+    const rect = e?.currentTarget?.getBoundingClientRect();
     setBusy(true);
     try {
       await messageApi.respondEmergency({ requestId: req.id, accept });
       if (accept) {
         // A small thank-you flourish for the good deed — burst from the button pressed.
-        const r = e?.currentTarget?.getBoundingClientRect();
-        burstConfetti(r ? { x: r.left + r.width / 2, y: r.top, count: 60, colors: ['#4ade80', '#5a96d6', '#f5c542', '#ffffff'] } : { count: 60 });
+        burstConfetti(rect ? { x: rect.left + rect.width / 2, y: rect.top, count: 60, colors: ['#4ade80', '#5a96d6', '#f5c542', '#ffffff'] } : { count: 60 });
         toast.success('You’re a lifesaver — they’ve been told you’re wrapping up.');
       } else {
         toast.success('No worries — response sent.');
@@ -57,7 +60,10 @@ function EmergencyRow({ req, canRespond, onChanged }) {
   return (
     <div className="animate-slide-up overflow-hidden rounded-2xl border border-danger/40 bg-danger/10 p-3.5 hover-sheen">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-danger/15 text-danger animate-pulse">
+        {/* No infinite pulse here: emergencies can stack into a list, and several pulsing icons at
+            rest reads as noise. The danger border + tint + live countdown carry the urgency; the
+            siren gets a one-shot pop on entrance only. */}
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-danger/15 text-danger animate-pop-in">
           <Siren className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">

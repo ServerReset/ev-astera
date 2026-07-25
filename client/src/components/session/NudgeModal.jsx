@@ -14,14 +14,28 @@ import { cn } from '@/utils/cn.js';
  * derived server-side from the live session; we send chargerId + sessionId + message. Presets are
  * admin-configured (useMessageConfig); a custom message is allowed within 100 chars.
  */
+// Mirror of nudgeSchema.message's server cap (shared/validation.js). Presets are admin-editable
+// and unbounded, so a preset can be longer than this — always clamp before it reaches state.
+const MAX_NUDGE = 100;
+const clampNudge = (s) => (s || '').slice(0, MAX_NUDGE);
+
 export function NudgeModal({ open, onClose, charger }) {
   const { nudgePresets } = useMessageConfig();
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Reset to empty each time the modal opens, so a stale draft doesn't linger between sends.
   useEffect(() => {
-    if (open && nudgePresets?.length) setMessage(nudgePresets[0]);
+    if (open) setMessage('');
+  }, [open]);
+
+  // Seed the first preset ONLY into an empty field. useMessageConfig resolves a beat after open;
+  // guarding on the current value means a preset landing late can't wipe text the user already
+  // typed in the ~100-300ms fetch window. Clamp because a programmatic setMessage bypasses the
+  // textarea's maxLength and admin presets are unbounded.
+  useEffect(() => {
+    if (open && nudgePresets?.length) setMessage((m) => (m ? m : clampNudge(nudgePresets[0])));
   }, [open, nudgePresets]);
 
   const submit = async () => {
@@ -54,21 +68,22 @@ export function NudgeModal({ open, onClose, charger }) {
     >
       <p className="mb-3 text-sm text-muted">Anonymous and friendly — pick a quick message or write your own.</p>
       <div className="mb-3 space-y-2">
-        {(nudgePresets || []).map((preset) => (
+        {(nudgePresets || []).map((preset, i) => (
           <button
-            key={preset}
+            // Index-suffixed: presets are admin-editable and two entries could be identical.
+            key={`${preset}-${i}`}
             type="button"
-            onClick={() => setMessage(preset)}
+            onClick={() => setMessage(clampNudge(preset))}
             className={cn(
               'press w-full rounded-2xl border p-2.5 text-left text-sm transition-colors duration-medium ease-emphasized',
-              message === preset ? 'border-brand bg-brand/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
+              message === clampNudge(preset) ? 'border-brand bg-brand/10 text-content' : 'border-border bg-bg-elevated text-muted hover:text-content'
             )}
           >
-            {preset}
+            {clampNudge(preset)}
           </button>
         ))}
       </div>
-      <Textarea label="Message" value={message} maxLength={100} onChange={(e) => setMessage(e.target.value)} hint={`${message.length}/100`} />
+      <Textarea label="Message" value={message} maxLength={MAX_NUDGE} onChange={(e) => setMessage(clampNudge(e.target.value))} hint={`${message.length}/${MAX_NUDGE}`} />
       {error && <p className="field-error mt-2">{error}</p>}
     </Modal>
   );

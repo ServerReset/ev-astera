@@ -7,10 +7,11 @@ import { adminApi } from '@/services/endpoints.js';
 import { PAGE_SIZE } from '@/utils/constants.js';
 import { formatDateTime, relativeTime } from '@/utils/time.js';
 
-/** Audit log: paginated activity feed of admin/system actions. */
-export function AuditTab() {
+/** Audit log: paginated activity feed of admin/system actions. `refreshSignal` (header Refresh)
+ *  re-runs the fetch without remounting, so the current page is preserved across a refresh. */
+export function AuditTab({ refreshSignal = 0 }) {
   const [page, setPage] = useState(1);
-  const audit = useApi(() => adminApi.audit(page), [page]);
+  const audit = useApi(() => adminApi.audit(page), [page, refreshSignal]);
   const items = audit.data?.items || [];
 
   if (audit.loading && !items.length) return <Spinner label="Loading audit log…" />;
@@ -41,15 +42,15 @@ export function AuditTab() {
   );
 }
 
-/** Details is a jsonb blob — render it compactly rather than dumping raw JSON. */
+/** Details is a jsonb blob (object, array, string, number, or null) — render it compactly rather
+ * than dumping raw JSON. Guards every non-object shape so a numeric/array payload can't crash the
+ * row (Object.entries on a primitive throws). */
 function formatDetails(details) {
-  if (!details) return '—';
-  if (typeof details === 'string') return details;
-  try {
-    const entries = Object.entries(details);
-    if (!entries.length) return '—';
-    return entries.map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ');
-  } catch {
-    return '—';
-  }
+  if (details == null) return '—';
+  if (typeof details === 'string') return details || '—';
+  if (typeof details !== 'object') return String(details);
+  if (Array.isArray(details)) return details.length ? details.map(String).join(', ') : '—';
+  const entries = Object.entries(details);
+  if (!entries.length) return '—';
+  return entries.map(([k, v]) => `${k}: ${v != null && typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ');
 }

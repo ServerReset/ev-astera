@@ -184,7 +184,11 @@ export const messageService = {
 
   /** A charging user responds to an emergency (offers to wrap up / declines). */
   async respondEmergency(locationId, responderId, { requestId, accept }) {
-    const reqRow = await prisma.emergency_requests.findUnique({ where: { id: requestId } });
+    // Scope the lookup to this office. Without the location_id filter, a user could respond to (and
+    // resolve) an emergency request from ANOTHER office by passing its id — spuriously notifying a
+    // requester at a site they have no access to. Every other cross-location lookup here is scoped
+    // the same way (findFirst + location_id), so this closes that gap.
+    const reqRow = await prisma.emergency_requests.findFirst({ where: { id: requestId, location_id: locationId } });
     if (!reqRow) throw new NotFoundError('Emergency request not found');
     if (reqRow.status !== 'open') throw new BusinessRuleError('This request is no longer open.');
 

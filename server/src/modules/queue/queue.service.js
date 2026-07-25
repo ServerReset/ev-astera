@@ -23,7 +23,8 @@ import {
   CHARGER_STATUS,
   SETTING_KEYS,
 } from '../../../../shared/constants.js';
-import { addMinutes, now } from '../../utils/timeUtils.js';
+import { addMinutes, now, formatDateTime } from '../../utils/timeUtils.js';
+import { getLocationMeta } from '../../utils/locationTz.js';
 
 const ACTIVE_QUEUE = [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED];
 
@@ -93,8 +94,11 @@ export const queueService = {
     // a priority penalty alone wouldn't stop them from still occupying a spot.
     if (await services.reliability.isLockedOut(userId, locationId)) {
       const { lockedUntil } = await services.reliability.getScore(userId, locationId);
+      // Render the unlock time in the OFFICE's timezone, not the server's — a bare
+      // toLocaleString() on the host formats in UTC and shows the user a misleading time.
+      const meta = await getLocationMeta(locationId);
       throw new BusinessRuleError(
-        `Your account is temporarily restricted from joining the queue due to low reliability. Try again after ${new Date(lockedUntil).toLocaleString()}.`
+        `Your account is temporarily restricted from joining the queue due to low reliability. Try again after ${formatDateTime(lockedUntil, meta?.tz)}.`
       );
     }
 

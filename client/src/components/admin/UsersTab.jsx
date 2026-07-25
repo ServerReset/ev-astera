@@ -6,6 +6,7 @@ import { Switch } from '@/components/common/Switch.jsx';
 import { Modal } from '@/components/common/Modal.jsx';
 import { Spinner, ErrorState, EmptyState } from '@/components/common/States.jsx';
 import { AdminTable, AdminRow, Td, Pager } from './adminShared.jsx';
+import { useConfirm } from '@/components/common/ConfirmDialog.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useRipple } from '@/hooks/useInteractions.js';
 import { adminApi } from '@/services/endpoints.js';
@@ -17,14 +18,18 @@ import { formatDate } from '@/utils/time.js';
 
 const ROLE_LABEL = { [ROLES.USER]: 'Member', [ROLES.SITE_ADMIN]: 'Site admin', [ROLES.SUPER_ADMIN]: 'Super admin' };
 
-/** Users admin: paginated + searchable roster, inline role/active edits, reset password, create. */
-export function UsersTab() {
+/** Users admin: paginated + searchable roster, inline role/active edits, reset password, create.
+ *  `refreshSignal` (bumped by the header Refresh) re-runs the fetch without remounting, so the
+ *  admin's search text and page survive a refresh. */
+export function UsersTab({ refreshSignal = 0 }) {
   const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin());
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [tempPw, setTempPw] = useState(null);
+  const [resettingId, setResettingId] = useState(null);
+  const [confirm, dialog] = useConfirm();
   const ripple = useRipple();
 
   // Debounce the search box so we don't refetch on every keystroke.
@@ -36,7 +41,7 @@ export function UsersTab() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const users = useApi(() => adminApi.listUsers(page, search), [page, search]);
+  const users = useApi(() => adminApi.listUsers(page, search), [page, search, refreshSignal]);
   const items = users.data?.items || [];
 
   const roleOptions = useMemo(() => {
@@ -60,11 +65,23 @@ export function UsersTab() {
   };
 
   const resetPassword = async (u) => {
+    // Resetting revokes every one of the member's active sessions — confirm before doing it, like
+    // every other destructive admin action.
+    const okToReset = await confirm({
+      title: 'Reset password?',
+      message: `Generate a new temporary password for ${u.displayName}? They'll be signed out everywhere and must sign in with the new password.`,
+      danger: true,
+      confirmLabel: 'Reset password',
+    });
+    if (!okToReset) return;
+    setResettingId(u.id);
     try {
       const { tempPassword } = await adminApi.resetUserPassword(u.id);
       setTempPw({ user: u, password: tempPassword });
     } catch (err) {
       toast.error(normalizeError(err).message);
+    } finally {
+      setResettingId(null);
     }
   };
 
@@ -108,7 +125,12 @@ export function UsersTab() {
                     <div className="w-36">
                       <Select
                         value={u.role}
-                        options={roleOptions}
+                        // Always include the member's current role so the trigger shows the right
+                        // label — otherwise a super-admin member seen by a site-admin (whose option
+                        // list omits super_admin) renders a blank "Select…" placeholder.
+                        options={roleOptions.some((o) => o.value === u.role)
+                          ? roleOptions
+                          : [...roleOptions, { value: u.role, label: ROLE_LABEL[u.role] || u.role }]}
                         onChange={(e) => patchUser(u, { role: e.target.value })}
                         disabled={u.role === ROLES.SUPER_ADMIN && !isSuperAdmin}
                       />
@@ -120,7 +142,7 @@ export function UsersTab() {
                   <Td><span className="tabular-nums text-content">{u.carpoolCredits ?? 0}</span></Td>
                   <Td><span className="text-muted">{formatDate(u.createdAt)}</span></Td>
                   <Td right>
-                    <Button size="sm" variant="ghost" className="ripple press" onPointerDown={ripple} onClick={() => resetPassword(u)}>
+                    <Button size="sm" variant="ghost" className="ripple press" onPointerDown={ripple} loading={resettingId === u.id} onClick={() => resetPassword(u)}>
                       <KeyRound className="h-4 w-4" /> Reset
                     </Button>
                   </Td>
@@ -134,6 +156,7 @@ export function UsersTab() {
 
       <CreateUserModal open={createOpen} roleOptions={roleOptions} onClose={() => setCreateOpen(false)} onCreated={(pw) => { setCreateOpen(false); users.refetch(); if (pw) setTempPw(pw); }} />
       <TempPasswordModal data={tempPw} onClose={() => setTempPw(null)} />
+      {dialog}
     </div>
   );
 }
@@ -216,7 +239,7 @@ function TempPasswordModal({ data, onClose }) {
         <code className="select-all font-mono text-lg text-content">{data?.password}</code>
         <button
           onClick={copy}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-content active:scale-90"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-content focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 active:scale-90"
           aria-label="Copy password"
         >
           {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}

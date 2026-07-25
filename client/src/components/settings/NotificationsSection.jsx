@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BellRing, Clock, Car, Search, Megaphone } from 'lucide-react';
 import { Card, CardHeader } from '@/components/common/Card.jsx';
 import { Switch } from '@/components/common/Switch.jsx';
@@ -26,24 +26,48 @@ export function NotificationsSection() {
   const ripple = useRipple();
   const push = usePushNotifications();
   const [prefs, setPrefs] = useState(() => user?.notificationPrefs || {});
-  const [saving, setSaving] = useState(null);
+  // A ref that tracks the latest prefs synchronously. The server REPLACES the whole
+  // notification_prefs blob, so each toggle must build its payload off the freshest state — a
+  // render-time closure over `prefs` would let a second toggle (fired before the first round-trip
+  // lands) send a payload missing the first change, silently dropping it.
+  const prefsRef = useRef(prefs);
+  // Monotonic request sequence. The server replaces the whole blob and separate requests have no
+  // ordering guarantee, so a cumulative payload isn't enough: if an earlier PATCH lands AFTER a
+  // later one, the stored blob regresses to the earlier state and a change is silently lost. We
+  // only apply the response of the LATEST request issued (seq === latestSeqRef.current) and ignore
+  // any superseded response — mirroring the `ignore` pattern used in RegisterPage's gate effect.
+  const latestSeqRef = useRef(0);
+  // Count of in-flight PATCHes: while ANY toggle is saving, all rows disable, so the user can't
+  // interleave a second toggle into a race in the first place.
+  const [savingCount, setSavingCount] = useState(0);
+  const busy = savingCount > 0;
 
   // Default opted-in: a key is ON unless explicitly stored as false.
   const isOn = (key) => prefs[key] !== false;
 
+  const commit = (nextPrefs) => {
+    prefsRef.current = nextPrefs;
+    setPrefs(nextPrefs);
+  };
+
   const toggle = async (key) => {
-    const next = { ...prefs, [key]: !isOn(key) };
-    const prev = prefs;
-    setPrefs(next); // optimistic
-    setSaving(key);
+    if (busy) return; // one toggle at a time — prevents interleaved out-of-order writes
+    const base = prefsRef.current;
+    const next = { ...base, [key]: base[key] === false }; // off (=== false) → on; anything else → off
+    commit(next); // optimistic, and updates the ref so the payload is built off the freshest state
+    const seq = ++latestSeqRef.current;
+    setSavingCount((n) => n + 1);
     try {
       const updated = await userApi.updateMe({ notificationPrefs: next });
-      patchUser(updated);
+      // Only the latest issued request may commit the server's authoritative copy; a stale response
+      // arriving late must not clobber a newer local state.
+      if (seq === latestSeqRef.current) patchUser(updated);
     } catch (err) {
-      setPrefs(prev); // revert
+      // Revert just this key to its pre-toggle value, leaving any concurrent state intact.
+      commit({ ...prefsRef.current, [key]: base[key] });
       toast.error(normalizeError(err).message || 'Could not update preferences');
     } finally {
-      setSaving(null);
+      setSavingCount((n) => n - 1);
     }
   };
 
@@ -61,7 +85,7 @@ export function NotificationsSection() {
                 <p className="font-medium text-content">{label}</p>
                 <p className="text-sm text-muted">{desc}</p>
               </div>
-              <Switch checked={isOn(key)} onChange={() => toggle(key)} disabled={saving === key} label={label} />
+              <Switch checked={isOn(key)} onChange={() => toggle(key)} disabled={busy} label={label} />
             </li>
           ))}
         </ul>

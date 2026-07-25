@@ -18,6 +18,7 @@ import { useRealtime } from '@/hooks/useRealtime.js';
 import { useAuthStore } from '@/stores/authStore.js';
 import { chargerApi, sessionApi, queueApi } from '@/services/endpoints.js';
 import { CHARGER_STATUS } from '@/utils/constants.js';
+import { cn } from '@/utils/cn.js';
 
 /** Normalize the raw active-session row (snake_case + nested chargers) for ActiveSessionCard. */
 function normalizeActive(row) {
@@ -56,13 +57,21 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Manual-refresh feedback: true whenever any of the four dashboard reads is mid-flight.
+  const refreshing = chargers.loading || active.loading || queue.loading || mine.loading;
+
   useRealtime('dashboard', ['chargers', 'sessions', 'queue_entries'], refreshAll);
 
   const canStart = !mySession;
   const canJoinQueue = !mySession;
-  const list = chargers.data || [];
-  const sortedQueue = useMemo(() => queue.data || [], [queue.data]);
-  const availableCount = list.filter((c) => c.status === CHARGER_STATUS.AVAILABLE && !c.reserved).length;
+  const list = useMemo(() => chargers.data || [], [chargers.data]);
+  const queueEntries = queue.data || [];
+  // A charger counts as "free to take" only if it's available AND not reserved for a queue turn
+  // in flight — the same gate ChargerCard uses to decide whether to offer "Start".
+  const availableCount = useMemo(
+    () => list.filter((c) => c.status === CHARGER_STATUS.AVAILABLE && !c.reserved).length,
+    [list]
+  );
 
   // Warm, state-aware subtitle — celebrates when everything's free, nudges toward the queue when it's not.
   const headerDescription = !list.length
@@ -81,7 +90,16 @@ export default function DashboardPage() {
         icon={Zap}
         action={
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={refreshAll} aria-label="Refresh"><RefreshCw className="h-4 w-4" /></Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshAll}
+              disabled={refreshing}
+              aria-label={refreshing ? 'Refreshing' : 'Refresh'}
+            >
+              {/* Honest feedback: the icon spins only while a refetch is actually in flight. */}
+              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => setEmergencyOpen(true)}>
               <Siren className="h-4 w-4" />
               <span className="hidden sm:inline">Emergency</span>
@@ -128,7 +146,7 @@ export default function DashboardPage() {
         </section>
 
         <aside className="mt-6 grid gap-4 sm:grid-cols-2 2xl:mt-0 2xl:sticky 2xl:top-6 2xl:grid-cols-1 2xl:gap-6">
-          <QueuePanel entries={sortedQueue} mine={mine.data} canJoin={canJoinQueue} onChanged={() => { queue.refetch(); mine.refetch(); }} />
+          <QueuePanel entries={queueEntries} mine={mine.data} canJoin={canJoinQueue} onChanged={() => { queue.refetch(); mine.refetch(); }} />
           <NudgeInboxWidget />
         </aside>
       </div>

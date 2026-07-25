@@ -70,7 +70,7 @@ export function AnnouncementsTab({ announcements }) {
                 <button
                   onClick={() => onDelete(a)}
                   aria-label="Delete announcement"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger active:scale-90"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-danger/70 active:scale-90"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

@@ -1,7 +1,7 @@
 import { Zap, Clock, Timer, PlugZap } from 'lucide-react';
 import { Button } from '@/components/common/Button.jsx';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
-import { useCountdown } from '@/hooks/useCountdown.js';
+import { useCountdown, useElapsed } from '@/hooks/useCountdown.js';
 import { useRipple } from '@/hooks/useInteractions.js';
 import { SESSION_STATUS } from '@/utils/constants.js';
 import { formatTime } from '@/utils/time.js';
@@ -16,7 +16,12 @@ export function ActiveSessionCard({ session, onExtend, onEnd }) {
   const overtime = session.status === SESSION_STATUS.OVERTIME;
   const glassRef = useLiquidGlass(true, { scale: -50, chroma: 3, blur: 6, saturate: 1.5, mapBlur: 20, border: 0.14 });
   const ripple = useRipple();
-  const { label: countdownLabel, done } = useCountdown(session.etaAt);
+  // Two timers, only one shown: while on time we count DOWN to the ETA; once overtime the ETA is
+  // already in the past (countdown would just read 0:00), so we count UP from it to show how far
+  // over the driver actually is — matching the "over your ETA" label beneath.
+  const { label: countdownLabel } = useCountdown(session.etaAt);
+  const { label: elapsedLabel } = useElapsed(session.etaAt);
+  const timeLabel = overtime ? `+${elapsedLabel}` : countdownLabel;
 
   return (
     <div
@@ -54,7 +59,7 @@ export function ActiveSessionCard({ session, onExtend, onEnd }) {
             <p className="text-title-lg font-bold text-content">{session.chargerName || 'Your charger'}</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted">
               <Clock className="h-4 w-4" />
-              Est. done {formatTime(session.etaAt)}
+              {overtime ? 'Was due' : 'Est. done'} {formatTime(session.etaAt)}
             </p>
           </div>
         </div>
@@ -63,7 +68,7 @@ export function ActiveSessionCard({ session, onExtend, onEnd }) {
         <div className="text-right">
           <p className={cn('flex items-center justify-end gap-1.5 text-3xl font-black tabular-nums', overtime ? 'text-warning' : 'text-content')}>
             <Timer className="h-6 w-6" />
-            {done ? '0:00' : countdownLabel}
+            {timeLabel}
           </p>
           <p className="text-xs text-faint">{overtime ? 'over your ETA' : 'remaining'}</p>
         </div>

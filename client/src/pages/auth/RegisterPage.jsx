@@ -60,7 +60,7 @@ export default function RegisterPage() {
       .catch(() => setOffices({ loading: false, error: true, list: [] }));
   }, []);
 
-  const { values, errors, submitting, handleChange, handleSubmit } = useZodForm(registerSchema, {
+  const { values, errors, submitting, setField, handleChange, handleSubmit } = useZodForm(registerSchema, {
     displayName: '',
     email: '',
     password: '',
@@ -73,7 +73,7 @@ export default function RegisterPage() {
   // something to gate on without the user having to touch the picker first.
   useEffect(() => {
     if (values.locationId || offices.list.length === 0) return;
-    handleChange({ target: { name: 'locationId', value: offices.list[0].id, type: 'text' } });
+    setField('locationId', offices.list[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offices.list]);
 
@@ -85,29 +85,73 @@ export default function RegisterPage() {
   // AND the office has coordinates). We prompt for the browser location only when it's enforceable
   // — an office with geofence on but no coords shouldn't make people grant location for nothing.
   const [gateStatus, setGateStatus] = useState({ loading: true, statusError: false, releaseAt: null, geofenceEnforceable: false });
+  // `firstGateDone` flips true the first time ANY gate check settles. It gates the full-screen
+  // spinner so it shows only on the initial load — a later office switch re-checks in the
+  // background with the form still mounted, instead of blanking the page (and the picker) each time.
+  const [firstGateDone, setFirstGateDone] = useState(false);
+  // Bumped by the inline "Try again" action to re-run the gate check for the current office without
+  // needing to switch offices (a transient signup-status failure shouldn't strand the user).
+  const [gateRetry, setGateRetry] = useState(0);
 
   useEffect(() => {
-    if (!values.locationId) return;
+    if (!values.locationId) return undefined;
+    // Guard against out-of-order resolution: switching offices fires this again, and a slow
+    // earlier response must not overwrite the newer office's gate state. Only the latest run
+    // is allowed to commit.
+    let ignore = false;
     setGateStatus((s) => ({ ...s, loading: true }));
     authApi
       .signupStatus(values.locationId)
-      .then((s) =>
+      .then((s) => {
+        if (ignore) return;
         setGateStatus({
           loading: false,
           statusError: false,
           releaseAt: s.releaseAt,
           // Fall back to geofenceEnabled if an older server doesn't send geofenceEnforceable.
           geofenceEnforceable: s.geofenceEnforceable ?? s.geofenceEnabled ?? false,
-        })
-      )
-      .catch(() => setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnforceable: false }));
-  }, [values.locationId]);
+        });
+        setFirstGateDone(true);
+      })
+      .catch(() => {
+        if (ignore) return;
+        setGateStatus({ loading: false, statusError: true, releaseAt: null, geofenceEnforceable: false });
+        setFirstGateDone(true);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [values.locationId, gateRetry]);
 
   const locked = gateStatus.releaseAt && new Date() < new Date(gateStatus.releaseAt);
+  // statusError and locked used to take over the whole screen, unmounting the form + office picker.
+  // After the office picker was made functional, a transient signup-status failure (or picking a
+  // not-yet-open office) on a background re-check would destroy typed input and trap the user (the
+  // gate effect only reruns on office change, but the picker was gone). Both are now surfaced INLINE
+  // above the still-mounted form, so the user can switch offices, retry, or keep their input.
+  const submitBlocked = gateStatus.loading || gateStatus.statusError || locked;
 
   const onSubmit = handleSubmit(async (data) => {
     setFormError(null);
     setGeoError(null);
+
+    // A background gate re-check (after an office switch) is still in flight — the geofence/lock
+    // state we'd act on may be for the previous office. Wait for it to settle rather than submit
+    // against stale gate data. Also refuse when the gate is unknown (status check failed) or the
+    // office isn't open yet — these are surfaced inline above and the button is disabled, but guard
+    // here too so a keyboard Enter can't bypass it.
+    if (gateStatus.loading) {
+      setFormError('Just checking this office — one moment, then try again.');
+      return;
+    }
+    if (gateStatus.statusError) {
+      setFormError("We can't confirm signups are open for this office yet. Tap Try again above, or pick another office.");
+      return;
+    }
+    if (locked) {
+      setFormError('Signups for this office are not open yet. Pick another office if you are joining a different site.');
+      return;
+    }
 
     let coords = {};
     if (gateStatus.geofenceEnforceable) {
@@ -160,59 +204,14 @@ export default function RegisterPage() {
     );
   }
 
-  // Still loading offices, or waiting for the default office to seed / the gate check to finish —
-  // show a spinner inside the shell, never a blank screen.
-  if (offices.loading || !values.locationId || gateStatus.loading) {
+  // Still loading offices, or waiting for the default office to seed / the FIRST gate check to
+  // finish — show a spinner inside the shell, never a blank screen. Subsequent office switches
+  // re-check in the background (firstGateDone stays true), so the form + picker never blank out.
+  if (offices.loading || !values.locationId || (gateStatus.loading && !firstGateDone)) {
     return (
       <RedirectIfAuthed>
         <AuthShell title="Create your account" subtitle="Join the workplace charging & carpool hub">
           <Spinner label="Loading…" />
-        </AuthShell>
-      </RedirectIfAuthed>
-    );
-  }
-
-  if (gateStatus.statusError) {
-    return (
-      <RedirectIfAuthed>
-        <AuthShell title="Can't check registration status" subtitle="Try again in a moment">
-          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
-            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-danger/10 text-danger animate-pop-in">
-              <WifiOff className="h-7 w-7" />
-            </span>
-            <p className="text-sm text-muted">
-              We couldn't reach the server to check whether signups are open. Reload the page to try again.
-            </p>
-          </div>
-        </AuthShell>
-      </RedirectIfAuthed>
-    );
-  }
-
-  if (locked) {
-    return (
-      <RedirectIfAuthed>
-        <AuthShell
-          title="Signups aren't open yet"
-          subtitle="Check back soon"
-          footer={
-            <>
-              Already have an account?{' '}
-              <Link to="/login" className="link">
-                Sign in
-              </Link>
-            </>
-          }
-        >
-          <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
-            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/15 text-brand-strong animate-glow">
-              <Clock3 className="h-7 w-7 animate-float" />
-            </span>
-            <p className="text-sm text-muted">
-              Registration opens at{' '}
-              <span className="font-semibold text-content">{new Date(gateStatus.releaseAt).toLocaleString()}</span>.
-            </p>
-          </div>
         </AuthShell>
       </RedirectIfAuthed>
     );
@@ -233,9 +232,34 @@ export default function RegisterPage() {
         }
       >
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {/* Inline gate states — never a full-screen takeover, so the office picker + typed input
+              stay put. A failed status check offers a retry; a not-yet-open office shows when it
+              opens. Both let the user switch to a different office right below. */}
+          {gateStatus.statusError && (
+            <div className="flex items-start gap-2 rounded-2xl bg-danger/10 p-3 text-sm text-danger animate-pop-in">
+              <WifiOff className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="flex-1">
+                Couldn't check whether signups are open for this office.{' '}
+                <button type="button" onClick={() => setGateRetry((n) => n + 1)} className="link font-semibold">
+                  Try again
+                </button>
+                , or pick another office below.
+              </span>
+            </div>
+          )}
+          {!gateStatus.statusError && locked && (
+            <p className="flex items-start gap-2 rounded-2xl bg-brand/10 p-3 text-sm text-brand-strong animate-pop-in">
+              <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Signups for this office open at{' '}
+                <span className="font-semibold text-content">{new Date(gateStatus.releaseAt).toLocaleString()}</span>.
+                Choose another office below if you're joining a different site.
+              </span>
+            </p>
+          )}
           {/* Tell users up front that this office verifies on-site location, so the browser's
               permission prompt on submit isn't a surprise (and they know to be on-site). */}
-          {gateStatus.geofenceEnforceable && (
+          {!submitBlocked && gateStatus.geofenceEnforceable && (
             <p className="flex items-start gap-2 rounded-2xl bg-info/10 p-3 text-sm text-info animate-slide-up [animation-fill-mode:backwards]">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 animate-float" />
               <span>
@@ -249,7 +273,10 @@ export default function RegisterPage() {
               label="Office"
               name="locationId"
               value={values.locationId}
-              onChange={handleChange}
+              // GlassSelect emits a synthetic { target: { value } } with no `name`, so
+              // handleChange (which keys off e.target.name) would write to values[undefined] and
+              // the pick would never stick. Set the field explicitly instead.
+              onChange={(e) => setField('locationId', e.target.value)}
               error={errors.locationId}
               options={offices.list.map((o) => ({ value: o.id, label: o.name }))}
             />
@@ -321,10 +348,19 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="w-full press sheen ripple hover-sheen"
-              loading={submitting || locating}
+              loading={submitting || locating || gateStatus.loading}
+              disabled={gateStatus.statusError || locked}
               onPointerDown={ripple}
             >
-              {locating ? 'Checking your location…' : 'Create account'}
+              {locating
+                ? 'Checking your location…'
+                : gateStatus.loading
+                  ? 'Checking this office…'
+                  : locked
+                    ? 'Signups not open yet'
+                    : gateStatus.statusError
+                      ? 'Signups status unavailable'
+                      : 'Create account'}
             </Button>
           </div>
         </form>

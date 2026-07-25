@@ -26,14 +26,24 @@ export function StartSessionModal({ open, charger, user, onClose, onStarted }) {
   const [submitting, setSubmitting] = useState(false);
   const ripple = useRipple();
 
+  // Reset the form each time the modal OPENS. Deliberately keyed on `open` alone: the old
+  // [open, maxMinutes, user] deps refired this whole reset when the async session-config request
+  // resolved a beat after open, wiping a vehicle edit (or slider move) the user had already made.
   useEffect(() => {
-    if (open) {
-      setDuration(Math.min(120, maxMinutes || 240));
-      setVehicle(user?.vehicleDescription || '');
-      setConnected(false);
-      setError(null);
-    }
-  }, [open, maxMinutes, user]);
+    if (!open) return;
+    setDuration(Math.min(120, maxMinutes || 240));
+    setVehicle(user?.vehicleDescription || '');
+    setConnected(false);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // When the real ceiling arrives (or an admin lowers it) while the modal is open, clamp the
+  // chosen duration down to it — otherwise we'd submit a value the server rejects — without
+  // disturbing the vehicle/connected fields the user may have already touched.
+  useEffect(() => {
+    if (maxMinutes) setDuration((d) => Math.min(d, maxMinutes));
+  }, [maxMinutes]);
 
   const submit = async () => {
     setError(null);

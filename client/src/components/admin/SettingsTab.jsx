@@ -13,6 +13,13 @@ import { toast } from '@/stores/toastStore.js';
 import { cn } from '@/utils/cn.js';
 import { SETTING_BOUNDS, NOTIFICATION_TEMPLATES, notifTplSettingKey } from '@/utils/constants.js';
 
+// Every 'number' field's setting key, derived once. Used to block a save that would send an
+// empty string for a numeric setting (the server coerces '' → 0, silently corrupting unbounded
+// keys like the reliability escalation factor, or rejecting the whole patch on a bounded one).
+const NUMERIC_KEYS = new Set(
+  SETTINGS_SECTIONS.flatMap((s) => s.fields.filter((f) => f.kind === 'number').map((f) => f.key))
+);
+
 /**
  * Settings editor. Local draft over the fetched settings; a sticky Save bar appears whenever the
  * draft diverges. Numbers, booleans (Switch), text, and chip-list editors (nudge presets +
@@ -43,6 +50,22 @@ export function SettingsTab({ settings }) {
     // Send only the changed keys — a minimal patch keeps unrelated fields untouched.
     const patch = {};
     for (const k of dirtyKeys) patch[k] = draft[k];
+
+    // Block blank fields that must not be empty before they reach the API:
+    //  • numeric keys — the server reads '' as 0, silently zeroing an unbounded key or 400ing the
+    //    whole patch on a bounded one;
+    //  • notification templates — a blank title/body ships an EMPTY notification (the placeholder
+    //    shows the default but blank persists as blank, it does not fall back).
+    // Free-text keys (HQ address, signup release time) are legitimately blankable, so they're skipped.
+    const isBlank = (v) => v === '' || v == null;
+    const blank = dirtyKeys.filter(
+      (k) => isBlank(draft[k]) && (NUMERIC_KEYS.has(k) || k.startsWith('notif_tpl_'))
+    );
+    if (blank.length) {
+      toast.warning(`Fill in every required field before saving — ${blank.length} left blank.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const updated = await adminApi.updateSettings(patch);

@@ -17,7 +17,16 @@ export function EtaModal({ open, session, onClose, onUpdated }) {
   const [submitting, setSubmitting] = useState(false);
   const ripple = useRipple();
 
-  useEffect(() => { if (open) { setDuration(Math.min(120, maxMinutes || 240)); setError(null); } }, [open, maxMinutes]);
+  // Reset on OPEN only — keying on maxMinutes too would reset the slider the moment the async
+  // session-config request resolves, discarding a value the user had already dragged to.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setDuration(Math.min(120, maxMinutes || 240)); setError(null); } }, [open]);
+
+  // Clamp down to the real ceiling once it loads (or if an admin lowers it mid-session), so we
+  // never submit a duration the server will reject.
+  useEffect(() => {
+    if (maxMinutes) setDuration((d) => Math.min(d, maxMinutes));
+  }, [maxMinutes]);
 
   const submit = async () => {
     setError(null);

@@ -14,22 +14,15 @@ import { cn } from '@/utils/cn.js';
  * straight to Settings — no intermediate popup (Settings already has notification prefs and
  * sign-out; Alerts already has its own nav destination, so the popup only added an extra tap).
  *
- * Adaptive labels: icon-only circular pills on phones/tablets (thumb-sized targets, minimal
- * chrome), and — from `lg` up, where there's room and a pointer — each destination expands into a
- * label + icon pill so a wide screen reads as a proper labeled toolbar instead of a lonely row of
- * glyphs. The active item always shows its label so the current place is named at every size.
- *
- * Two-row wrap: instead of scrolling sideways when the pills don't fit (an easy-to-miss, awkward
- * interaction on a phone), the bar wraps onto a second centered row. `flex-wrap` + the max-width
- * ceiling makes it break exactly when it would otherwise overflow; the softly-rounded (not fully
- * circular) shape stays graceful whether it's one row tall or two. AppLayout reserves the matching
- * bottom clearance so content never tucks under a two-row bar.
+ * The signature move: the ACTIVE destination's pill smoothly expands to show its name — the icon
+ * stays a fixed 44px square and the label slides open beside it via an animatable
+ * grid-template-columns 0fr→1fr reveal (not a width:auto snap), so the current place is always
+ * named and the expand/collapse glides as you navigate. At `lg`↑ every pill shows its label, so a
+ * wide screen reads as a full labeled toolbar. When the row can't fit, it wraps, centered.
  */
 
-/** One destination pill. Below `lg` every pill is a uniform 44px icon-only circle (active shown by
- *  tint alone — never a width change, so the row layout is identical on every route and can't shuffle
- *  when you navigate). At `lg`↑ pills expand to label + icon so a wide screen reads as a labeled
- *  toolbar. `icon` is the lucide-name string or a render node. */
+/** One destination pill. The icon is always a 44px square; the label reveals to its right when
+ *  `active` (any size) or from `lg` up. `icon` is a lucide-name string or a render node. */
 function NavPill({ to, end, label, iconName, iconNode, className }) {
   return (
     <NavLink
@@ -39,18 +32,34 @@ function NavPill({ to, end, label, iconName, iconNode, className }) {
       aria-label={label}
       className={({ isActive }) =>
         cn(
-          'group relative flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-full px-0',
-          'lg:w-auto lg:px-3.5',
+          'group relative flex h-11 shrink-0 items-center overflow-hidden rounded-full',
           'transition-[background-color,transform] duration-medium ease-emphasized active:scale-90',
           isActive
-            ? 'bg-brand/15 text-brand-strong'
+            ? 'bg-brand/15 text-brand-strong shadow-elevation-1'
             : 'text-faint hover:bg-surface-2 hover:text-content',
           className
         )
       }
     >
-      {iconNode || <Icon name={iconName} className="h-5 w-5 shrink-0" />}
-      <span className="hidden text-label-lg font-medium whitespace-nowrap lg:inline">{label}</span>
+      {({ isActive }) => (
+        <>
+          <span className="grid h-11 w-11 shrink-0 place-items-center">
+            {iconNode || <Icon name={iconName} className="h-5 w-5" />}
+          </span>
+          {/* Animatable label reveal: the grid track slides 0fr↔1fr (smooth, unlike width:auto),
+              carrying the label + its trailing padding open only when this destination is active
+              (any width) or at lg (labeled-toolbar mode). */}
+          <span
+            className={cn(
+              'grid transition-[grid-template-columns,padding] duration-medium ease-emphasized',
+              isActive ? 'grid-cols-[1fr] pr-4' : 'grid-cols-[0fr] pr-0',
+              'lg:grid-cols-[1fr] lg:pr-4'
+            )}
+          >
+            <span className="overflow-hidden whitespace-nowrap text-label-lg font-medium">{label}</span>
+          </span>
+        </>
+      )}
     </NavLink>
   );
 }
@@ -60,28 +69,24 @@ export function NavFloating() {
   const nav = navForRole(role).slice(0, 5);
   const glassRef = useLiquidGlass(true, { scale: -30, chroma: 1.5, blur: 6, border: 0.14, mapBlur: 16 });
 
-  // Below `lg` all cells are uniform 44px icons with a 4px gap inside 8px padding. Cap the bar's
-  // width to exactly ceil(n/2) cells so, when it can't fit one row, it wraps into two EVEN rows
-  // (e.g. 7 cells → 4 + 3) instead of a lopsided greedy split. At lg the cap is dropped for the
-  // labeled single-row toolbar. n = home + nav items + settings.
-  // box-sizing is border-box, so the cap must include padding (8px×2) AND border (1px×2); +2px
-  // safety absorbs sub-pixel rounding that would otherwise bump the last cell to a new row.
-  const cells = 1 + nav.length + 1;
-  const perRow = Math.ceil(cells / 2);
-  const capPx = perRow * 44 + (perRow - 1) * 4 + 20; // cells + inner gaps + padding + border + fudge
-
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4"
+      className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
     >
+      {/* Centered, wraps when it can't fit one row (never a sideways scroll). Softly rounded when it
+          may be two rows tall (< lg), fully rounded as a single-row labeled toolbar at lg. */}
       <nav
         ref={glassRef}
         aria-label="Primary"
-        style={{ '--nav-cap': `${capPx}px` }}
-        className="lg-panel flex max-w-[var(--nav-cap)] flex-wrap items-center justify-center gap-1 rounded-[1.75rem] border border-border p-2 shadow-elevation-2 lg:max-w-[calc(100vw-2rem)] lg:gap-1.5 lg:rounded-full lg:p-2.5"
+        className="lg-panel flex max-w-[calc(100vw-1.5rem)] flex-wrap items-center justify-center gap-1 rounded-[1.75rem] border border-border p-2 shadow-elevation-2 lg:gap-1.5 lg:rounded-full lg:p-2.5"
       >
-        <NavLink to="/" aria-label="EV Hub home" title="EV Hub home" className="group grid h-11 w-11 shrink-0 place-items-center rounded-full transition-transform duration-medium ease-spring hover:scale-110 active:scale-90">
+        <NavLink
+          to="/"
+          aria-label="EV Hub home"
+          title="EV Hub home"
+          className="group grid h-11 w-11 shrink-0 place-items-center rounded-full transition-transform duration-medium ease-spring hover:scale-110 active:scale-90"
+        >
           <AsteraMark size={26} />
         </NavLink>
 
@@ -91,7 +96,7 @@ export function NavFloating() {
 
         <span className="mx-0.5 hidden h-6 w-px shrink-0 bg-border/70 lg:block" aria-hidden />
 
-        <NavPill to="/settings" label="Settings" iconNode={<User className="h-5 w-5 shrink-0" />} />
+        <NavPill to="/settings" label="Settings" iconNode={<User className="h-5 w-5" />} />
       </nav>
     </div>
   );

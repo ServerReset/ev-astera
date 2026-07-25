@@ -65,3 +65,15 @@ export function atLocalTime(baseDate, hhmm, tz = TIMEZONE) {
 
 export const formatTime = (date, tz = TIMEZONE) =>
   new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date(date));
+
+/** Human date + time in a given timezone (e.g. "Jul 25, 3:40 PM"). Used for user-facing copy that
+ * must read in the OFFICE's local wall-clock — a bare Date.toLocaleString() on the server renders
+ * in the server's timezone (UTC on the host), showing users a misleading time. */
+export const formatDateTime = (date, tz = TIMEZONE) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(date));

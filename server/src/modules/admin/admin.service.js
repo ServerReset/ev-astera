@@ -17,6 +17,7 @@ import {
   SESSION_STATUS,
   QUEUE_STATUS,
   RIDE_STATUS,
+  CARPOOL_ROLE,
   PAGE_SIZE,
   ROLES,
 } from '../../../../shared/constants.js';
@@ -62,9 +63,12 @@ export const adminService = {
       prisma.carpool_rides.count({ where: { location_id: locationId, status: RIDE_STATUS.OPEN } }),
     ]);
 
-    // Carpool impact this week (location-wide).
+    // Carpool impact this week (location-wide). Count each ride's CO2 exactly ONCE:
+    // completeRideImpact writes the FULL ride savings on the driver's trip log AND each rider's
+    // share on their own row, so summing every row double-counts (2x). Filter to driver rows —
+    // identical to carpool.service.js's leaderboardTotals(), which documents the same fix.
     const trips = await prisma.carpool_trip_logs.findMany({
-      where: { location_id: locationId, created_at: { gte: weekStart } },
+      where: { location_id: locationId, role: CARPOOL_ROLE.DRIVER, created_at: { gte: weekStart } },
       select: { co2_grams_saved: true },
     });
     const co2KgWeek = Math.round((trips.reduce((a, t) => a + (t.co2_grams_saved || 0), 0) / 1000) * 10) / 10;

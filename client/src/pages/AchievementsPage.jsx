@@ -102,9 +102,9 @@ export default function AchievementsPage() {
       />
 
       {wall.loading && !data ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="skeleton h-56 rounded-xl-increased" />
+            <div key={i} className="skeleton animate-pop-in h-56 rounded-xl-increased" />
           ))}
         </div>
       ) : wall.error ? (

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore.js';
 import { useZodForm } from '@/hooks/useZodForm.js';
 import { RedirectIfAuthed } from '@/components/auth/guards.jsx';
 import { AuthShell } from './AuthShell.jsx';
+import { WelcomeDialog } from '@/components/auth/WelcomeDialog.jsx';
 import { Input } from '@/components/common/Input.jsx';
 import { Button } from '@/components/common/Button.jsx';
 import { useRipple } from '@/hooks/useInteractions.js';
@@ -32,6 +33,8 @@ export default function LoginPage() {
 
   return (
     <RedirectIfAuthed>
+      {/* First-time visitors get a one-off welcome explaining they need an Astera-email account. */}
+      <WelcomeDialog />
       <AuthShell
         title="Welcome back"
         subtitle="Sign in to manage your charging & carpools"

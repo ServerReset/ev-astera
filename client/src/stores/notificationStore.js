@@ -40,10 +40,18 @@ export const useNotificationStore = create((set, get) => ({
     // Bump callId first: supersedes any refresh() already in flight so its (now-stale)
     // response can't land after this optimistic write and revert it — see refresh() above.
     callId += 1;
-    set((s) => ({
-      items: s.items.map((n) => (n.id === notificationId ? { ...n, readAt: n.readAt || new Date().toISOString() } : n)),
-      unread: Math.max(0, s.unread - 1),
-    }));
+    set((s) => {
+      // Only decrement when the target is actually still unread in the LIVE store state.
+      // Guards against a double activation (rapid double-click / Enter pressed twice) where a
+      // caller's `if (!n.readAt)` guard reads a stale render closure and fires markRead twice —
+      // without this, `unread` would drop by 2 for a single notification.
+      const target = s.items.find((n) => n.id === notificationId);
+      const wasUnread = target ? !target.readAt : false;
+      return {
+        items: s.items.map((n) => (n.id === notificationId ? { ...n, readAt: n.readAt || new Date().toISOString() } : n)),
+        unread: wasUnread ? Math.max(0, s.unread - 1) : s.unread,
+      };
+    });
     try {
       await notificationApi.markRead(notificationId);
     } catch {

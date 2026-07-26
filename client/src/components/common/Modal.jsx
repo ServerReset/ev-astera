@@ -9,6 +9,11 @@ import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
  * portal so it escapes any transformed/overflow-hidden ancestor. Mobile-first: slides up
  * from the bottom as a sheet on small screens, centers as a dialog on larger ones.
  */
+// Shared count of currently-open modals so nested dialogs (e.g. a ConfirmDialog opened from
+// inside another Modal) only release the body scroll-lock once the last one closes — otherwise
+// dismissing the inner dialog re-enabled background scroll while the outer modal was still open.
+let openModalCount = 0;
+
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   const glassRef = useLiquidGlass(open, { scale: -34, chroma: 1.5, blur: 4, border: 0.14, mapBlur: 16 });
 
@@ -16,10 +21,12 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
     document.addEventListener('keydown', onKey);
+    openModalCount += 1;
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      openModalCount = Math.max(0, openModalCount - 1);
+      if (openModalCount === 0) document.body.style.overflow = '';
     };
   }, [open, onClose]);
 

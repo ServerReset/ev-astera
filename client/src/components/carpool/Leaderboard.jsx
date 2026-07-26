@@ -73,7 +73,7 @@ function PodiumFirst({ row, isViewer }) {
               {isViewer ? 'You' : row.name || 'Someone great'}
             </p>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted">
-              <Car className="h-4 w-4" /> {trips} shared {trips === 1 ? 'trip' : 'trips'}
+              <Car className="h-4 w-4" /> {trips} shared {row.trips === 1 ? 'trip' : 'trips'}
             </p>
           </div>
         </div>

@@ -23,7 +23,10 @@ const pad = (n) => String(n).padStart(2, '0');
 // Parse the literal string into {y,mo,d,h,mi} without any Date/timezone involvement.
 function parse(value, mode) {
   if (mode === 'time') {
-    const [h = '9', mi = '0'] = (value || '').split(':');
+    // Destructuring defaults only fire on `undefined`, and ''.split(':') yields [''] (not []),
+    // so an empty value must be handled explicitly or the intended 9:00 default never applies.
+    if (!value) return { y: null, mo: null, d: null, h: 9, mi: 0 };
+    const [h = '9', mi = '0'] = value.split(':');
     return { y: null, mo: null, d: null, h: Number(h), mi: Number(mi) };
   }
   const [datePart = '', timePart = ''] = (value || '').split('T');
@@ -165,13 +168,13 @@ export function DateTimePicker({ mode = 'datetime-local', label, error, value, o
               </div>
               {/* Day-of-week header */}
               <div className="grid grid-cols-7 gap-0.5 text-center">
-                {DOW.map((d, i) => <span key={i} className="py-1 text-2xs font-medium uppercase text-faint">{d}</span>)}
+                {DOW.map((d, i) => <span key={`dow-${i}`} className="py-1 text-2xs font-medium uppercase text-faint">{d}</span>)}
                 {grid.map((d, i) => {
                   if (d == null) return <span key={`e${i}`} />;
                   const isSel = d === parsed.d && viewMo === parsed.mo && viewY === parsed.y;
                   return (
                     <button
-                      key={d}
+                      key={`day-${d}`}
                       type="button"
                       onClick={() => pickDay(d)}
                       aria-pressed={isSel}

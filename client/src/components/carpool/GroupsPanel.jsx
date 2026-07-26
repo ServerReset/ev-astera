@@ -7,6 +7,7 @@ import { Input, Textarea } from '@/components/common/Input.jsx';
 import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useRipple } from '@/hooks/useInteractions.js';
+import { useCountUp } from '@/hooks/useCountUp.js';
 import { carpoolApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
@@ -79,44 +80,56 @@ export function GroupsPanel() {
       ) : (
         <div className="stagger grid gap-3 sm:grid-cols-2">
           {list.map((g) => (
-            <div
-              key={g.id}
-              className={cn(
-                'card group relative flex flex-col gap-3 overflow-hidden rounded-xl-increased p-4 transition-all duration-medium ease-emphasized',
-                g.isMember && 'ring-1 ring-brand/30'
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong transition-transform duration-medium ease-spring group-hover:scale-105">
-                    <Users className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-title-md text-content">{g.name}</p>
-                    <p className="text-xs text-muted">{g.memberCount} member{g.memberCount === 1 ? '' : 's'}</p>
-                  </div>
-                </div>
-                {g.isMember && <Badge tone="brand" dot>Joined</Badge>}
-              </div>
-              {g.description && <p className="text-sm text-muted line-clamp-2">{g.description}</p>}
-              <div className="mt-auto">
-                <Button
-                  size="sm"
-                  variant={g.isMember ? 'ghost' : 'secondary'}
-                  className="press ripple w-full"
-                  onPointerDown={ripple}
-                  loading={busyId === g.id}
-                  onClick={(e) => toggle(g, e)}
-                >
-                  {g.isMember ? <><LogOut className="h-4 w-4" /> Leave</> : <><LogIn className="h-4 w-4" /> Join</>}
-                </Button>
-              </div>
-            </div>
+            <GroupCard key={g.id} group={g} busy={busyId === g.id} ripple={ripple} onToggle={toggle} />
           ))}
         </div>
       )}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} onSaved={() => groups.refetch()} />
+    </div>
+  );
+}
+
+/** A single pool tile. Members earn a soft brand-lit glass read; the count gently tallies up. */
+function GroupCard({ group: g, busy, ripple, onToggle }) {
+  const memberDisplay = useCountUp(g.memberCount || 0);
+  return (
+    <div
+      className={cn(
+        // Not `card-interactive`: that adds cursor-pointer + implies the whole tile is a click
+        // target, but only the inner Join/Leave button is actionable. Keep the sheen + a gentle
+        // lift for life, without the misleading pointer/affordance.
+        'card hover-sheen group relative flex flex-col gap-3 overflow-hidden rounded-xl-increased p-4 transition-transform duration-medium ease-spring hover:-translate-y-0.5',
+        g.isMember && 'ring-1 ring-brand/30'
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong ring-1 ring-brand/15 transition-transform duration-medium ease-spring group-hover:scale-105 group-hover:ring-brand/30">
+            <Users className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-title-md text-content">{g.name}</p>
+            <p className="text-xs text-muted">
+              <span className="font-semibold tabular-nums text-content">{memberDisplay}</span> member{g.memberCount === 1 ? '' : 's'}
+            </p>
+          </div>
+        </div>
+        {g.isMember && <Badge tone="brand" dot>Joined</Badge>}
+      </div>
+      {g.description && <p className="text-sm text-muted line-clamp-2">{g.description}</p>}
+      <div className="mt-auto">
+        <Button
+          size="sm"
+          variant={g.isMember ? 'ghost' : 'secondary'}
+          className="press ripple w-full"
+          onPointerDown={ripple}
+          loading={busy}
+          onClick={(e) => onToggle(g, e)}
+        >
+          {g.isMember ? <><LogOut className="h-4 w-4" /> Leave</> : <><LogIn className="h-4 w-4" /> Join</>}
+        </Button>
+      </div>
     </div>
   );
 }

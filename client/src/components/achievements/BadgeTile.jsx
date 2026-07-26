@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Sparkles } from 'lucide-react';
 import { Icon } from '@/components/common/Icon.jsx';
 import { TIER_META } from '@/utils/achievements.js';
 import { formatDate } from '@/utils/time.js';
@@ -39,8 +39,10 @@ export function BadgeTile({ badge, index = 0 }) {
       className={cn(
         'group relative flex h-full flex-col items-center overflow-hidden rounded-xl-increased border p-4 text-center transition-all duration-medium ease-emphasized animate-pop-in',
         badge.unlocked
-          ? cn('card-solid hover-sheen shadow-elevation-1 group-hover:shadow-elevation-2', tier.card)
-          : 'border-border bg-surface opacity-70'
+          ? cn('card-solid hover-sheen shadow-elevation-1 hover:shadow-elevation-2', tier.card)
+          : pct >= 80
+            ? 'card border-brand/30 opacity-90 ring-1 ring-brand/20 hover:opacity-100 hover:-translate-y-0.5'
+            : 'card border-border opacity-70 hover:opacity-100 hover:-translate-y-0.5'
       )}
       style={{ animationDelay: `${Math.min(index * 45, 500)}ms` }}
     >
@@ -74,8 +76,8 @@ export function BadgeTile({ badge, index = 0 }) {
           <Icon name={badge.icon} className="h-8 w-8" strokeWidth={1.75} />
         </button>
       ) : (
-        <span className="relative grid h-16 w-16 place-items-center rounded-2xl bg-surface-2 text-faint ring-1 ring-border transition-transform duration-medium ease-spring">
-          <Lock className="h-7 w-7" strokeWidth={1.75} />
+        <span className="relative grid h-16 w-16 place-items-center rounded-2xl bg-surface-2 text-faint ring-1 ring-border transition-all duration-medium ease-spring group-hover:scale-105 group-hover:text-muted group-hover:ring-border-strong">
+          <Lock className="h-7 w-7 transition-transform duration-medium ease-spring group-hover:-rotate-6" strokeWidth={1.75} />
         </span>
       )}
 
@@ -100,14 +102,18 @@ export function BadgeTile({ badge, index = 0 }) {
         ) : progress ? (
           <div>
             <div className="flex items-center justify-between text-label-sm">
-              <span className={cn(pct >= 80 ? 'font-semibold text-brand-strong' : 'text-muted')}>
+              <span className={cn('inline-flex items-center gap-1', pct >= 80 ? 'font-semibold text-brand-strong' : 'text-muted')}>
+                {pct >= 80 && <Sparkles className="h-3 w-3" aria-hidden />}
                 {pct >= 80 ? 'So close!' : 'Progress'}
               </span>
               <span className="tabular-nums text-muted">{progress.current} / {progress.target}</span>
             </div>
             <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
               <div
-                className="h-full rounded-full bg-brand transition-all duration-long ease-emphasized"
+                className={cn(
+                  'h-full rounded-full transition-all duration-long ease-emphasized',
+                  pct >= 80 ? 'bg-gradient-to-r from-brand to-brand-strong shadow-elevation-1' : 'bg-brand'
+                )}
                 style={{ width: `${pct}%` }}
               />
             </div>

@@ -4,6 +4,7 @@ import { Button } from '@/components/common/Button.jsx';
 import { RIDE_STATUS, RIDE_STATUS_META, DIRECTION_LABEL } from '@/utils/constants.js';
 import { formatDateTime } from '@/utils/time.js';
 import { useTilt, useRipple } from '@/hooks/useInteractions.js';
+import { useCountUp } from '@/hooks/useCountUp.js';
 import { cn } from '@/utils/cn.js';
 
 /** Match-score → tone + label. High matches earn a celebratory brand read. */
@@ -29,6 +30,7 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancelSeat, onMan
   const tiltRef = useTilt(4);
   const ripple = useRipple();
   const mt = matchTone(ride.matchScore || 0);
+  const co2Display = useCountUp(co2Kg, { decimals: 1 });
 
   const card = (
     <div
@@ -71,10 +73,10 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancelSeat, onMan
           </div>
         </div>
 
-        {/* Origin + depart */}
-        <div className="rounded-2xl bg-bg-elevated p-3 text-sm">
+        {/* Origin + depart — a nested opaque well so text stays crisp over the glass card. */}
+        <div className="card-solid p-3 text-sm">
           <p className="flex items-start gap-2 text-content">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-strong" />
             <span className="leading-snug">{ride.origin?.label || 'Pickup point'}</span>
           </p>
           <p className="mt-2 flex items-center gap-2 text-muted">
@@ -98,9 +100,9 @@ export function RideCard({ ride, variant = 'browse', onBook, onCancelSeat, onMan
             </span>
           )}
           {co2Kg > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs text-success">
-              <Sprout className="h-3.5 w-3.5" />
-              <span className="font-semibold tabular-nums">{co2Kg} kg</span>
+            <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs text-success ring-1 ring-success/15">
+              <Sprout className="h-3.5 w-3.5 transition-transform duration-medium ease-spring group-hover:scale-110" />
+              <span className="font-semibold tabular-nums">{co2Display} kg</span>
               CO₂ saved
             </span>
           )}

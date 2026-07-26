@@ -306,10 +306,10 @@ export default function CarpoolPage() {
             ) : (
               <ul className="stagger space-y-3">
                 {requestList.map((req) => (
-                  <li key={req.id} className="card flex flex-wrap items-center justify-between gap-3 rounded-xl-increased p-4">
+                  <li key={req.id} className="card group flex flex-wrap items-center justify-between gap-3 rounded-xl-increased p-4 transition-all duration-medium ease-emphasized">
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 text-content">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-brand/12 text-brand-strong ring-1 ring-brand/15 transition-transform duration-medium ease-spring group-hover:scale-105">
                           <MapPin className="h-4 w-4" />
                         </span>
                         <span className="truncate font-medium">{req.origin?.label}</span>
@@ -335,6 +335,8 @@ export default function CarpoolPage() {
             </h2>
             {matches.loading && !matches.data ? (
               <Spinner label="Finding matches…" />
+            ) : matches.error ? (
+              <ErrorState error={matches.error} onRetry={matches.refetch} title="Could not load matches" />
             ) : (matches.data || []).length === 0 || (matches.data || []).every((m) => m.matches.length === 0) ? (
               <EmptyState
                 icon={Sprout}
@@ -376,10 +378,24 @@ export default function CarpoolPage() {
 }
 
 function RideGridSkeleton() {
+  // Glass shells that fade in one after another, so the wait reads as "rides arriving"
+  // rather than a wall of gray blocks.
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="skeleton h-56 rounded-xl-increased" />
+        // No animate-pop-in here: the .stagger container already supplies the staggered slide-up
+        // entrance (its `.stagger > *` rule would override animate-pop-in anyway).
+        <div key={i} className="card flex h-56 flex-col gap-3 rounded-xl-increased p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="skeleton h-11 w-11 rounded-2xl" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton h-4 w-2/3 rounded-full" />
+              <div className="skeleton h-3 w-1/3 rounded-full" />
+            </div>
+          </div>
+          <div className="skeleton h-16 rounded-2xl" />
+          <div className="mt-auto skeleton h-9 rounded-full" />
+        </div>
       ))}
     </div>
   );

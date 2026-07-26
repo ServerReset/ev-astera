@@ -6,10 +6,10 @@ import { cn } from '@/utils/cn.js';
 function StatTile({ icon: Icon, label, value, decimals = 0, suffix, tone = 'brand', delay = 0 }) {
   const display = useCountUp(value || 0, { decimals });
   const toneClass = {
-    brand: 'bg-brand/12 text-brand-strong',
-    success: 'bg-success/15 text-success',
-    info: 'bg-info/15 text-info',
-    warning: 'bg-warning/15 text-warning',
+    brand: 'bg-brand/12 text-brand-strong ring-1 ring-brand/15 group-hover:ring-brand/30',
+    success: 'bg-success/15 text-success ring-1 ring-success/15 group-hover:ring-success/30',
+    info: 'bg-info/15 text-info ring-1 ring-info/15 group-hover:ring-info/30',
+    warning: 'bg-warning/15 text-warning ring-1 ring-warning/15 group-hover:ring-warning/30',
   }[tone];
 
   return (
@@ -17,7 +17,7 @@ function StatTile({ icon: Icon, label, value, decimals = 0, suffix, tone = 'bran
       className="card card-interactive hover-sheen group flex flex-col gap-2 rounded-xl-increased p-4 animate-slide-up [animation-fill-mode:backwards]"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <span className={cn('grid h-10 w-10 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110', toneClass)}>
+      <span className={cn('grid h-10 w-10 place-items-center rounded-2xl transition-all duration-medium ease-spring group-hover:scale-110', toneClass)}>
         <Icon className="h-5 w-5" />
       </span>
       <p className="mt-1 text-3xl font-black tabular-nums text-content">

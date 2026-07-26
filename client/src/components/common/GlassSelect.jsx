@@ -32,7 +32,7 @@ function useOptions(options, children) {
   return out;
 }
 
-export function GlassSelect({ label, error, options, className, id, value, onChange, disabled, children, placeholder }) {
+export function GlassSelect({ label, error, options, className, id, value, onChange, disabled, children, placeholder, 'aria-label': ariaLabel }) {
   const autoId = useId();
   const selectId = id || autoId;
   const listId = `${selectId}-listbox`;
@@ -132,6 +132,7 @@ export function GlassSelect({ label, error, options, className, id, value, onCha
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         aria-invalid={Boolean(error)}
+        aria-label={!label ? ariaLabel : undefined}
         disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
         onKeyDown={onTriggerKey}

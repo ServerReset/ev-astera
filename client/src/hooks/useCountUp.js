@@ -17,7 +17,7 @@ function prefersReducedMotion() {
 
 export function useCountUp(target, { duration = 900, decimals = 0 } = {}) {
   const end = Number(target) || 0;
-  const [value, setValue] = useState(end === 0 ? 0 : 0);
+  const [value, setValue] = useState(0);
   const rafRef = useRef(0);
   const startRef = useRef(0);
 

@@ -2,11 +2,16 @@
  * useCountdown — ticks every second toward a target ISO instant. Returns { ms, done, label }.
  * Used by session ETA timers, queue grace/claim windows, and emergency response windows.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { msUntil, msSince, formatCountdown } from '@/utils/time.js';
 
 export function useCountdown(targetIso, { onDone } = {}) {
   const [ms, setMs] = useState(() => msUntil(targetIso));
+  // Keep the latest onDone in a ref so the interval always fires the current callback.
+  // The effect intentionally re-runs only on targetIso; without this, a parent that passes
+  // a fresh onDone each render (closing over changing state) would fire a stale one.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
     setMs(msUntil(targetIso));
@@ -16,7 +21,7 @@ export function useCountdown(targetIso, { onDone } = {}) {
       setMs(remaining);
       if (remaining <= 0) {
         clearInterval(id);
-        onDone?.();
+        onDoneRef.current?.();
       }
     }, 1000);
     return () => clearInterval(id);

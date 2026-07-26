@@ -7,6 +7,7 @@ import { ReliabilityLeaderboard } from '@/components/leaderboards/ReliabilityLea
 import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useCountUp } from '@/hooks/useCountUp.js';
+import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { carpoolApi } from '@/services/endpoints.js';
 
 const WINDOW_OPTIONS = [
@@ -15,13 +16,15 @@ const WINDOW_OPTIONS = [
   { value: 'all', label: 'All time' },
 ];
 
-/** A single site-wide savings tile: an icon, a big count-up number, and a caption. */
+/** A single site-wide savings tile: an icon, a big count-up number, and a caption. Opaque
+ * (bg-bg-elevated) so it never stacks a second blur on the glass hero it sits inside; a spring
+ * lift on hover makes it feel tappable-alive without any looping motion. */
 function SavingsTile({ icon: Icon, value, decimals = 0, unit, label, tone }) {
   const display = useCountUp(value, { decimals });
   return (
-    <div className="group relative flex items-center gap-4 overflow-hidden rounded-2xl bg-bg-elevated p-4">
-      <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl transition-opacity duration-medium group-hover:opacity-80 ${tone.glow}`} aria-hidden />
-      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover:scale-110 group-hover:-rotate-6 ${tone.chip}`}>
+    <div className="group/tile animate-slide-up relative flex items-center gap-4 overflow-hidden rounded-2xl bg-bg-elevated p-4 shadow-elevation-1 transition-[transform,box-shadow] duration-medium ease-spring hover:-translate-y-0.5 hover:shadow-elevation-2">
+      <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-medium group-hover/tile:opacity-90 ${tone.glow}`} aria-hidden />
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl transition-transform duration-medium ease-spring group-hover/tile:scale-110 group-hover/tile:-rotate-6 ${tone.chip}`}>
         <Icon className="h-6 w-6" />
       </span>
       <div className="min-w-0">
@@ -32,6 +35,39 @@ function SavingsTile({ icon: Icon, value, decimals = 0, unit, label, tone }) {
         <p className="text-sm text-muted">{label}</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * SavingsHero — the collective headline, promoted to the page's ONE liquid-glass hero moment.
+ * The outer .card-solid keeps this refraction from nesting inside a glass surface (no stacked
+ * blurs); the inner .lg-hero carries the actual refraction via useLiquidGlass, with a slow
+ * light-over-water drift strictly BEHIND the content and a gently floating headline mark.
+ */
+function SavingsHero({ totals, windowLabel }) {
+  const glassRef = useLiquidGlass(true, { scale: -50, chroma: 3, blur: 6, saturate: 1.5, mapBlur: 20, border: 0.14 });
+  return (
+    <section aria-label="Site-wide savings" className="card-solid rounded-xl-increased p-1.5">
+      <div ref={glassRef} className="lg-hero relative overflow-hidden rounded-xl-increased border border-brand/25 p-4 animate-pop-in">
+        {/* Signature flair: slow drift + a soft brand corner bloom, both strictly behind content. */}
+        <div className="glass-drift pointer-events-none absolute inset-0" aria-hidden />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/20 blur-3xl" aria-hidden />
+
+        <div className="relative mb-3 flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-2xl bg-brand/15 text-brand-strong ring-1 ring-brand/25">
+            <Sparkles className="h-5 w-5 animate-float" />
+          </span>
+          <div>
+            <h2 className="text-title-md font-semibold text-content">Site-wide savings</h2>
+            <p className="text-sm text-muted">Everything this whole crew saved together, {windowLabel}.</p>
+          </div>
+        </div>
+        <div className="relative grid gap-3 sm:grid-cols-2">
+          <SavingsTile icon={Leaf} value={totals.co2Kg} decimals={1} unit="kg" label="CO₂ kept out of the air" tone={TILE_TONES.success} />
+          <SavingsTile icon={Car} value={totals.trips} label="Shared trips completed" tone={TILE_TONES.brand} />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -75,23 +111,8 @@ export default function LeaderboardsPage() {
       />
 
       <div className="stagger space-y-6">
-        {/* Site-wide savings — the collective headline, in a .card-solid so its inner tiles never
-            create nested glass. */}
-        <section aria-label="Site-wide savings" className="card-solid rounded-xl-increased p-4">
-          <div className="mb-3 flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-brand/12 text-brand-strong">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="text-title-md font-semibold text-content">Site-wide savings</h2>
-              <p className="text-sm text-muted">What everyone here saved together, {WINDOW_OPTIONS.find((o) => o.value === win)?.label.toLowerCase()}.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SavingsTile icon={Leaf} value={t.co2Kg} decimals={1} unit="kg" label="CO₂ kept out of the air" tone={TILE_TONES.success} />
-            <SavingsTile icon={Car} value={t.trips} label="Shared trips completed" tone={TILE_TONES.brand} />
-          </div>
-        </section>
+        {/* Site-wide savings — the collective headline, on the page's one liquid-glass hero. */}
+        <SavingsHero totals={t} windowLabel={WINDOW_OPTIONS.find((o) => o.value === win)?.label.toLowerCase()} />
 
         {/* Carpool CO₂ leaderboard — owns its own podium hero + medal rows. */}
         <Leaderboard window={win} />

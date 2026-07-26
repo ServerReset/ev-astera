@@ -122,15 +122,18 @@ function PushCard() {
   };
 
   return (
-    <Card className="hover-sheen mb-5">
-      <div className="flex items-center gap-3.5">
+    <Card className={cn('group hover-sheen animate-slide-up mb-5 relative overflow-hidden transition-all duration-medium ease-emphasized hover:-translate-y-0.5', subscribed && 'ring-1 ring-brand/25')}>
+      {/* Soft brand bloom when push is live — a single focal card, so a gentle glow reads as "on"
+          without any looping per-item motion. */}
+      {subscribed && <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-brand/15 blur-3xl" aria-hidden />}
+      <div className="relative flex items-center gap-3.5">
         <span
           className={cn(
             'grid h-11 w-11 shrink-0 place-items-center rounded-2xl transition-colors duration-medium',
-            subscribed ? 'bg-brand/15 text-brand-strong' : 'bg-surface-2 text-muted'
+            subscribed ? 'bg-brand/15 text-brand-strong ring-1 ring-brand/25' : 'bg-surface-2 text-muted'
           )}
         >
-          <BellRing className={cn('h-5 w-5', subscribed && 'animate-float')} />
+          <BellRing className={cn('h-5 w-5 transition-transform duration-medium ease-spring', subscribed ? 'animate-float' : 'group-hover:-rotate-12 group-hover:scale-110')} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-title-md text-content">Push notifications</p>

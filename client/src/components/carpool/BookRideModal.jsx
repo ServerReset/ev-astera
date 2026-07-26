@@ -33,7 +33,10 @@ export function BookRideModal({ open, ride, onClose, onBooked }) {
     }
   }, [open]);
 
-  const maxSeats = Math.max(1, ride?.seatsAvailable || 1);
+  // bookRideSchema caps a single booking at 6 seats, so never advertise or allow more than that —
+  // otherwise a legit "book all 7" attempt on a 7-seat ride fails Zod validation with a confusing
+  // "less than or equal to 6" message before the friendly maxSeats check ever runs.
+  const maxSeats = Math.min(6, Math.max(1, ride?.seatsAvailable || 1));
 
   const submit = async () => {
     const payload = { pickup: { label: pickup.label?.trim() || '' }, seats: Number(seats) };

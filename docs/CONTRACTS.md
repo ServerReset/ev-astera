@@ -116,6 +116,23 @@ Error (from global handler):
 
 Constructor: `new BusinessRuleError(message, details?)`. All extend `AppError(message, status, code, details)`.
 
+### Non-AppError classification (middleware/errorHandler.js)
+
+Errors that aren't `AppError` are classified by `resolveUnknown()` into a specific `{ status, code, message }` instead of a blanket 500. Notably, database-connectivity failures become an honest **503** (with a `Retry-After: 5` header) rather than a generic 500:
+
+| Cause | status | code |
+|---|---|---|
+| `PrismaClientInitializationError` / "can't reach database" / `P1001`/`P1002`/`P1017` | 503 | `DATABASE_UNAVAILABLE` |
+| Prisma pool timeout `P2024` / `P1008` / `P2028` | 503 | `DATABASE_TIMEOUT` / `DATABASE_BUSY` |
+| `PrismaClientRustPanicError` | 503 | `DATABASE_ENGINE_CRASH` |
+| Unique violation `P2002` | 409 | `ALREADY_EXISTS` |
+| Missing record `P2025` | 404 | `NOT_FOUND` |
+| FK/dependency `P2003` | 409 | `DEPENDENCY_MISSING` |
+| `PrismaClientValidationError` | 500 | `QUERY_SHAPE_ERROR` |
+| anything else | 500 | `INTERNAL_ERROR` (message names the failed operation) |
+
+Service-layer `catch` blocks re-throw `PrismaClient*` errors unchanged so this classifier sees them (they must not be masked as a `ConflictError` etc.). The full stack is always logged server-side; the user-facing `message` never contains the query or stack. In dev (non-prod), non-AppError responses also carry `error.debug` with the raw cause.
+
 ---
 
 ## 5. Event names (events/events.js) — the vocabulary

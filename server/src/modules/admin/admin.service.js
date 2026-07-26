@@ -313,8 +313,9 @@ export const adminService = {
           role,
         },
       });
-    } catch {
-      throw new ConflictError('Could not create the account. Please check the details and try again.');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient') && err?.code !== 'P2002') throw err; // real DB failure → 503
+      throw new ConflictError(`Couldn't create an account for ${email}. That email may already be in use — check the members list, or try a different email.`);
     }
 
     try {

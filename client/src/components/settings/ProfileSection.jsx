@@ -35,7 +35,7 @@ function ProfileForm() {
     } catch (err) {
       const e = normalizeError(err);
       if (e.details) form.setServerErrors(e.details);
-      toast.error(e.message || 'Could not save your profile');
+      toast.error(e.message || "Your profile changes weren't saved — the server didn't say why. Your edits are still here; try saving again.");
     }
   });
 

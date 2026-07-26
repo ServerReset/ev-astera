@@ -42,6 +42,9 @@ export class ErrorBoundary extends Component {
       const isChunkError = /dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
         this.state.error?.message || ''
       );
+      // Surface the actual crash reason to developers (dev only) so it's never a black box; users
+      // in prod get specific, non-blaming copy instead of a raw stack.
+      const devDetail = import.meta.env?.DEV ? this.state.error?.message : null;
 
       if (this.props.scoped) {
         return (
@@ -49,15 +52,18 @@ export class ErrorBoundary extends Component {
             <div className="max-w-md">
               <AlertTriangle className="mx-auto h-9 w-9 text-warning" />
               <h2 className="mt-4 text-base font-semibold text-content">
-                {isChunkError ? 'This page needs a refresh' : 'This page hit a snag'}
+                {isChunkError ? 'This page needs a refresh to update' : "This page couldn't finish loading"}
               </h2>
               <p className="mt-2 text-sm text-muted">
                 {isChunkError
-                  ? 'The app was updated. Reload to get the latest version of this page.'
-                  : 'Something went wrong loading this page.'}
+                  ? 'A new version of the app was deployed while you were here, so this page’s code is out of date. Reload to get the latest version — your place is safe.'
+                  : 'The app hit an unexpected error while rendering this page. Reloading almost always clears it; if it keeps happening on this page, it’s a bug worth reporting.'}
               </p>
+              {devDetail && (
+                <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-left font-mono text-xs text-danger">{devDetail}</p>
+              )}
               <button className="btn-primary mt-5" onClick={() => window.location.reload()}>
-                Reload
+                Reload this page
               </button>
             </div>
           </div>
@@ -68,10 +74,17 @@ export class ErrorBoundary extends Component {
         <div className="grid min-h-screen place-items-center bg-bg px-6 text-center">
           <div className="max-w-md">
             <AlertTriangle className="mx-auto h-10 w-10 text-warning" />
-            <h1 className="mt-4 text-lg font-semibold text-content">This page hit a snag</h1>
+            <h1 className="mt-4 text-lg font-semibold text-content">
+              {isChunkError ? 'The app needs to reload to update' : 'The app hit an unexpected error'}
+            </h1>
             <p className="mt-2 text-sm text-muted">
-              An unexpected error occurred. Reloading usually fixes it.
+              {isChunkError
+                ? 'A newer version was deployed. Reload to load it — nothing you did caused this.'
+                : 'Something crashed while rendering — not something you did. It’s been logged; reloading almost always fixes it.'}
             </p>
+            {devDetail && (
+              <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-left font-mono text-xs text-danger">{devDetail}</p>
+            )}
             <button className="btn-primary mt-5" onClick={() => window.location.reload()}>
               Reload app
             </button>

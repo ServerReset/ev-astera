@@ -59,7 +59,7 @@ export function SecuritySection() {
     } catch (err) {
       const e = normalizeError(err);
       if (e.details) form.setServerErrors(e.details);
-      toast.error(e.message || 'Could not change your password');
+      toast.error(e.message || "Your password wasn't changed — the server didn't say why. Check your current password is correct, then try again.");
     }
   });
 

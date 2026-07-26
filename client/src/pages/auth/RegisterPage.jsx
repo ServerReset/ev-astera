@@ -168,7 +168,7 @@ export default function RegisterPage() {
 
     const res = await register({ ...data, ...coords });
     if (res.ok) navigate('/', { replace: true });
-    else setFormError(res.error?.message || 'Registration failed.');
+    else setFormError(res.error?.message || "We couldn't create your account, and no reason came back. Double-check the form, then try again.");
   });
 
   // Check error/empty states BEFORE the loading guard — otherwise a failed or empty offices load
@@ -177,12 +177,15 @@ export default function RegisterPage() {
   if (offices.error) {
     return (
       <RedirectIfAuthed>
-        <AuthShell title="Can't load offices" subtitle="Try again in a moment">
+        <AuthShell title="Can't load the office list" subtitle="The sign-up server didn't respond">
           <div className="flex flex-col items-center gap-3 py-2 text-center animate-scale-in">
             <span className="grid h-14 w-14 place-items-center rounded-2xl bg-danger/10 text-danger animate-pop-in">
               <WifiOff className="h-7 w-7" />
             </span>
-            <p className="text-sm text-muted">We couldn't reach the server to list offices. Reload the page to try again.</p>
+            <p className="text-sm text-muted">
+              We couldn't reach the server to load the list of offices you can register at. It may be starting up or
+              temporarily down — reload the page in a moment to try again.
+            </p>
           </div>
         </AuthShell>
       </RedirectIfAuthed>

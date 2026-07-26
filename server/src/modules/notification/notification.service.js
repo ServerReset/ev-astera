@@ -66,8 +66,9 @@ export const notificationService = {
         create: { user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth },
         update: { user_id: userId, p256dh: keys.p256dh, auth: keys.auth },
       });
-    } catch {
-      throw new AppError("Couldn't enable push notifications on this device. Please try again.", 500, 'PUSH_SUBSCRIBE_FAILED');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new AppError("Couldn't register this device for push notifications — the subscription didn't save. Reload and try again.", 500, 'PUSH_SUBSCRIBE_FAILED');
     }
     return { success: true };
   },

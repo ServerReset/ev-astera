@@ -104,6 +104,10 @@ const HTTP_FALLBACK_MESSAGES = {
   409: 'That conflicts with something that already happened — refresh and try again.',
   422: "That couldn't be completed — please review and try again.",
   429: 'Too many requests. Please slow down and try again shortly.',
+  500: 'The server ran into a problem on its end. It has been logged; please try again in a moment.',
+  502: "We couldn't reach the server (bad gateway). It may be restarting — please try again in a moment.",
+  503: "The service is temporarily unavailable — this is on our side. Please try again in a moment.",
+  504: 'The server took too long to respond (gateway timeout). Please try again in a moment.',
 };
 
 const NORMALIZED = Symbol('normalized');
@@ -123,34 +127,47 @@ export function normalizeError(error) {
   const resp = error?.response;
   let result;
   if (resp?.data?.error) {
+    // Server authored a specific message — trust it, but never let an empty/blank one through to a
+    // toast (that would render a context-free empty bubble). Fall back to a status-specific line.
     const e = resp.data.error;
-    result = { code: e.code, message: e.message, details: e.details || null, status: resp.status };
+    const serverMsg = typeof e.message === 'string' ? e.message.trim() : '';
+    const message =
+      serverMsg ||
+      HTTP_FALLBACK_MESSAGES[resp.status] ||
+      `The server rejected that request (status ${resp.status}) without saying why. It has been logged — please try again.`;
+    result = { code: e.code || 'HTTP_ERROR', message, details: e.details || null, status: resp.status };
   } else if (resp) {
+    // A response came back but with no error envelope (e.g. an HTML error page from a proxy).
     const fallback =
       HTTP_FALLBACK_MESSAGES[resp.status] ||
       (resp.status >= 500
-        ? 'The server ran into a problem on its end. Please try again in a moment.'
-        : `Request failed (${resp.status}).`);
+        ? 'The server ran into a problem on its end and returned no details. It has been logged; please try again in a moment.'
+        : `The request came back with an unexpected status (${resp.status}) and no explanation. Please try again, or reload the page.`);
     result = { code: 'HTTP_ERROR', message: fallback, status: resp.status };
   } else if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
     result = {
       code: 'TIMEOUT',
-      message: 'The server took too long to respond. Check your connection and try again.',
+      message: 'The server took too long to respond and the request timed out. Check your connection, then try again.',
       status: 0,
       details: { debug: error?.code || error?.message },
     };
   } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    result = { code: 'OFFLINE', message: "You're offline — reconnect and try again.", status: 0 };
+    result = { code: 'OFFLINE', message: "Your device is offline — reconnect to the internet, then try again.", status: 0 };
   } else {
+    // No `response` reached the client at all — genuine network/CORS/DNS failure, or the API server
+    // isn't running. Name the likely causes so it's actionable, not a bare "network error".
     result = {
       code: 'NETWORK_ERROR',
-      message: "Couldn't reach the server. Check your connection and try again.",
+      message: "Couldn't reach the EV Hub server. It may be starting up or temporarily down, or your connection dropped — check your network and try again in a moment.",
       status: 0,
-      // No `response` reached the client at all — genuine network/CORS/DNS failure, not a
-      // server-authored error. Keep the raw axios code/message here so a CORS rejection or
-      // DNS failure is distinguishable from "request never sent" in dev tools.
+      // Keep the raw axios code/message for devs so a CORS rejection vs DNS vs connection-refused is
+      // distinguishable in dev tools without cluttering the user-facing message.
       details: { debug: error?.code || error?.message },
     };
+  }
+  // Final guarantee: no consumer ever gets an empty message (blank toast / blank ErrorState).
+  if (!result.message || !String(result.message).trim()) {
+    result.message = 'Something failed, and no detail came back with it. It has been logged — please try again, or reload the page.';
   }
   Object.defineProperty(result, NORMALIZED, { value: true, enumerable: false });
   return result;

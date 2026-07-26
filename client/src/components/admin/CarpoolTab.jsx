@@ -46,7 +46,7 @@ function useList(fn, deps = []) {
 
 function ListShell({ query, empty, children }) {
   if (query.loading && !query.data) return <Spinner label="Loading…" />;
-  if (query.error) return <ErrorState error={query.error} onRetry={query.refetch} title="Could not load" />;
+  if (query.error) return <ErrorState error={query.error} onRetry={query.refetch} title="Could not load carpool data" />;
   const items = query.data || [];
   if (!items.length) return <EmptyState icon={empty.icon} title={empty.title} description={empty.description} />;
   return <div className="card-solid rounded-xl-increased p-2">{children(items)}</div>;

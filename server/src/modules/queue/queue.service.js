@@ -145,8 +145,9 @@ export const queueService = {
           priority_source: reliabilityDelta !== 0 ? 'reliability' : null,
         },
       });
-    } catch {
-      throw new ConflictError('Could not join the queue for this charger. Please try again.');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient')) throw err; // let the handler classify DB failures
+      throw new ConflictError("Couldn't add you to the queue — you may already be in line for this charger. Refresh and check the queue.");
     }
 
     await emit(EVENTS.QUEUE_JOINED, { locationId, chargerId, userId, queueEntryId: data.id });

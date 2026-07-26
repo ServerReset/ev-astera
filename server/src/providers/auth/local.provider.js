@@ -136,8 +136,10 @@ export const localProvider = {
         },
         include: WITH_OFFICE,
       });
-    } catch {
-      throw new ConflictError('Could not create account');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient') && err?.code !== 'P2002') throw err; // real DB failure → 503
+      // P2002 (or any leftover) here means the email was taken between the check above and insert.
+      throw new ConflictError('An account with this email already exists. Try signing in instead, or use a different email.');
     }
 
     const user = toPublicUser(data);

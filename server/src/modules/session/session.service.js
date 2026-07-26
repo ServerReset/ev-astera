@@ -201,7 +201,10 @@ export const sessionService = {
         }
         throw new ConflictError('Someone just started charging on this charger.');
       }
-      throw new ConflictError('Could not start session.');
+      // Don't mask a DB-connectivity failure as a "conflict" — let the global handler classify it
+      // (→ 503 DATABASE_UNAVAILABLE) so the user sees the honest cause.
+      if (err?.name?.startsWith('PrismaClient')) throw err;
+      throw new ConflictError("Couldn't start your charging session — the charger may have just changed state. Refresh the dashboard and try again.");
     }
 
     await prisma.chargers.update({ where: { id: chargerId }, data: { status: CHARGER_STATUS.IN_USE } });

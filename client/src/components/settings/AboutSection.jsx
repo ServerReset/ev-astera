@@ -45,7 +45,7 @@ export function AboutSection() {
       patchUser({ onboardedAt: null });
       toast.success('Walkthrough reset — here we go!');
     } catch (err) {
-      toast.error(normalizeError(err).message || 'Could not reset the walkthrough');
+      toast.error(normalizeError(err).message || "The walkthrough couldn't be reset — the server didn't say why. Try again in a moment.");
     } finally {
       setReplaying(false);
     }

@@ -39,8 +39,9 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
   );
 }
 
-/** Error-state placeholder with retry. */
-export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
+/** Error-state placeholder with retry. `title` names WHAT failed (callers pass e.g. "Could not load
+ *  chargers"); the body shows the normalized, specific cause from the error funnel. */
+export function ErrorState({ error, onRetry, title = "This section couldn't load" }) {
   const ripple = useRipple();
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 py-10 px-6 text-center animate-scale-in">
@@ -49,7 +50,11 @@ export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
       </span>
       <div>
         <p className="font-medium text-content">{title}</p>
-        <p className="mt-1 text-sm text-muted">{error?.message || 'Please try again.'}</p>
+        {/* normalizeError() guarantees a specific, non-empty message; the fallback here only guards
+            a caller passing a bare Error without going through the funnel. */}
+        <p className="mt-1 text-sm text-muted">
+          {error?.message || 'The reason wasn’t reported. Tap Retry, or reload the page if it keeps happening.'}
+        </p>
       </div>
       {onRetry && (
         <Button variant="secondary" size="sm" className="ripple" onClick={onRetry} onPointerDown={ripple}>

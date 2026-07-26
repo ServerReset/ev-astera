@@ -78,7 +78,7 @@ export function usePushNotifications() {
       } else if (err?.name === 'NotAllowedError') {
         toast.error('Notifications are blocked for this site. Allow them in your browser settings and try again.');
       } else {
-        toast.error(`Could not enable push notifications.${err?.message ? ` (${err.message})` : ''}`);
+        toast.error(`Push notifications couldn't be turned on for this device. Reload and try again, or check your browser's notification settings.${err?.message ? ` (${err.message})` : ''}`);
       }
       return false;
     } finally {

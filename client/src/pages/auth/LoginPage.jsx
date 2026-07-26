@@ -28,7 +28,7 @@ export default function LoginPage() {
     setFormError(null);
     const res = await login(data);
     if (res.ok) navigate(from, { replace: true });
-    else setFormError(res.error?.message || 'Login failed.');
+    else setFormError(res.error?.message || "We couldn't sign you in, and no reason came back. Check your email and password, then try again.");
   });
 
   return (

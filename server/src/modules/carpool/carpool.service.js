@@ -202,8 +202,9 @@ export const carpoolService = {
         },
         include: { driver: { select: { display_name: true } } },
       });
-    } catch {
-      throw new ConflictError('Could not post your ride. Please check the details and try again.');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new ConflictError("Couldn't post your ride — double-check the departure time and seat count, then try again.");
     }
     await emit(EVENTS.CARPOOL_RIDE_POSTED, { locationId, rideId: data.id, driverId, direction: data.direction, departAt: data.depart_at, groupId: data.group_id });
     return rideDto(data);
@@ -286,7 +287,8 @@ export const carpoolService = {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictError('You already requested a seat on this ride.');
       }
-      throw new ConflictError('Could not request a seat on this ride. Please try again.');
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new ConflictError("Couldn't request a seat — the ride may have just filled up or been cancelled. Refresh the ride list and try again.");
     }
     await emit(EVENTS.CARPOOL_BOOKING_REQUESTED, { locationId, rideId, bookingId: data.id, riderId, driverId: r.driver_id });
     return { id: data.id, status: data.status };
@@ -448,8 +450,9 @@ export const carpoolService = {
           status: RIDE_REQUEST_STATUS.OPEN,
         },
       });
-    } catch {
-      throw new ConflictError('Could not post your ride request. Please check the details and try again.');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new ConflictError("Couldn't post your ride request — check the direction and time window, then try again.");
     }
     return { id: data.id, status: data.status };
   },
@@ -498,8 +501,9 @@ export const carpoolService = {
           active: body.active ?? true,
         },
       });
-    } catch {
-      throw new ConflictError('Could not create your recurring commute. Please check the details and try again.');
+    } catch (err) {
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new ConflictError("Couldn't save your recurring commute — check the days and time, then try again.");
     }
     await emit(EVENTS.CARPOOL_SCHEDULE_CREATED, { locationId, scheduleId: data.id, userId, role: data.role });
     return { id: data.id };
@@ -566,7 +570,8 @@ export const carpoolService = {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictError(`A group named "${name}" already exists.`);
       }
-      throw new ConflictError('Could not create the group. Please try again.');
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failure → classified by the handler
+      throw new ConflictError(`Couldn't create the group "${name}". Try a different name, or try again in a moment.`);
     }
     await prisma.carpool_group_members.create({ data: { group_id: data.id, user_id: userId } });
     return { id: data.id };

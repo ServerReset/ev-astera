@@ -77,7 +77,8 @@ export const messageService = {
       });
     } catch (err) {
       if (err instanceof BusinessRuleError) throw err;
-      throw new BusinessRuleError('Could not send nudge.');
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failures → classified by the handler
+      throw new BusinessRuleError("Your nudge couldn't be sent — the charger's session may have just ended. Refresh and check whether it's still in use.");
     }
 
     await emit(EVENTS.NUDGE_SENT, {
@@ -168,7 +169,8 @@ export const messageService = {
       });
     } catch (err) {
       if (err instanceof BusinessRuleError) throw err;
-      throw new BusinessRuleError('Could not raise emergency request.');
+      if (err?.name?.startsWith('PrismaClient')) throw err; // DB failures → classified by the handler
+      throw new BusinessRuleError("Your emergency request couldn't be raised. There may already be an open request for this charger — refresh and check before trying again.");
     }
 
     await emit(EVENTS.EMERGENCY_REQUESTED, {

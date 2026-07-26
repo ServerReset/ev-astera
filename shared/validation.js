@@ -63,7 +63,7 @@ export const changePasswordSchema = z
 
 // ── User profile ───────────────────────────────────────────────────────────────
 export const updateProfileSchema = z.object({
-  displayName: z.string().trim().min(2).max(60).optional(),
+  displayName: z.string().trim().min(2, 'Your name needs at least 2 characters').max(60, 'Your name can be at most 60 characters').optional(),
   vehicleDescription: optionalShortText,
   notificationPrefs: z.record(z.string(), z.boolean()).optional(),
 });
@@ -108,7 +108,7 @@ export const claimQueueSchema = z.object({ queueEntryId: uuidSchema });
 export const nudgeSchema = z.object({
   chargerId: uuidSchema,
   sessionId: uuidSchema,
-  message: z.string().trim().min(1).max(100),
+  message: z.string().trim().min(1, 'Enter a short message to send').max(100, 'Keep your nudge to 100 characters or fewer'),
 });
 // `up`/`down` are kept for backward-compat with rows stored before the reaction pack landed;
 // `pray`/`run`/`eyes` were added so a nudge reply can carry real context ("almost done" / "on my
@@ -123,8 +123,8 @@ export const nudgeReactSchema = z.object({
 // module's load time — message.service.js's requestEmergency() checks the submitted reason
 // against that location's actual configured list before accepting it.
 export const emergencyRequestSchema = z.object({
-  reason: z.string().trim().min(1).max(80),
-  explanation: z.string().trim().max(200).optional(),
+  reason: z.string().trim().min(1, 'Choose a reason for the emergency request').max(80, 'Keep the reason under 80 characters'),
+  explanation: z.string().trim().max(200, 'Keep the explanation under 200 characters').optional(),
 });
 export const emergencyRespondSchema = z.object({
   requestId: uuidSchema,
@@ -139,8 +139,8 @@ export const pushSubscribeSchema = z.object({
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 export const announcementSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  body: z.string().trim().min(1).max(2000),
+  title: z.string().trim().min(1, 'Give the announcement a title').max(120, 'Keep the title under 120 characters'),
+  body: z.string().trim().min(1, 'Write the announcement body').max(2000, 'Keep the announcement under 2000 characters'),
   expiresAt: z.string().datetime().nullable().optional(),
   active: z.boolean().optional().default(true),
 });
@@ -152,8 +152,8 @@ export const updateSettingsSchema = z.record(
   z.string(),
   z.union([z.number(), z.boolean(), z.string(), z.array(z.string())])
 );
-export const setOfflineSchema = z.object({ reason: z.string().trim().max(200).optional() });
-export const chargerNameSchema = z.object({ name: z.string().trim().min(1).max(80) });
+export const setOfflineSchema = z.object({ reason: z.string().trim().max(200, 'Keep the reason under 200 characters').optional() });
+export const chargerNameSchema = z.object({ name: z.string().trim().min(1, 'Give the charger a name').max(80, 'Keep the charger name under 80 characters') });
 export const adminUpdateUserSchema = z.object({
   role: z.enum(['user', 'site_admin', 'super_admin']).optional(),
   active: z.boolean().optional(),
@@ -162,7 +162,7 @@ export const adminUpdateUserSchema = z.object({
 export const adminCreateUserSchema = z.object({
   email: asteraEmailSchema,
   password: passwordSchema,
-  displayName: z.string().trim().min(1).max(80),
+  displayName: z.string().trim().min(1, "Enter the member's name").max(80, 'Keep the name under 80 characters'),
   role: z.enum(['user', 'site_admin', 'super_admin']),
 });
 
@@ -185,8 +185,8 @@ const timezoneSchema = z
   .refine((v) => !ianaZones || ianaZones.has(v), 'Not a recognized IANA timezone');
 
 export const createOfficeSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  address: z.string().trim().min(3).max(240).optional().or(z.literal('')),
+  name: z.string().trim().min(2, 'Office name needs at least 2 characters').max(120, 'Keep the office name under 120 characters'),
+  address: z.string().trim().min(3, 'Enter a fuller address (at least 3 characters)').max(240, 'Keep the address under 240 characters').optional().or(z.literal('')),
   timezone: timezoneSchema,
 });
 export const updateOfficeSchema = createOfficeSchema.partial();
@@ -194,28 +194,28 @@ export const updateOfficeSchema = createOfficeSchema.partial();
 // ── Carpool ──────────────────────────────────────────────────────────────────
 const directionEnum = z.enum([CARPOOL_DIRECTION.TO_SITE, CARPOOL_DIRECTION.FROM_SITE]);
 const geoPointSchema = z.object({
-  label: z.string().trim().min(2).max(160),
+  label: z.string().trim().min(2, 'Enter a pickup/location (at least 2 characters)').max(160, 'Keep the location under 160 characters'),
 });
 
 export const postRideSchema = z.object({
   direction: directionEnum,
   origin: geoPointSchema,
   departAt: z.string().datetime(),
-  seatsTotal: z.number().int().min(1).max(7),
-  notes: z.string().trim().max(200).optional(),
+  seatsTotal: z.number().int().min(1, 'Offer at least 1 seat').max(7, 'A ride can offer at most 7 seats'),
+  notes: z.string().trim().max(200, 'Keep notes under 200 characters').optional(),
   linkedSessionId: uuidSchema.nullable().optional(),
   groupId: uuidSchema.nullable().optional(),
 });
 
 export const updateRideSchema = z.object({
   departAt: z.string().datetime().optional(),
-  seatsTotal: z.number().int().min(1).max(7).optional(),
-  notes: z.string().trim().max(200).optional(),
+  seatsTotal: z.number().int().min(1, 'Offer at least 1 seat').max(7, 'A ride can offer at most 7 seats').optional(),
+  notes: z.string().trim().max(200, 'Keep notes under 200 characters').optional(),
 });
 
 export const bookRideSchema = z.object({
   pickup: geoPointSchema,
-  seats: z.number().int().min(1).max(6).optional().default(1),
+  seats: z.number().int().min(1, 'Book at least 1 seat').max(6, 'You can book at most 6 seats in one request').optional().default(1),
 });
 
 export const completeRideSchema = z.object({
@@ -233,18 +233,18 @@ export const postRequestSchema = z.object({
 export const createScheduleSchema = z.object({
   role: z.enum([CARPOOL_ROLE.DRIVER, CARPOOL_ROLE.RIDER]),
   direction: directionEnum,
-  daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1),
-  departTime: z.string().regex(/^\d{2}:\d{2}$/, 'HH:MM'),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, 'Pick at least one day of the week'),
+  departTime: z.string().regex(/^\d{2}:\d{2}$/, 'Enter a time as HH:MM (e.g. 08:30)'),
   origin: geoPointSchema,
-  seats: z.number().int().min(1).max(7).optional().default(1),
+  seats: z.number().int().min(1, 'Offer at least 1 seat').max(7, 'A schedule can offer at most 7 seats').optional().default(1),
   groupId: uuidSchema.nullable().optional(),
   active: z.boolean().optional().default(true),
 });
 export const updateScheduleSchema = createScheduleSchema.partial();
 
 export const createGroupSchema = z.object({
-  name: z.string().trim().min(2).max(60),
-  description: z.string().trim().max(200).optional(),
+  name: z.string().trim().min(2, 'Group name needs at least 2 characters').max(60, 'Keep the group name under 60 characters'),
+  description: z.string().trim().max(200, 'Keep the description under 200 characters').optional(),
 });
 
 export const listRidesQuerySchema = z.object({

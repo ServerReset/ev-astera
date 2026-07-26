@@ -65,7 +65,7 @@ export function NotificationsSection() {
     } catch (err) {
       // Revert just this key to its pre-toggle value, leaving any concurrent state intact.
       commit({ ...prefsRef.current, [key]: base[key] });
-      toast.error(normalizeError(err).message || 'Could not update preferences');
+      toast.error(normalizeError(err).message || "That notification preference didn't save — the server didn't say why. It's been switched back; try again in a moment.");
     } finally {
       setSavingCount((n) => n - 1);
     }

@@ -5,7 +5,7 @@
  */
 import { prisma } from '../db/prisma.js';
 import { SETTING_DEFAULTS, SETTING_BOUNDS } from '../../../shared/constants.js';
-import { ValidationError } from '../utils/errors.js';
+import { AppError, ValidationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 const TTL_MS = 60_000;
@@ -76,7 +76,15 @@ export async function update(locationId, patch) {
       )
     );
   } catch (err) {
-    throw new Error(`settings update failed: ${err.message}`);
+    // Let Prisma connectivity/known errors bubble unchanged so the global handler can classify them
+    // (e.g. DB-unreachable → 503 DATABASE_UNAVAILABLE) instead of masking them as a generic 500.
+    if (err?.name?.startsWith('PrismaClient')) throw err;
+    // Otherwise wrap as a typed, specific error naming the operation (was an untyped Error → 500).
+    throw new AppError(
+      `Couldn't save these settings — the update didn't go through. No changes were applied; please try again. (${err.message})`,
+      500,
+      'SETTINGS_UPDATE_FAILED'
+    );
   }
   for (const key of Object.keys(patch)) cache.delete(cacheKey(locationId, key));
   return getAll(locationId);

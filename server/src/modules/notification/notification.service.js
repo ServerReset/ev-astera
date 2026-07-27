@@ -24,7 +24,10 @@ function toDto(n) {
 export const notificationService = {
   async list(userId, page = 1) {
     const skip = (page - 1) * PAGE_SIZE;
-    const [data, count] = await Promise.all([
+    // Include `unread` in the list response so the client's badge poll needs ONE request, not two
+    // (it previously called /unread-count separately on every 60s tick). All three counts run in
+    // parallel in a single round-trip.
+    const [data, count, unread] = await Promise.all([
       prisma.notifications.findMany({
         where: { user_id: userId },
         orderBy: { created_at: 'desc' },
@@ -32,8 +35,9 @@ export const notificationService = {
         take: PAGE_SIZE,
       }),
       prisma.notifications.count({ where: { user_id: userId } }),
+      prisma.notifications.count({ where: { user_id: userId, read_at: null } }),
     ]);
-    return { items: data.map(toDto), total: count, page };
+    return { items: data.map(toDto), total: count, unread, page };
   },
 
   async unreadCount(userId) {

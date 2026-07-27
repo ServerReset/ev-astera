@@ -170,9 +170,19 @@ export async function carpoolComplete() {
       },
     });
 
+    // Confirmed-booking counts for ALL these rides in ONE grouped query (was a count per ride).
+    const confirmedByRide = new Map();
+    if (rides.length) {
+      const grouped = await prisma.carpool_bookings.groupBy({
+        by: ['ride_id'],
+        where: { ride_id: { in: rides.map((r) => r.id) }, status: BOOKING_STATUS.CONFIRMED },
+        _count: { _all: true },
+      });
+      for (const g of grouped) confirmedByRide.set(g.ride_id, g._count._all);
+    }
+
     for (const ride of rides) {
-      const count = await prisma.carpool_bookings.count({ where: { ride_id: ride.id, status: BOOKING_STATUS.CONFIRMED } });
-      if (count > 0) {
+      if ((confirmedByRide.get(ride.id) || 0) > 0) {
         await completeRideImpact(ride, null);
       } else {
         // No riders — just close it out without impact.

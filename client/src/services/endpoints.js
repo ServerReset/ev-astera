@@ -51,6 +51,9 @@ export const chargerApi = {
 export const sessionApi = {
   getConfig: () => api.get(L('/sessions/config')),
   active: () => api.get(L('/sessions/active')),
+  // One request returning everything the dashboard needs (chargers, active session, queue, my
+  // queue entry, emergencies) — replaces 5 separate polled calls with a single snapshot per tick.
+  dashboard: () => api.get(L('/sessions/dashboard')),
   start: (body) => api.post(L('/sessions'), body),
   updateEta: (sessionId, durationMinutes) => api.patch(L(`/sessions/${sessionId}/eta`), { durationMinutes }),
   end: (sessionId, checklist) => api.post(L(`/sessions/${sessionId}/end`), checklist),
@@ -77,8 +80,9 @@ export const messageApi = {
 
 // ── Notifications (root-scoped) ────────────────────────────────────────────────
 export const notificationApi = {
+  // list() returns { items, total, unread, page } — the unread badge count rides along, so the
+  // badge poll needs no separate /unread-count request.
   list: (page = 1) => api.get('/notifications', { params: { page } }),
-  unreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id) => api.post(`/notifications/${id}/read`, {}),
   markAllRead: () => api.post('/notifications/read-all', {}),
   subscribePush: (subscription) => api.post('/notifications/push/subscribe', subscription),

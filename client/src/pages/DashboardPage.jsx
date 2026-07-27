@@ -16,7 +16,7 @@ import { QueuePanel } from '@/components/queue/QueuePanel.jsx';
 import { useApi } from '@/hooks/useApi.js';
 import { useRealtime } from '@/hooks/useRealtime.js';
 import { useAuthStore } from '@/stores/authStore.js';
-import { chargerApi, sessionApi, queueApi } from '@/services/endpoints.js';
+import { sessionApi } from '@/services/endpoints.js';
 import { CHARGER_STATUS } from '@/utils/constants.js';
 import { cn } from '@/utils/cn.js';
 
@@ -36,10 +36,11 @@ function normalizeActive(row) {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
-  const chargers = useApi(() => chargerApi.list(), []);
-  const active = useApi(() => sessionApi.active(), []);
-  const queue = useApi(() => queueApi.list(), []);
-  const mine = useApi(() => queueApi.mine(), []);
+  // ONE request for the whole dashboard (chargers + active session + queue + my entry +
+  // emergencies) instead of 5 separate polled fetches. `snap` holds it all; the individual
+  // datasets are derived below.
+  const snapshot = useApi(() => sessionApi.dashboard(), []);
+  const snap = snapshot.data;
 
   const [startFor, setStartFor] = useState(null);
   const [nudgeFor, setNudgeFor] = useState(null);
@@ -47,25 +48,25 @@ export default function DashboardPage() {
   const [etaOpen, setEtaOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
 
-  const mySession = normalizeActive(active.data);
+  const mySession = normalizeActive(snap?.active);
 
+  // One refetch drives the whole page.
   const refreshAll = useCallback(() => {
-    chargers.refetch();
-    active.refetch();
-    queue.refetch();
-    mine.refetch();
+    snapshot.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Manual-refresh feedback: true whenever any of the four dashboard reads is mid-flight.
-  const refreshing = chargers.loading || active.loading || queue.loading || mine.loading;
+  const refreshing = snapshot.loading;
 
+  // Single poll tick = single request (was 4). Pauses when the tab is hidden (useRealtime).
   useRealtime('dashboard', ['chargers', 'sessions', 'queue_entries'], refreshAll);
 
   const canStart = !mySession;
   const canJoinQueue = !mySession;
-  const list = useMemo(() => chargers.data || [], [chargers.data]);
-  const queueEntries = queue.data || [];
+  const list = useMemo(() => snap?.chargers || [], [snap]);
+  const queueEntries = snap?.queue || [];
+  const myQueueEntry = snap?.mine || null;
+  const emergencies = snap?.emergencies || [];
   // A charger counts as "free to take" only if it's available AND not reserved for a queue turn
   // in flight — the same gate ChargerCard uses to decide whether to offer "Start".
   const availableCount = useMemo(
@@ -108,7 +109,7 @@ export default function DashboardPage() {
         }
       />
 
-      <EmergencyBanner hasActiveSession={Boolean(mySession)} />
+      <EmergencyBanner emergencies={emergencies} hasActiveSession={Boolean(mySession)} onChanged={refreshAll} />
 
       {mySession && (
         <div className="mb-6">
@@ -120,12 +121,12 @@ export default function DashboardPage() {
           becoming a sticky rail on very wide monitors. */}
       <div className="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:items-start 2xl:gap-6">
         <section aria-label="Chargers">
-          {chargers.loading && !list.length ? (
+          {snapshot.loading && !list.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-44 rounded-xl-increased" />)}
             </div>
-          ) : chargers.error ? (
-            <ErrorState error={chargers.error} onRetry={chargers.refetch} title="Could not load chargers" />
+          ) : snapshot.error ? (
+            <ErrorState error={snapshot.error} onRetry={snapshot.refetch} title="Could not load the dashboard" />
           ) : list.length === 0 ? (
             <EmptyState icon={Zap} title="No chargers here yet" description="Chargers configured for your site will show up here." />
           ) : (
@@ -146,21 +147,25 @@ export default function DashboardPage() {
         </section>
 
         <aside className="mt-6 grid gap-4 sm:grid-cols-2 2xl:mt-0 2xl:sticky 2xl:top-6 2xl:grid-cols-1 2xl:gap-6">
-          <QueuePanel entries={queueEntries} mine={mine.data} canJoin={canJoinQueue} onChanged={() => { queue.refetch(); mine.refetch(); }} />
+          <QueuePanel entries={queueEntries} mine={myQueueEntry} canJoin={canJoinQueue} onChanged={refreshAll} />
           <NudgeInboxWidget />
         </aside>
       </div>
 
-      {/* Modals */}
-      <StartSessionModal open={Boolean(startFor)} charger={startFor} user={user} onClose={() => setStartFor(null)} onStarted={refreshAll} />
-      {mySession && (
-        <>
-          <EndSessionModal open={endOpen} session={mySession} onClose={() => setEndOpen(false)} onEnded={refreshAll} />
-          <EtaModal open={etaOpen} session={mySession} onClose={() => setEtaOpen(false)} onUpdated={refreshAll} />
-        </>
+      {/* Modals — mounted ONLY when open, so their config-fetch hooks (useSessionConfig /
+          useMessageConfig) don't fire a request on every dashboard load. Previously all four were
+          always mounted with open=false, firing 3 config calls per visit (one a duplicate). */}
+      {startFor && (
+        <StartSessionModal open charger={startFor} user={user} onClose={() => setStartFor(null)} onStarted={refreshAll} />
       )}
-      <NudgeModal open={Boolean(nudgeFor)} charger={nudgeFor} onClose={() => setNudgeFor(null)} />
-      <EmergencyModal open={emergencyOpen} onClose={() => setEmergencyOpen(false)} />
+      {mySession && endOpen && (
+        <EndSessionModal open session={mySession} onClose={() => setEndOpen(false)} onEnded={refreshAll} />
+      )}
+      {mySession && etaOpen && (
+        <EtaModal open session={mySession} onClose={() => setEtaOpen(false)} onUpdated={refreshAll} />
+      )}
+      {nudgeFor && <NudgeModal open charger={nudgeFor} onClose={() => setNudgeFor(null)} />}
+      {emergencyOpen && <EmergencyModal open onClose={() => setEmergencyOpen(false)} />}
     </div>
   );
 }

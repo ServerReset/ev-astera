@@ -10,12 +10,7 @@ import { dispatchNotification, dispatchBulk } from '../../providers/notification
 import { prisma } from '../../db/prisma.js';
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY, ADMIN_ROLES } from '../../../../shared/constants.js';
 import { getNotificationCopy } from '../../utils/notifTemplates.js';
-
-async function chargerName(chargerId) {
-  if (!chargerId) return 'a charger';
-  const data = await prisma.chargers.findUnique({ where: { id: chargerId }, select: { name: true } });
-  return data?.name || 'a charger';
-}
+import { getChargerName as chargerName } from '../../utils/chargerNameCache.js';
 
 export const notificationListeners = [
   {

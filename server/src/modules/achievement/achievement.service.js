@@ -43,8 +43,9 @@ async function unlock(locationId, userId, key, metadata = {}) {
  * Current value of the requested count-metrics for a user (also powers the locked-state progress
  * bars). `wanted` limits which queries run so the hot event-driven path (checkCounts) only touches
  * the tables whose metric actually changed. Note 'reliability' resolves via getScore(), which is
- * compute-on-read and persists passive decay — the same write-on-read behavior GET /reliability/me
- * already has, and idempotent (it doesn't bump last_reliability_event_at). The badge-wall read
+ * now READ-ONLY (computes passive decay in memory, no DB write — see reliability.service.js). On a
+ * SESSION_ENDED cascade the reliability listener has just persisted the fresh score via applyEvent;
+ * this getScore is a second read of that row, but no longer a second write. The badge-wall read
  * (listForUser) intentionally requests it so the reliable_pro progress bar can render.
  * @param {string[]} [wanted]  metric keys to compute; omit for all (used by the badge-wall read).
  */

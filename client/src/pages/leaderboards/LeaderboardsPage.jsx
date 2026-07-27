@@ -5,7 +5,6 @@ import { Select } from '@/components/common/Input.jsx';
 import { Leaderboard } from '@/components/carpool/Leaderboard.jsx';
 import { ReliabilityLeaderboard } from '@/components/leaderboards/ReliabilityLeaderboard.jsx';
 import { useApi } from '@/hooks/useApi.js';
-import { useRealtime } from '@/hooks/useRealtime.js';
 import { useCountUp } from '@/hooks/useCountUp.js';
 import { useLiquidGlass } from '@/hooks/useLiquidGlass.js';
 import { carpoolApi } from '@/services/endpoints.js';
@@ -88,8 +87,10 @@ export default function LeaderboardsPage() {
   const [win, setWin] = useState('week');
   const totals = useApi(() => carpoolApi.leaderboardTotals({ window: win }), [win]);
 
-  // Re-tally totals live; the child boards run their own realtime-independent refetch on `win`.
-  useRealtime('leaderboards', ['carpool_trip_logs', 'reliability_events'], () => totals.refetch());
+  // No background poll: leaderboard totals are site-wide aggregates that change only when a trip
+  // completes or a reliability event fires (human-rare), and re-tallying them is one of the more
+  // expensive queries. They refetch when the window selector changes (the [win] dep above), and on
+  // remount — which is plenty fresh for a competition board and saves a costly aggregate every tick.
 
   const t = totals.data || { co2Kg: 0, trips: 0 };
 

@@ -51,6 +51,8 @@ export default function CarpoolPage() {
   const [bookFor, setBookFor] = useState(null);
   const [manageFor, setManageFor] = useState(null);
 
+  // Full refresh — used after an action the user just took (post/cancel/book), where refetching
+  // everything is worth it. NOT used for the background poll.
   const refreshAll = useCallback(() => {
     rides.refetch();
     mine.refetch();
@@ -59,7 +61,19 @@ export default function CarpoolPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useRealtime('carpool', ['carpool_rides', 'carpool_bookings', 'carpool_requests'], refreshAll);
+  // Background poll refetches ONLY the dataset for the tab the user is actually looking at — the
+  // other three were being fetched every tick and thrown away. `matches()` (an expensive matching
+  // computation) is deliberately NOT polled; it's fetched on mount and refreshed via refreshAll
+  // after the user posts/cancels a request. Poll pauses when the tab is hidden (useRealtime).
+  const refreshActiveTab = useCallback(() => {
+    if (tab === 'find') rides.refetch();
+    else if (tab === 'mine') mine.refetch();
+    else if (tab === 'requests') requests.refetch();
+    // 'groups' data lives in GroupsPanel and refreshes itself; nothing to poll here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  useRealtime('carpool', ['carpool_rides', 'carpool_bookings', 'carpool_requests'], refreshActiveTab);
 
   const driving = mine.data?.driving || [];
   const riding = mine.data?.riding || [];

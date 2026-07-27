@@ -4,7 +4,7 @@
  * attempt a silent refresh (the httpOnly cookie may still be valid) to restore the session.
  */
 import { create } from 'zustand';
-import { authApi, userApi } from '@/services/endpoints.js';
+import { authApi } from '@/services/endpoints.js';
 import { api, setAccessToken, setAuthClearedHandler, normalizeError } from '@/services/api.js';
 import { useOfficeStore } from '@/stores/officeStore.js';
 import { useNotificationStore } from '@/stores/notificationStore.js';
@@ -30,16 +30,13 @@ export const useAuthStore = create((set, get) => ({
   bootstrap: async () => {
     set({ status: 'loading' });
     try {
+      // /auth/refresh returns the COMPLETE public user (same shape as /users/me, incl. createdAt),
+      // so there's no second /users/me round-trip here — that was a redundant users read (with a
+      // locations join) on every app load / tab open / hard reload. Pages that need live profile
+      // data can refetch it themselves.
       const { accessToken, user } = await api.post('/auth/refresh', {});
       setAccessToken(accessToken);
-      // The refresh payload includes a lightweight user; fetch the full profile.
-      let full = user;
-      try {
-        full = await userApi.me();
-      } catch {
-        /* fall back to refresh user */
-      }
-      set({ user: full, status: 'authenticated', error: null });
+      set({ user, status: 'authenticated', error: null });
     } catch {
       setAccessToken(null);
       set({ user: null, status: 'unauthenticated' });

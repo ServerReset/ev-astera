@@ -30,7 +30,15 @@ export function computeOvertimePenalty(overtimeMinutes, { graceMinutes, perMinut
   return perMinute * (factor ** excess - 1) / (factor - 1);
 }
 
-async function applyDecay(user, locationId) {
+/**
+ * PURE passive decay — computes the decayed score toward baseline in memory and returns the updated
+ * user object, WITHOUT touching the database. This is what read paths (getScore, isLockedOut,
+ * leaderboard) use, so viewing a score can never trigger a write. Because it returns the same value
+ * for the same inputs and does not persist, calling it N times on a read is free — there is no
+ * read-frequency compounding to guard against here (that only mattered when reads wrote back).
+ * Authoritative persistence happens exclusively in applyEvent(), when real behavior changes a score.
+ */
+async function computeDecayed(user, locationId) {
   if (!user.last_reliability_event_at) return user;
   const baseline = await configService.getNumber(SETTING_KEYS.RELIABILITY_BASELINE, locationId);
   const decayPerDay = await configService.getNumber(SETTING_KEYS.RELIABILITY_DECAY_PER_DAY, locationId);
@@ -41,29 +49,21 @@ async function applyDecay(user, locationId) {
   const drift = Math.sign(distance) * Math.min(Math.abs(distance), decayPerDay * daysSince);
   if (drift === 0) return user;
 
-  const newScore = user.reliability_score + drift;
-  // Advance the decay clock to now. Without this, every read recomputes drift from the SAME
-  // original timestamp against the already-decayed score, so decay compounds with read frequency
-  // (reading N times drifts ~N× the configured rate) — opening the leaderboard repeatedly would
-  // yank everyone toward baseline far faster than decayPerDay. Stamping it here makes passive
-  // decay idempotent and measured from the last time it was actually applied.
-  const stampedAt = now();
-  await prisma.users.update({
-    where: { id: user.id },
-    data: { reliability_score: newScore, last_reliability_event_at: stampedAt },
-  });
-  return { ...user, reliability_score: newScore, last_reliability_event_at: stampedAt };
+  // In-memory only. We deliberately do NOT stamp last_reliability_event_at here: applyEvent() reads
+  // the true stored timestamp, applies decay from it, and stamps `now()` when it persists a real
+  // event — so the decay clock advances exactly once, at the moment of an actual score change.
+  return { ...user, reliability_score: user.reliability_score + drift };
 }
 
 export const reliabilityService = {
-  /** Current (decayed, write-back) score + lockout state for a user. */
+  /** Current (decayed, read-only) score + lockout state for a user — computes decay in memory, never writes. */
   async getScore(userId, locationId) {
     let user = await prisma.users.findUnique({
       where: { id: userId },
       select: { id: true, reliability_score: true, reliability_locked_until: true, last_reliability_event_at: true },
     });
     if (!user) return null;
-    user = await applyDecay(user, locationId);
+    user = await computeDecayed(user, locationId); // read-only: no write on a score read
     return { score: user.reliability_score, lockedUntil: user.reliability_locked_until };
   },
 
@@ -86,7 +86,7 @@ export const reliabilityService = {
       select: { id: true, reliability_score: true, reliability_locked_until: true, last_reliability_event_at: true },
     });
     if (!user) return null;
-    user = await applyDecay(user, locationId);
+    user = await computeDecayed(user, locationId); // fold in passive decay before the delta
 
     const newScore = Math.max(0, Math.min(200, user.reliability_score + delta));
     const lockoutThreshold = await configService.getNumber(SETTING_KEYS.RELIABILITY_LOCKOUT_THRESHOLD, locationId);
@@ -141,8 +141,10 @@ export const reliabilityService = {
     });
   },
 
-  /** Best/worst performers for the leaderboard. Applies lazy decay to every candidate first
-   * so the ranking reflects current, not stale, scores. */
+  /** Best/worst performers for the leaderboard. Computes current (decayed) scores in memory so the
+   * ranking reflects current, not stale, values — WITHOUT persisting (a leaderboard view must never
+   * write). Config reads inside computeDecayed are cached (config.service 60s), so this is N cheap
+   * in-memory computations over one findMany, not N updates. */
   async leaderboard(locationId, { limit = 10 } = {}) {
     const users = await prisma.users.findMany({
       where: { location_id: locationId, active: true },
@@ -154,7 +156,7 @@ export const reliabilityService = {
         last_reliability_event_at: true,
       },
     });
-    const decayed = await Promise.all(users.map((u) => applyDecay(u, locationId)));
+    const decayed = await Promise.all(users.map((u) => computeDecayed(u, locationId)));
     const rows = decayed
       .map((u) => {
         const lockedOut = Boolean(u.reliability_locked_until && new Date(u.reliability_locked_until) > now());

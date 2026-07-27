@@ -4,8 +4,6 @@ import { Button } from '@/components/common/Button.jsx';
 import { messageApi } from '@/services/endpoints.js';
 import { normalizeError } from '@/services/api.js';
 import { toast } from '@/stores/toastStore.js';
-import { useApi } from '@/hooks/useApi.js';
-import { useRealtime } from '@/hooks/useRealtime.js';
 import { useCountdown } from '@/hooks/useCountdown.js';
 import { burstConfetti } from '@/utils/confetti.js';
 
@@ -13,17 +11,18 @@ import { burstConfetti } from '@/utils/confetti.js';
  * Live banner for active "I need a charger" emergencies at this office. Anyone currently charging
  * can offer to wrap up or decline; the request auto-expires on its response window (countdown).
  * `hasActiveSession` gates the respond actions to people who can actually free a charger.
+ *
+ * Data-driven by props (`emergencies` + `onChanged`) from the dashboard's consolidated snapshot —
+ * it no longer runs its own poll (that was a 5th independent 20s stream on the Dashboard, almost
+ * always fetching an empty list). Refreshing after a response reuses the dashboard's refetch.
  */
-export function EmergencyBanner({ hasActiveSession }) {
-  const { data, refetch } = useApi(() => messageApi.emergencies(), []);
-  useRealtime('emergencies', ['emergency_requests'], refetch);
-  const list = data || [];
-  if (!list.length) return null;
+export function EmergencyBanner({ emergencies = [], hasActiveSession, onChanged }) {
+  if (!emergencies.length) return null;
 
   return (
     <div className="mb-6 space-y-2">
-      {list.map((e) => (
-        <EmergencyRow key={e.id} req={e} canRespond={hasActiveSession} onChanged={refetch} />
+      {emergencies.map((e) => (
+        <EmergencyRow key={e.id} req={e} canRespond={hasActiveSession} onChanged={onChanged} />
       ))}
     </div>
   );

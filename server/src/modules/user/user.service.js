@@ -105,50 +105,48 @@ export const userService = {
   /** Weekly usage: sessions started this week vs. the configured max. */
   async getStats(userId, locationId, tz) {
     const weekStart = startOfWeek(now(), tz);
-    // Per-office count (matches the per-office max, and assertWeeklyLimit): a user with sessions
-    // across offices must not have this week's tile show a globally-summed figure for one office.
-    const weekly = await prisma.sessions.count({
-      where: {
-        user_id: userId,
-        location_id: locationId,
-        started_at: { gte: weekStart },
-        status: { in: [SESSION_STATUS.COMPLETED, SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME, SESSION_STATUS.FORCE_ENDED] },
-      },
-    });
-
-    const max = await configService.getNumber(SETTING_KEYS.MAX_WEEKLY_SESSIONS, locationId);
-
-    const total = await prisma.sessions.count({ where: { user_id: userId } });
-
-    // Charging streak: pull recent session start dates (60 days is plenty for any realistic
-    // run) and count consecutive local days. Bounded so this stays a cheap indexed read.
-    const recentStarts = await prisma.sessions.findMany({
-      where: { user_id: userId, started_at: { gte: new Date(now().getTime() - 60 * 86_400_000) } },
-      select: { started_at: true },
-      orderBy: { started_at: 'desc' },
-    });
-    const streak = computeStreak(recentStarts.map((s) => s.started_at), tz);
-
-    // Carpool impact snapshot.
-    const trips = await prisma.carpool_trip_logs.findMany({
-      where: { user_id: userId },
-      select: { miles: true, co2_grams_saved: true, credits_awarded: true },
-    });
-    const impact = trips.reduce(
-      (acc, t) => ({
-        trips: acc.trips + 1,
-        miles: acc.miles + (t.miles || 0),
-        co2Kg: acc.co2Kg + (t.co2_grams_saved || 0) / 1000,
+    // All independent reads run concurrently (was serial). The carpool impact is summed IN THE DB
+    // via aggregate (was: pull every trip-log row and reduce in JS). `max` is a 60s-cached config
+    // read. Streak still needs the recent start dates (a bounded, indexed read) to count local days.
+    const [weekly, max, total, recentStarts, impactAgg] = await Promise.all([
+      // Per-office count (matches the per-office max, and assertWeeklyLimit): a user with sessions
+      // across offices must not have this week's tile show a globally-summed figure for one office.
+      prisma.sessions.count({
+        where: {
+          user_id: userId,
+          location_id: locationId,
+          started_at: { gte: weekStart },
+          status: { in: [SESSION_STATUS.COMPLETED, SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME, SESSION_STATUS.FORCE_ENDED] },
+        },
       }),
-      { trips: 0, miles: 0, co2Kg: 0 }
-    );
+      configService.getNumber(SETTING_KEYS.MAX_WEEKLY_SESSIONS, locationId),
+      prisma.sessions.count({ where: { user_id: userId } }),
+      // Charging streak: recent session start dates (60 days covers any realistic run), bounded so
+      // this stays a cheap indexed read; consecutive local days counted in JS below.
+      prisma.sessions.findMany({
+        where: { user_id: userId, started_at: { gte: new Date(now().getTime() - 60 * 86_400_000) } },
+        select: { started_at: true },
+        orderBy: { started_at: 'desc' },
+      }),
+      prisma.carpool_trip_logs.aggregate({
+        where: { user_id: userId },
+        _count: { _all: true },
+        _sum: { miles: true, co2_grams_saved: true },
+      }),
+    ]);
+
+    const streak = computeStreak(recentStarts.map((s) => s.started_at), tz);
 
     return {
       weeklySessionsUsed: weekly,
       weeklySessionsMax: max,
       totalSessions: total,
       streakDays: streak,
-      carpool: { trips: impact.trips, miles: Math.round(impact.miles), co2Kg: Math.round(impact.co2Kg * 10) / 10 },
+      carpool: {
+        trips: impactAgg._count._all,
+        miles: Math.round(impactAgg._sum.miles || 0),
+        co2Kg: Math.round(((impactAgg._sum.co2_grams_saved || 0) / 1000) * 10) / 10,
+      },
     };
   },
 

@@ -10,7 +10,6 @@ import { Spinner, EmptyState, ErrorState } from '@/components/common/States.jsx'
 import { NudgeReactionButtons } from '@/components/notifications/NudgeReactionButtons.jsx';
 import { useNotificationStore } from '@/stores/notificationStore.js';
 import { usePushNotifications } from '@/hooks/usePushNotifications.js';
-import { useRealtime } from '@/hooks/useRealtime.js';
 import { useRipple } from '@/hooks/useInteractions.js';
 import { burstConfetti } from '@/utils/confetti.js';
 import { NOTIFICATION_META, NOTIFICATION_TYPES } from '@/utils/constants.js';
@@ -193,12 +192,13 @@ export default function NotificationsPage() {
   const { items, unread, loading, error, refresh, markRead, markAllRead } = useNotificationStore();
   const [filter, setFilter] = useState('all');
 
-  // Fresh load on arrival; realtime keeps it live thereafter.
+  // Fresh load on arrival. No page-level poll here: the global useNotificationSync (mounted once in
+  // AppLayout) already polls this same store on an interval, and this page renders from that store —
+  // a second poller would just double the notification query volume for no benefit.
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useRealtime('notifications', ['notifications'], refresh);
 
   // Count from the loaded list (not the server `unread` badge) so the chip matches exactly what
   // this page can show and re-filter.

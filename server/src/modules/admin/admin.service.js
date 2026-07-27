@@ -55,23 +55,23 @@ export const adminService = {
     const weekStart = startOfWeek(now(), tz);
     const dayAgo = addDays(now(), -1);
 
-    const [activeSessions, queueWaiting, users, sessionsToday, openRides] = await Promise.all([
+    // Carpool CO2 this week is summed IN THE DB (aggregate), not by pulling every driver trip row
+    // and reduce()-ing in JS. Count each ride's CO2 exactly ONCE: completeRideImpact writes the
+    // FULL ride savings on the driver's trip log AND each rider's share on their own row, so summing
+    // every row double-counts (2x) — filter to driver rows (matches leaderboardTotals()).
+    const [activeSessions, queueWaiting, users, sessionsToday, openRides, co2Agg] = await Promise.all([
       prisma.sessions.count({ where: { location_id: locationId, status: { in: [SESSION_STATUS.ACTIVE, SESSION_STATUS.OVERTIME] } } }),
       prisma.queue_entries.count({ where: { location_id: locationId, status: { in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED] } } }),
       prisma.users.count({ where: { location_id: locationId, active: true } }),
       prisma.sessions.count({ where: { location_id: locationId, started_at: { gte: dayAgo } } }),
       prisma.carpool_rides.count({ where: { location_id: locationId, status: RIDE_STATUS.OPEN } }),
+      prisma.carpool_trip_logs.aggregate({
+        where: { location_id: locationId, role: CARPOOL_ROLE.DRIVER, created_at: { gte: weekStart } },
+        _sum: { co2_grams_saved: true },
+      }),
     ]);
 
-    // Carpool impact this week (location-wide). Count each ride's CO2 exactly ONCE:
-    // completeRideImpact writes the FULL ride savings on the driver's trip log AND each rider's
-    // share on their own row, so summing every row double-counts (2x). Filter to driver rows —
-    // identical to carpool.service.js's leaderboardTotals(), which documents the same fix.
-    const trips = await prisma.carpool_trip_logs.findMany({
-      where: { location_id: locationId, role: CARPOOL_ROLE.DRIVER, created_at: { gte: weekStart } },
-      select: { co2_grams_saved: true },
-    });
-    const co2KgWeek = Math.round((trips.reduce((a, t) => a + (t.co2_grams_saved || 0), 0) / 1000) * 10) / 10;
+    const co2KgWeek = Math.round(((co2Agg._sum.co2_grams_saved || 0) / 1000) * 10) / 10;
 
     return {
       activeSessions,

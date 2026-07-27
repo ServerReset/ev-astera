@@ -20,14 +20,19 @@ export async function weeklyReset() {
   // single "correct" boundary, and a bare startOfWeek(now()) silently defaulted to the
   // server's fallback timezone regardless of which office(s) were actually reset that run.
   const weekStarts = {};
+  const mondayIds = [];
   for (const loc of locations) {
-    if (localWeekday(now(), loc.timezone) !== MONDAY) continue;
-    await prisma.users.updateMany({
-      where: { location_id: loc.id, locked_until: { not: null } },
-      data: { failed_attempts: 0, locked_until: null },
-    });
+    if (localWeekday(now(), loc.timezone) !== MONDAY) continue; // per-office local-Monday check stays in JS
+    mondayIds.push(loc.id);
     weekStarts[loc.id] = startOfWeek(now(), loc.timezone);
     actions++;
+  }
+  // One updateMany for every office where it's locally Monday (was one per office in the loop).
+  if (mondayIds.length) {
+    await prisma.users.updateMany({
+      where: { location_id: { in: mondayIds }, locked_until: { not: null } },
+      data: { failed_attempts: 0, locked_until: null },
+    });
   }
   return { actions, weekStarts };
 }

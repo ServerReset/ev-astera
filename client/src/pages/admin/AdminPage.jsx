@@ -53,11 +53,16 @@ export default function AdminPage() {
   const settings = useApi(() => adminApi.getSettings(), [selectedOfficeId]);
   const announcements = useApi(() => adminApi.listAnnouncements(), [selectedOfficeId]);
 
+  // Only poll the data the CURRENT tab actually shows — the overview aggregate is the heaviest
+  // query in the app, so re-running it every tick while an admin sits on the Users or Settings tab
+  // was pure waste. On Overview we refresh both the aggregate and chargers; on the Chargers tab
+  // just the charger list; other tabs need no live poll (they refetch on their own actions / the
+  // header Refresh). Poll pauses when the tab is hidden (useRealtime).
   const refreshLive = useCallback(() => {
-    overview.refetch();
-    chargers.refetch();
+    if (tab === 'overview') { overview.refetch(); chargers.refetch(); }
+    else if (tab === 'chargers') chargers.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tab]);
 
   useRealtime('admin', ['chargers', 'sessions', 'queue_entries'], refreshLive);
 

@@ -52,14 +52,29 @@ async function myGroupIds(userId) {
   return data.map((r) => r.group_id);
 }
 
-async function driverStats(driverId) {
-  const data = await prisma.carpool_rides.findMany({
-    where: { driver_id: driverId, status: { in: [RIDE_STATUS.COMPLETED, RIDE_STATUS.CANCELLED] } },
-    select: { status: true },
+/**
+ * Batched driver stats for a SET of drivers — ONE grouped query for all of them, returning a
+ * Map<driverId, {completed, cancelled}>. Replaces the old per-driver driverStats() that was called
+ * inside ride loops (a classic N+1, and worse: non-deduped, so a driver with 3 open rides was
+ * queried 3×). Callers dedupe driverIds and look up in the returned map.
+ */
+async function driverStatsFor(driverIds) {
+  const map = new Map();
+  const ids = [...new Set(driverIds)].filter(Boolean);
+  if (!ids.length) return map;
+  const grouped = await prisma.carpool_rides.groupBy({
+    by: ['driver_id', 'status'],
+    where: { driver_id: { in: ids }, status: { in: [RIDE_STATUS.COMPLETED, RIDE_STATUS.CANCELLED] } },
+    _count: { _all: true },
   });
-  const completed = data.filter((r) => r.status === RIDE_STATUS.COMPLETED).length;
-  const cancelled = data.filter((r) => r.status === RIDE_STATUS.CANCELLED).length;
-  return { completed, cancelled };
+  for (const id of ids) map.set(id, { completed: 0, cancelled: 0 });
+  for (const g of grouped) {
+    const entry = map.get(g.driver_id);
+    if (!entry) continue;
+    if (g.status === RIDE_STATUS.COMPLETED) entry.completed = g._count._all;
+    else if (g.status === RIDE_STATUS.CANCELLED) entry.cancelled = g._count._all;
+  }
+  return map;
 }
 
 function rideDto(r, extra = {}) {
@@ -114,10 +129,9 @@ export const carpoolService = {
     const groupIds = await myGroupIds(userId);
 
     const windowCenter = around ? new Date(around) : now();
-    const enriched = [];
-    for (const r of rides) {
-      enriched.push({ ...r, driverStats: await driverStats(r.driver_id) });
-    }
+    // One grouped query for all drivers' stats (was one findMany per ride).
+    const stats = await driverStatsFor(rides.map((r) => r.driver_id));
+    const enriched = rides.map((r) => ({ ...r, driverStats: stats.get(r.driver_id) || { completed: 0, cancelled: 0 } }));
     const rider = {
       windowStart: addMinutes(windowCenter, -90),
       windowEnd: addMinutes(windowCenter, 90),
@@ -611,65 +625,87 @@ export const carpoolService = {
     const groupIds = await myGroupIds(userId);
     const minScore = await configService.getNumber(SETTING_KEYS.CARPOOL_MIN_MATCH_SCORE, locationId);
 
-    const out = [];
-    for (const req of requests) {
-      const rides = await prisma.carpool_rides.findMany({
-        where: {
-          location_id: locationId,
-          direction: req.direction,
-          status: RIDE_STATUS.OPEN,
-          seats_available: { gt: 0 },
-          depart_at: { gte: req.window_start, lte: req.window_end },
-          driver_id: { not: userId },
-        },
-        include: { driver: { select: { display_name: true } } },
-      });
-      const enriched = [];
-      for (const r of rides) {
-        enriched.push({ ...r, driverStats: await driverStats(r.driver_id) });
-      }
-      const rider = {
-        windowStart: req.window_start,
-        windowEnd: req.window_end,
-        groupIds,
-      };
+    // Candidate rides per request (windows differ per request, so these stay per-request), but
+    // fetched first WITHOUT any per-ride query...
+    const perRequestRides = await Promise.all(
+      requests.map((req) =>
+        prisma.carpool_rides.findMany({
+          where: {
+            location_id: locationId,
+            direction: req.direction,
+            status: RIDE_STATUS.OPEN,
+            seats_available: { gt: 0 },
+            depart_at: { gte: req.window_start, lte: req.window_end },
+            driver_id: { not: userId },
+          },
+          include: { driver: { select: { display_name: true } } },
+        })
+      )
+    );
+
+    // ...then ONE grouped driver-stats query across every candidate driver (was an N+1 nested one
+    // level deep: a driverStats query per candidate ride per request).
+    const allDriverIds = perRequestRides.flat().map((r) => r.driver_id);
+    const stats = await driverStatsFor(allDriverIds);
+
+    const out = requests.map((req, i) => {
+      const enriched = perRequestRides[i].map((r) => ({
+        ...r,
+        driverStats: stats.get(r.driver_id) || { completed: 0, cancelled: 0 },
+      }));
+      const rider = { windowStart: req.window_start, windowEnd: req.window_end, groupIds };
       const ranked = rankRides(enriched, rider).filter((x) => x.score >= minScore);
-      out.push({
+      return {
         requestId: req.id,
         direction: req.direction,
         matches: ranked.slice(0, 5).map((x) => rideDto(x.ride, { matchScore: x.score, matchParts: x.parts })),
-      });
-    }
+      };
+    });
     return out;
   },
 
   async leaderboard(locationId, { window = 'week', scope = 'location', groupId } = {}) {
     const since = window === 'all' ? null : window === 'month' ? addMinutes(now(), -43200) : addMinutes(now(), -10080);
-    const logs = await prisma.carpool_trip_logs.findMany({
-      where: { location_id: locationId, ...(since ? { created_at: { gte: since } } : {}) },
-      select: { user_id: true, miles: true, co2_grams_saved: true, credits_awarded: true, users: { select: { display_name: true } } },
-    });
 
-    // Optional group filter.
-    let allowed = null;
+    // Optional group filter — resolve the allowed user set first so it can go into the WHERE
+    // clause (rather than pulling every log and discarding non-members in JS).
+    let allowedIds = null;
     if (scope === 'group' && groupId) {
       const members = await prisma.carpool_group_members.findMany({ where: { group_id: groupId }, select: { user_id: true } });
-      allowed = new Set(members.map((m) => m.user_id));
+      allowedIds = members.map((m) => m.user_id);
+      if (!allowedIds.length) return [];
     }
 
-    const byUser = new Map();
-    for (const l of logs) {
-      if (allowed && !allowed.has(l.user_id)) continue;
-      const cur = byUser.get(l.user_id) || { userId: l.user_id, name: l.users?.display_name, trips: 0, co2Kg: 0, credits: 0 };
-      cur.trips += 1;
-      cur.co2Kg += (l.co2_grams_saved || 0) / 1000;
-      cur.credits += l.credits_awarded || 0;
-      byUser.set(l.user_id, cur);
-    }
-    return [...byUser.values()]
-      .map((u) => ({ ...u, co2Kg: Math.round(u.co2Kg * 10) / 10 }))
-      .sort((a, b) => b.co2Kg - a.co2Kg)
-      .slice(0, 50);
+    // Aggregate per user IN THE DB (was: pull every trip-log row for the window and sum in JS).
+    // Postgres returns one row per user with the sums + trip count, already ordered, top 50.
+    const grouped = await prisma.carpool_trip_logs.groupBy({
+      by: ['user_id'],
+      where: {
+        location_id: locationId,
+        ...(since ? { created_at: { gte: since } } : {}),
+        ...(allowedIds ? { user_id: { in: allowedIds } } : {}),
+      },
+      _sum: { co2_grams_saved: true, credits_awarded: true },
+      _count: { _all: true },
+      orderBy: { _sum: { co2_grams_saved: 'desc' } },
+      take: 50,
+    });
+    if (!grouped.length) return [];
+
+    // One lookup for the display names of just the top-50 users (not every logger).
+    const names = await prisma.users.findMany({
+      where: { id: { in: grouped.map((g) => g.user_id) } },
+      select: { id: true, display_name: true },
+    });
+    const nameById = new Map(names.map((u) => [u.id, u.display_name]));
+
+    return grouped.map((g) => ({
+      userId: g.user_id,
+      name: nameById.get(g.user_id),
+      trips: g._count._all,
+      co2Kg: Math.round(((g._sum.co2_grams_saved || 0) / 1000) * 10) / 10,
+      credits: g._sum.credits_awarded || 0,
+    }));
   },
 
   /**

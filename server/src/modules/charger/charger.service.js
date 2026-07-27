@@ -17,6 +17,7 @@ import {
   RIDE_STATUS,
 } from '../../../../shared/constants.js';
 import { transitionOvertimeSessions } from '../session/session.service.js';
+import { invalidateChargerName } from '../../utils/chargerNameCache.js';
 
 function sessionDto(s, driver) {
   if (!s) return null;
@@ -139,6 +140,7 @@ export const chargerService = {
       data: { name },
     });
     if (!count) throw new NotFoundError('Charger not found');
+    invalidateChargerName(chargerId); // name changed → drop the cached copy
     return prisma.chargers.findUnique({ where: { id: chargerId } });
   },
 
@@ -162,6 +164,7 @@ export const chargerService = {
       where: { id: chargerId, location_id: locationId },
     });
     if (!count) throw new NotFoundError('Charger not found');
+    invalidateChargerName(chargerId); // charger gone → drop any cached name
     return { id: chargerId };
   },
 };

@@ -24,12 +24,11 @@ export const useNotificationStore = create((set, get) => ({
     const id = ++callId;
     set({ loading: true, error: null });
     try {
-      const [list, count] = await Promise.all([
-        notificationApi.list(1),
-        notificationApi.unreadCount(),
-      ]);
+      // ONE request: the list response now carries `unread` in it (server-side), so the badge poll
+      // no longer makes a second /unread-count round-trip on every tick.
+      const list = await notificationApi.list(1);
       if (id !== callId) return; // superseded by a later refresh/mark-read — discard
-      set({ items: list.items || list || [], unread: count?.count ?? count ?? 0, loading: false });
+      set({ items: list.items || list || [], unread: list.unread ?? 0, loading: false });
     } catch (err) {
       if (id !== callId) return;
       set({ loading: false, error: normalizeError(err) });

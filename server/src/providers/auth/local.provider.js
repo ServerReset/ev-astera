@@ -42,6 +42,9 @@ function toPublicUser(row) {
     notificationPrefs: row.notification_prefs || {},
     carpoolCredits: row.carpool_credits ?? 0,
     onboardedAt: row.onboarded_at,
+    // Included so the refresh/login payload matches /users/me exactly — the client's bootstrap()
+    // then needs NO follow-up /users/me fetch (that was a redundant users read on every app load).
+    createdAt: row.created_at,
     office: row.locations ? { id: row.locations.id, name: row.locations.name, timezone: row.locations.timezone } : null,
   };
 }
@@ -201,11 +204,16 @@ export const localProvider = {
 
   async refreshAccessToken(refreshToken) {
     if (!refreshToken) throw new AuthenticationError('No refresh token');
-    const row = await prisma.refresh_tokens.findFirst({ where: { token_hash: hashToken(refreshToken) } });
+    // One query, not two: pull the token row AND its owning user (+ office join) via the relation.
+    // token_hash is indexed (schema @@index([token_hash])), so this stays an index seek.
+    const row = await prisma.refresh_tokens.findFirst({
+      where: { token_hash: hashToken(refreshToken) },
+      include: { users: { include: WITH_OFFICE } },
+    });
     if (!row || row.revoked || new Date(row.expires_at) < new Date()) {
       throw new AuthenticationError('Session expired');
     }
-    const userRow = await prisma.users.findUnique({ where: { id: row.user_id }, include: WITH_OFFICE });
+    const userRow = row.users;
     if (!userRow || !userRow.active) throw new AuthenticationError('Session expired');
     // Mirror login()'s office-active gate: if the user's office was deactivated while they were
     // signed in, stop minting fresh tokens. Otherwise the SPA silently refreshes forever and the

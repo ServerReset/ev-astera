@@ -10,14 +10,15 @@ import { QUEUE_STATUS } from '../../../shared/constants.js';
 
 export async function dailyReset() {
   const locations = await prisma.locations.findMany({ where: { active: true }, select: { id: true } });
-  let cancelled = 0;
-  for (const loc of locations) {
-    const { count } = await prisma.queue_entries.updateMany({
-      where: { location_id: loc.id, status: { in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED] } },
-      data: { status: QUEUE_STATUS.CANCELLED },
-    });
-    cancelled += count;
-  }
+  const ids = locations.map((l) => l.id);
+  if (!ids.length) return { actions: 0, resetQueues: 0 };
 
-  return { actions: cancelled, resetQueues: cancelled };
+  // One updateMany scoped to all active offices at once (was one per office in a loop). Same effect
+  // — the operation is identical per office, so a `location_id IN (...)` filter covers them all.
+  const { count } = await prisma.queue_entries.updateMany({
+    where: { location_id: { in: ids }, status: { in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.NOTIFIED, QUEUE_STATUS.CLAIMED] } },
+    data: { status: QUEUE_STATUS.CANCELLED },
+  });
+
+  return { actions: count, resetQueues: count };
 }
